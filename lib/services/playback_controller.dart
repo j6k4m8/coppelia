@@ -11,6 +11,7 @@ class PlaybackController {
   PlaybackController({AudioPlayer? player}) : _player = player ?? AudioPlayer();
 
   final AudioPlayer _player;
+  ConcatenatingAudioSource? _queueSource;
 
   /// Stream of playback position updates.
   Stream<Duration> get positionStream => _player.positionStream;
@@ -33,6 +34,9 @@ class PlaybackController {
     return tag is MediaItem ? tag : null;
   }
 
+  /// Current queue index, if available.
+  int? get currentIndex => _player.currentIndex;
+
   /// Sets the playback queue.
   Future<void> setQueue(
     List<MediaItem> items, {
@@ -42,23 +46,33 @@ class PlaybackController {
   }) async {
     final sources = <AudioSource>[];
     for (final item in items) {
-      final file =
-          cacheStore == null ? null : await cacheStore.getCachedAudio(item);
-      if (file != null) {
-        sources.add(AudioSource.file(file.path, tag: item));
-      } else {
-        sources.add(
-          AudioSource.uri(
-            Uri.parse(item.streamUrl),
-            headers: headers,
-            tag: item,
-          ),
-        );
-        unawaited(cacheStore?.prefetchAudio(item));
-      }
+      sources.add(await _buildSource(item, cacheStore, headers));
     }
-    final queue = ConcatenatingAudioSource(children: sources);
-    await _player.setAudioSource(queue, initialIndex: startIndex);
+    _queueSource = ConcatenatingAudioSource(children: sources);
+    await _player.setAudioSource(_queueSource!, initialIndex: startIndex);
+  }
+
+  /// Appends a track to the current queue.
+  Future<void> appendToQueue(
+    MediaItem item, {
+    CacheStore? cacheStore,
+    Map<String, String>? headers,
+  }) async {
+    final source = await _buildSource(item, cacheStore, headers);
+    await _queueSource?.add(source);
+  }
+
+  /// Inserts a track after the current item.
+  Future<void> insertNext(
+    MediaItem item, {
+    CacheStore? cacheStore,
+    Map<String, String>? headers,
+  }) async {
+    final source = await _buildSource(item, cacheStore, headers);
+    final insertIndex = (currentIndex ?? -1) + 1;
+    final queueLength = _queueSource?.length ?? 0;
+    final targetIndex = insertIndex.clamp(0, queueLength);
+    await _queueSource?.insert(targetIndex, source);
   }
 
   /// Starts playback.
@@ -89,5 +103,22 @@ class PlaybackController {
   /// Stops playback and releases resources.
   Future<void> dispose() async {
     await _player.dispose();
+  }
+
+  Future<AudioSource> _buildSource(
+    MediaItem item,
+    CacheStore? cacheStore,
+    Map<String, String>? headers,
+  ) async {
+    final file = cacheStore == null ? null : await cacheStore.getCachedAudio(item);
+    if (file != null) {
+      return AudioSource.file(file.path, tag: item);
+    }
+    unawaited(cacheStore?.prefetchAudio(item));
+    return AudioSource.uri(
+      Uri.parse(item.streamUrl),
+      headers: headers,
+      tag: item,
+    );
   }
 }

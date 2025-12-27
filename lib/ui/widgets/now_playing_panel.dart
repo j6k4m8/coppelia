@@ -67,7 +67,7 @@ class NowPlayingPanel extends StatelessWidget {
           const Divider(color: Colors.white12),
           const SizedBox(height: 16),
           Text(
-            'Queue',
+            'Playing next',
             style: Theme.of(context)
                 .textTheme
                 .titleSmall
@@ -75,28 +75,54 @@ class NowPlayingPanel extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: ListView.builder(
-              itemCount: state.queue.length,
-              itemBuilder: (context, index) {
-                final item = state.queue[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    item.title,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: item.id == track?.id
-                              ? Colors.white
-                              : Colors.white60,
-                        ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              },
-            ),
+            child: _QueueList(queue: state.queue, nowPlaying: track),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _QueueList extends StatelessWidget {
+  const _QueueList({required this.queue, required this.nowPlaying});
+
+  final List<MediaItem> queue;
+  final MediaItem? nowPlaying;
+
+  @override
+  Widget build(BuildContext context) {
+    if (queue.isEmpty) {
+      return Text(
+        'Queue is empty.',
+        style: Theme.of(context)
+            .textTheme
+            .bodySmall
+            ?.copyWith(color: Colors.white60),
+      );
+    }
+    final startIndex = nowPlaying == null
+        ? 0
+        : queue.indexWhere((item) => item.id == nowPlaying!.id);
+    final safeIndex = startIndex < 0 ? 0 : startIndex;
+    final visibleQueue = queue.sublist(safeIndex);
+    return ListView.builder(
+      itemCount: visibleQueue.length,
+      itemBuilder: (context, index) {
+        final item = visibleQueue[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            item.title,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: item.id == nowPlaying?.id
+                      ? Colors.white
+                      : Colors.white60,
+                ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        );
+      },
     );
   }
 }

@@ -30,6 +30,8 @@ class ArtistDetailView extends StatelessWidget {
           ? null
           : () => state.playFromArtist(state.artistTracks.first),
       onTrackTap: state.playFromArtist,
+      onPlayNext: state.playNext,
+      onAddToQueue: state.enqueueTrack,
     );
   }
 }

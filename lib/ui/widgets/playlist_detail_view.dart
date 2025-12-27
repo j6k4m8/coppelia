@@ -34,6 +34,8 @@ class PlaylistDetailView extends StatelessWidget {
                 index: index,
                 isActive: state.nowPlaying?.id == track.id,
                 onTap: () => state.playFromPlaylist(track),
+                onPlayNext: () => state.playNext(track),
+                onAddToQueue: () => state.enqueueTrack(track),
               );
             },
           ),

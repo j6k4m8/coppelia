@@ -516,6 +516,46 @@ class AppState extends ChangeNotifier {
     await _playback.skipPrevious();
   }
 
+  /// Adds a track to the end of the queue.
+  Future<void> enqueueTrack(MediaItem track) async {
+    if (_queue.isEmpty) {
+      _queue = [track];
+      await _playback.setQueue(
+        _queue,
+        startIndex: 0,
+        cacheStore: _cacheStore,
+        headers: _playbackHeaders(),
+      );
+      await _playback.play();
+      notifyListeners();
+      return;
+    }
+    _queue.add(track);
+    await _playback.appendToQueue(
+      track,
+      cacheStore: _cacheStore,
+      headers: _playbackHeaders(),
+    );
+    notifyListeners();
+  }
+
+  /// Inserts a track to play next.
+  Future<void> playNext(MediaItem track) async {
+    if (_queue.isEmpty) {
+      await enqueueTrack(track);
+      return;
+    }
+    final currentIndex = _playback.currentIndex ?? -1;
+    final insertIndex = (currentIndex + 1).clamp(0, _queue.length);
+    _queue.insert(insertIndex, track);
+    await _playback.insertNext(
+      track,
+      cacheStore: _cacheStore,
+      headers: _playbackHeaders(),
+    );
+    notifyListeners();
+  }
+
   /// Seeks to a specific playback position.
   Future<void> seek(Duration position) async {
     await _playback.seek(position);

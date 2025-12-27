@@ -27,6 +27,8 @@ class GenreDetailView extends StatelessWidget {
           ? null
           : () => state.playFromGenre(state.genreTracks.first),
       onTrackTap: state.playFromGenre,
+      onPlayNext: state.playNext,
+      onAddToQueue: state.enqueueTrack,
     );
   }
 }

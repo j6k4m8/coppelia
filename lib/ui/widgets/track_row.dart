@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/formatters.dart';
 import '../../models/media_item.dart';
+import 'context_menu.dart';
 
 /// Row for a track listing.
 class TrackRow extends StatelessWidget {
@@ -13,6 +14,8 @@ class TrackRow extends StatelessWidget {
     required this.index,
     required this.onTap,
     this.isActive = false,
+    this.onPlayNext,
+    this.onAddToQueue,
   });
 
   /// Track metadata.
@@ -27,78 +30,129 @@ class TrackRow extends StatelessWidget {
   /// Indicates if this track is playing.
   final bool isActive;
 
+  /// Optional handler to play the track next.
+  final VoidCallback? onPlayNext;
+
+  /// Optional handler to add the track to the queue.
+  final VoidCallback? onAddToQueue;
+
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white.withOpacity(0.12) : null,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 32,
-              child: Text(
-                '${index + 1}'.padLeft(2, '0'),
+    return GestureDetector(
+      onSecondaryTapDown: (details) => _showMenu(context, details.globalPosition),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: isActive ? Colors.white.withOpacity(0.12) : null,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 32,
+                child: Text(
+                  '${index + 1}'.padLeft(2, '0'),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.white60,
+                      ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: track.imageUrl == null
+                    ? Container(
+                        width: 44,
+                        height: 44,
+                        color: Colors.white10,
+                        child: const Icon(Icons.music_note, size: 18),
+                      )
+                    : CachedNetworkImage(
+                        imageUrl: track.imageUrl!,
+                        width: 44,
+                        height: 44,
+                        fit: BoxFit.cover,
+                      ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      track.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      track.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.white54,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                formatDuration(track.duration),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.white60,
                     ),
               ),
-            ),
-            const SizedBox(width: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: track.imageUrl == null
-                  ? Container(
-                      width: 44,
-                      height: 44,
-                      color: Colors.white10,
-                      child: const Icon(Icons.music_note, size: 18),
-                    )
-                  : CachedNetworkImage(
-                      imageUrl: track.imageUrl!,
-                      width: 44,
-                      height: 44,
-                      fit: BoxFit.cover,
-                    ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    track.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    track.subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.white54,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              formatDuration(track.duration),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white60,
-                  ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+
+  Future<void> _showMenu(BuildContext context, Offset position) async {
+    if (onPlayNext == null && onAddToQueue == null) {
+      return;
+    }
+    final items = <PopupMenuEntry<_TrackMenuAction>>[
+      const PopupMenuItem(
+        value: _TrackMenuAction.play,
+        child: Text('Play'),
+      ),
+    ];
+    if (onPlayNext != null) {
+      items.add(
+        const PopupMenuItem(
+          value: _TrackMenuAction.playNext,
+          child: Text('Play Next'),
+        ),
+      );
+    }
+    if (onAddToQueue != null) {
+      items.add(
+        const PopupMenuItem(
+          value: _TrackMenuAction.addToQueue,
+          child: Text('Add to Queue'),
+        ),
+      );
+    }
+    final action = await showContextMenu<_TrackMenuAction>(
+      context,
+      position,
+      items,
+    );
+    if (action == _TrackMenuAction.play) {
+      onTap();
+    } else if (action == _TrackMenuAction.playNext) {
+      onPlayNext?.call();
+    } else if (action == _TrackMenuAction.addToQueue) {
+      onAddToQueue?.call();
+    }
+  }
 }
+
+enum _TrackMenuAction { play, playNext, addToQueue }

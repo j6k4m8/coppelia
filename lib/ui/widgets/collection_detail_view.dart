@@ -17,6 +17,8 @@ class CollectionDetailView extends StatelessWidget {
     required this.nowPlaying,
     this.imageUrl,
     this.onPlayAll,
+    this.onPlayNext,
+    this.onAddToQueue,
   });
 
   /// Title for the collection.
@@ -39,6 +41,12 @@ class CollectionDetailView extends StatelessWidget {
 
   /// Handler when a track is tapped.
   final ValueChanged<MediaItem> onTrackTap;
+
+  /// Handler when a track should play next.
+  final ValueChanged<MediaItem>? onPlayNext;
+
+  /// Handler when a track should be enqueued.
+  final ValueChanged<MediaItem>? onAddToQueue;
 
   /// Currently playing track.
   final MediaItem? nowPlaying;
@@ -67,6 +75,12 @@ class CollectionDetailView extends StatelessWidget {
                 index: index,
                 isActive: nowPlaying?.id == track.id,
                 onTap: () => onTrackTap(track),
+                onPlayNext: onPlayNext == null
+                    ? null
+                    : () => onPlayNext!.call(track),
+                onAddToQueue: onAddToQueue == null
+                    ? null
+                    : () => onAddToQueue!.call(track),
               );
             },
           ),

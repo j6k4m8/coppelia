@@ -27,6 +27,8 @@ class AlbumDetailView extends StatelessWidget {
           ? null
           : () => state.playFromAlbum(state.albumTracks.first),
       onTrackTap: state.playFromAlbum,
+      onPlayNext: state.playNext,
+      onAddToQueue: state.enqueueTrack,
     );
   }
 }

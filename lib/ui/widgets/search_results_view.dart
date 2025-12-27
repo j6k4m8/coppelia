@@ -60,6 +60,8 @@ class SearchResultsView extends StatelessWidget {
                   index: index,
                   isActive: state.nowPlaying?.id == track.id,
                   onTap: () => state.playFromSearch(track),
+                  onPlayNext: () => state.playNext(track),
+                  onAddToQueue: () => state.enqueueTrack(track),
                 );
               },
             ),
