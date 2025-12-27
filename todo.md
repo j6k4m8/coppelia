@@ -64,3 +64,4 @@
 -   [ ] on all pages the "card" hero should be part of the scrollable area, not fixed at the top.
 -   [ ] should be able to click to navigate artist and album from now playing
 -   [ ] playlists on the homepage should have a circular play button on them for single click play
+-   [ ] scroll bounce jank

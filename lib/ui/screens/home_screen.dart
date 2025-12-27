@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/media_item.dart';
+import '../../models/playlist.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
 import '../../state/now_playing_layout.dart';
@@ -20,6 +22,8 @@ import '../widgets/library_placeholder_view.dart';
 import '../widgets/genres_view.dart';
 import '../widgets/now_playing_panel.dart';
 import '../widgets/playlist_detail_view.dart';
+import '../widgets/playlist_card.dart';
+import '../widgets/track_row.dart';
 import '../widgets/search_results_view.dart';
 import '../widgets/settings_view.dart';
 import '../widgets/sidebar_navigation.dart';
@@ -327,7 +331,11 @@ class _HeaderState extends State<_Header> {
                 state.selectedArtist != null ||
                 state.selectedGenre != null
             ? state.clearBrowseSelection
-            : null;
+            : state.selectedView == LibraryView.homeFeatured ||
+                    state.selectedView == LibraryView.homeRecent ||
+                    state.selectedView == LibraryView.homePlaylists
+                ? () => state.selectLibraryView(LibraryView.home)
+                : null;
     final titleRow = backAction == null
         ? Text(title, style: titleStyle)
         : Row(
@@ -493,6 +501,15 @@ class _LibraryContent extends StatelessWidget {
     if (state.selectedView == LibraryView.home) {
       return const LibraryOverview();
     }
+    if (state.selectedView == LibraryView.homeFeatured) {
+      return _HomeFeaturedView(tracks: state.featuredTracks);
+    }
+    if (state.selectedView == LibraryView.homeRecent) {
+      return _HomeRecentView(tracks: state.playHistory, fallback: state.recentTracks);
+    }
+    if (state.selectedView == LibraryView.homePlaylists) {
+      return _HomePlaylistsView(playlists: state.playlists);
+    }
     if (state.selectedView == LibraryView.albums) {
       return const AlbumsView();
     }
@@ -521,5 +538,122 @@ class _LibraryContent extends StatelessWidget {
       return const SettingsView();
     }
     return LibraryPlaceholderView(view: state.selectedView);
+  }
+}
+
+class _HomeFeaturedView extends StatelessWidget {
+  const _HomeFeaturedView({required this.tracks});
+
+  final List<MediaItem> tracks;
+
+  @override
+  Widget build(BuildContext context) {
+    if (tracks.isEmpty) {
+      return const LibraryPlaceholderView(view: LibraryView.homeFeatured);
+    }
+    return ListView.separated(
+      itemCount: tracks.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 6),
+      itemBuilder: (context, index) {
+        final track = tracks[index];
+        return TrackRow(
+          track: track,
+          index: index,
+          isActive: false,
+          onTap: () =>
+              context.read<AppState>().playFromList(tracks, track),
+          onPlayNext: () =>
+              context.read<AppState>().playNext(track),
+          onAddToQueue: () =>
+              context.read<AppState>().enqueueTrack(track),
+          onAlbumTap: track.albumId == null
+              ? null
+              : () => context.read<AppState>().selectAlbumById(track.albumId!),
+          onArtistTap: track.artistIds.isEmpty
+              ? null
+              : () => context
+                  .read<AppState>()
+                  .selectArtistById(track.artistIds.first),
+        );
+      },
+    );
+  }
+}
+
+class _HomeRecentView extends StatelessWidget {
+  const _HomeRecentView({required this.tracks, required this.fallback});
+
+  final List<MediaItem> tracks;
+  final List<MediaItem> fallback;
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveTracks = tracks.isNotEmpty ? tracks : fallback;
+    if (effectiveTracks.isEmpty) {
+      return const LibraryPlaceholderView(view: LibraryView.homeRecent);
+    }
+    return ListView.separated(
+      itemCount: effectiveTracks.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 6),
+      itemBuilder: (context, index) {
+        final track = effectiveTracks[index];
+        return TrackRow(
+          track: track,
+          index: index,
+          isActive: false,
+          onTap: () => context
+              .read<AppState>()
+              .playFromList(effectiveTracks, track),
+          onPlayNext: () =>
+              context.read<AppState>().playNext(track),
+          onAddToQueue: () =>
+              context.read<AppState>().enqueueTrack(track),
+          onAlbumTap: track.albumId == null
+              ? null
+              : () => context.read<AppState>().selectAlbumById(track.albumId!),
+          onArtistTap: track.artistIds.isEmpty
+              ? null
+              : () => context
+                  .read<AppState>()
+                  .selectArtistById(track.artistIds.first),
+        );
+      },
+    );
+  }
+}
+
+class _HomePlaylistsView extends StatelessWidget {
+  const _HomePlaylistsView({required this.playlists});
+
+  final List<Playlist> playlists;
+
+  @override
+  Widget build(BuildContext context) {
+    if (playlists.isEmpty) {
+      return const LibraryPlaceholderView(view: LibraryView.homePlaylists);
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = (constraints.maxWidth / 220).floor();
+        final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
+        return GridView.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1.1,
+          ),
+          itemCount: playlists.length,
+          itemBuilder: (context, index) {
+            final playlist = playlists[index];
+            return PlaylistCard(
+              playlist: playlist,
+              onTap: () =>
+                  context.read<AppState>().selectPlaylist(playlist),
+            );
+          },
+        );
+      },
+    );
   }
 }

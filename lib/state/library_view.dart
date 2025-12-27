@@ -29,6 +29,15 @@ enum LibraryView {
 
   /// Application settings.
   settings,
+
+  /// Featured home shelf view.
+  homeFeatured,
+
+  /// Recently played home shelf view.
+  homeRecent,
+
+  /// Playlist home shelf view.
+  homePlaylists,
 }
 
 /// Display helpers for library views.
@@ -56,6 +65,12 @@ extension LibraryViewLabels on LibraryView {
         return 'Play History';
       case LibraryView.queue:
         return 'Queue';
+      case LibraryView.homeFeatured:
+        return 'Featured';
+      case LibraryView.homeRecent:
+        return 'Recently played';
+      case LibraryView.homePlaylists:
+        return 'Playlists';
     }
   }
 
@@ -82,6 +97,12 @@ extension LibraryViewLabels on LibraryView {
         return 'Recently played tracks from this session.';
       case LibraryView.queue:
         return 'All upcoming tracks in the queue.';
+      case LibraryView.homeFeatured:
+        return 'Tracks curated for you.';
+      case LibraryView.homeRecent:
+        return 'Pick up where you left off.';
+      case LibraryView.homePlaylists:
+        return 'All your Jellyfin playlists.';
     }
   }
 }

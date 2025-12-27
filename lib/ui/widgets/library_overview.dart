@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
+import '../../state/library_view.dart';
 import '../../core/color_tokens.dart';
 import 'featured_track_card.dart';
 import 'playlist_card.dart';
@@ -24,12 +25,22 @@ class LibraryOverview extends StatelessWidget {
         children: [
           SectionHeader(
             title: 'Featured',
-            action: Text(
-              '${state.featuredTracks.length} tracks',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: ColorTokens.textSecondary(context)),
+            action: Row(
+              children: [
+                Text(
+                  '${state.featuredTracks.length} tracks',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: ColorTokens.textSecondary(context)),
+                ),
+                const SizedBox(width: 8),
+                _HeaderAction(
+                  label: 'View all',
+                  onTap: () =>
+                      state.selectLibraryView(LibraryView.homeFeatured),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -52,12 +63,22 @@ class LibraryOverview extends StatelessWidget {
             const SizedBox(height: 32),
             SectionHeader(
               title: 'Recently played',
-              action: Text(
-                '${recent.length} tracks',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: ColorTokens.textSecondary(context)),
+              action: Row(
+                children: [
+                  Text(
+                    '${recent.length} tracks',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: ColorTokens.textSecondary(context)),
+                  ),
+                  const SizedBox(width: 8),
+                  _HeaderAction(
+                    label: 'View all',
+                    onTap: () =>
+                        state.selectLibraryView(LibraryView.homeRecent),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -78,7 +99,13 @@ class LibraryOverview extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 32),
-          const SectionHeader(title: 'Playlists'),
+          SectionHeader(
+            title: 'Playlists',
+            action: _HeaderAction(
+              label: 'View all',
+              onTap: () => state.selectLibraryView(LibraryView.homePlaylists),
+            ),
+          ),
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -106,6 +133,28 @@ class LibraryOverview extends StatelessWidget {
           ),
           const SizedBox(height: 24),
         ],
+      ),
+    );
+  }
+}
+
+class _HeaderAction extends StatelessWidget {
+  const _HeaderAction({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
       ),
     );
   }
