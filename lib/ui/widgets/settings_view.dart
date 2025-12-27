@@ -28,13 +28,28 @@ class SettingsView extends StatelessWidget {
                 Text('Appearance', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 12),
                 _SettingRow(
-                  title: 'Dark mode',
-                  subtitle: 'Toggle between light and dark themes.',
-                  trailing: Switch(
-                    value: state.themeMode == ThemeMode.dark,
-                    onChanged: (value) => state.setThemeMode(
-                      value ? ThemeMode.dark : ThemeMode.light,
-                    ),
+                  title: 'Theme',
+                  subtitle: 'Follow system appearance or set manually.',
+                  trailing: SegmentedButton<ThemeMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: ThemeMode.light,
+                        label: Text('Light'),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.dark,
+                        label: Text('Dark'),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.system,
+                        label: Text('System'),
+                      ),
+                    ],
+                    selected: {state.themeMode},
+                    onSelectionChanged: (selection) {
+                      final mode = selection.first;
+                      state.setThemeMode(mode);
+                    },
                   ),
                 ),
                 Divider(height: 32, color: ColorTokens.border(context, 0.12)),

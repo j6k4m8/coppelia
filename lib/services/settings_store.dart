@@ -22,6 +22,8 @@ class SettingsStore {
         return ThemeMode.light;
       case 'dark':
         return ThemeMode.dark;
+      case 'system':
+        return ThemeMode.system;
       default:
         return ThemeMode.dark;
     }
@@ -30,7 +32,11 @@ class SettingsStore {
   /// Saves the preferred theme mode.
   Future<void> saveThemeMode(ThemeMode mode) async {
     final preferences = await SharedPreferences.getInstance();
-    final value = mode == ThemeMode.light ? 'light' : 'dark';
+    final value = switch (mode) {
+      ThemeMode.light => 'light',
+      ThemeMode.system => 'system',
+      ThemeMode.dark => 'dark',
+    };
     await preferences.setString(_themeKey, value);
   }
 

@@ -43,6 +43,8 @@
 -   [x] allow resizing arbitrary shapes for responsiveness, don't limit sizes
 -   [x] "back" button is inside album card hero / page header. instead it should be left of the title of the page, left of the text.
 -   [ ] add ability to clear queue
+-   [ ] add "Albums" to artist pages
+-   [ ] add link to artist page(s) from album page
 
 ## Low Priority
 
@@ -52,9 +54,9 @@
     -   [ ] toggle each section of homepage
     -   [ ] toggle each sidebar item
 -   [x] make settings page a hamburger icon after Home, instead of button way at the bottom
--   [ ] allow collapse of all sidebar sections, not just favs
+-   [x] allow collapse of all sidebar sections, not just favs
 -   [ ] indicate how much cache / disk space is being used by cached media
--   [ ] in appearance/themes, allow tracking the system theme which overrides the light-dark setting.
+-   [x] in appearance/themes, allow tracking the system theme which overrides the light-dark setting.
 -   [x] "good evening {user}" should be "welcome back {user}", "good morning {user}", afternoon, and:
     -   [x] 4-6am: "Some early bird tunes"
     -   [x] 10pm-4am: "Late night vibes"
