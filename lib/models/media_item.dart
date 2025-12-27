@@ -54,9 +54,14 @@ class MediaItem {
     final id = json['Id'] as String;
     final runtimeTicks = (json['RunTimeTicks'] as num?)?.toInt() ?? 0;
     final runtime = Duration(milliseconds: runtimeTicks ~/ 10000);
-    final imageUrl = json['ImageTags']?['Primary'] != null
-        ? '$serverUrl/Items/$id/Images/Primary?fillWidth=500&quality=90'
-        : null;
+    final albumId = json['AlbumId'] as String?;
+    String? imageUrl;
+    if (json['ImageTags']?['Primary'] != null) {
+      imageUrl = '$serverUrl/Items/$id/Images/Primary?fillWidth=500&quality=90';
+    } else if (albumId != null) {
+      imageUrl =
+          '$serverUrl/Items/$albumId/Images/Primary?fillWidth=500&quality=90';
+    }
     final streamUri = Uri.parse('$serverUrl/Audio/$id/universal').replace(
       queryParameters: {
         'UserId': userId,
@@ -69,7 +74,6 @@ class MediaItem {
       },
     );
     final streamUrl = streamUri.toString();
-    final albumId = json['AlbumId'] as String?;
     final artistItems = json['ArtistItems'] as List<dynamic>?;
     final artistIds = artistItems
             ?.map((entry) => entry['Id']?.toString())

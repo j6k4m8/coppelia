@@ -2,12 +2,12 @@
 
 ## HIGH PRIORITY
 
--   [ ] sigh this is a big one... the proper spelling is "Coppelia" (two p's, one l). need to rename all files, folders, variables, etc. that have the wrong spelling. GAK!
--   [ ] double clicking to play a track doesn't always update the now playing section... even though the play head works fine.
+-   [x] sigh this is a big one... the proper spelling is "Coppelia" (two p's, one l). need to rename all files, folders, variables, etc. that have the wrong spelling. GAK!
+-   [x] double clicking to play a track doesn't always update the now playing section... even though the play head works fine.
 
 ## Bugs
 
--   [ ] queue popup doesn't respect dark/light mode. solution: delete the popup altogether and clicking queue button just navigates to queue page.
+-   [x] queue popup doesn't respect dark/light mode. solution: delete the popup altogether and clicking queue button just navigates to queue page.
 
 ## Features / Improvements
 

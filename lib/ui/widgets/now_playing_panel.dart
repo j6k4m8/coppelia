@@ -7,6 +7,7 @@ import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
+import '../../state/library_view.dart';
 import '../../state/now_playing_layout.dart';
 
 /// Right-side panel for playback and queue control.
@@ -157,7 +158,8 @@ class _BottomBar extends StatelessWidget {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.queue_music),
-                      onPressed: () => _showQueue(context, state),
+                      onPressed: () =>
+                          state.selectLibraryView(LibraryView.queue),
                     ),
                     _Controls(
                       isPlaying: state.isPlaying,
@@ -197,7 +199,8 @@ class _BottomBar extends StatelessWidget {
                   Expanded(child: titleBlock),
                   IconButton(
                     icon: const Icon(Icons.queue_music),
-                    onPressed: () => _showQueue(context, state),
+                    onPressed: () =>
+                        state.selectLibraryView(LibraryView.queue),
                   ),
                   _Controls(
                     isPlaying: state.isPlaying,
@@ -231,31 +234,6 @@ class _BottomBar extends StatelessWidget {
     );
   }
 
-  Future<void> _showQueue(BuildContext context, AppState state) async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF10131A),
-          title: const Text('Queue'),
-          content: SizedBox(
-            width: 360,
-            height: 320,
-            child: _QueueList(
-              queue: state.queue,
-              nowPlaying: state.nowPlaying,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 }
 
 class _QueueList extends StatelessWidget {

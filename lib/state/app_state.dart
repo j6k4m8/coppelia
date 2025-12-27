@@ -725,6 +725,10 @@ class AppState extends ChangeNotifier {
       cacheStore: _cacheStore,
       headers: _playbackHeaders(),
     );
+    if (_nowPlaying?.id != track.id) {
+      _nowPlaying = track;
+      notifyListeners();
+    }
     await _playback.play();
   }
 
@@ -772,6 +776,10 @@ class AppState extends ChangeNotifier {
       cacheStore: _cacheStore,
       headers: _playbackHeaders(),
     );
+    if (_nowPlaying?.id != track.id) {
+      _nowPlaying = track;
+      notifyListeners();
+    }
     await _playback.play();
   }
 
