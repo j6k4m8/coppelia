@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -66,10 +64,11 @@ class _SidePanel extends StatelessWidget {
           const SizedBox(height: 6),
           _NowPlayingMeta(track: track),
           const SizedBox(height: 20),
-          _ProgressBar(
+          _ProgressScrubber(
             position: state.position,
             duration: state.duration,
             onSeek: state.seek,
+            isBuffering: state.isBuffering,
           ),
           const SizedBox(height: 12),
           _Controls(
@@ -78,10 +77,6 @@ class _SidePanel extends StatelessWidget {
             onNext: state.nextTrack,
             onPrevious: state.previousTrack,
           ),
-          if (track != null) ...[
-            const SizedBox(height: 16),
-            _MiniWaveform(trackId: track.id),
-          ],
           const SizedBox(height: 20),
           Divider(color: ColorTokens.border(context, 0.12)),
           const SizedBox(height: 16),
@@ -163,15 +158,13 @@ class _BottomBar extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 6),
-                _ProgressBar(
+                _ProgressScrubber(
                   position: state.position,
                   duration: state.duration,
                   onSeek: state.seek,
+                  compact: true,
+                  isBuffering: state.isBuffering,
                 ),
-                if (track != null) ...[
-                  const SizedBox(height: 8),
-                  _MiniWaveform(trackId: track.id, compact: true),
-                ],
               ],
             );
           }
@@ -196,15 +189,13 @@ class _BottomBar extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              _ProgressBar(
+              _ProgressScrubber(
                 position: state.position,
                 duration: state.duration,
                 onSeek: state.seek,
+                compact: true,
+                isBuffering: state.isBuffering,
               ),
-              if (track != null) ...[
-                const SizedBox(height: 8),
-                _MiniWaveform(trackId: track.id, compact: true),
-              ],
             ],
           );
         },
@@ -356,51 +347,136 @@ class _NowPlayingMeta extends StatelessWidget {
   }
 }
 
-class _MiniWaveform extends StatelessWidget {
-  const _MiniWaveform({
-    required this.trackId,
+class _ProgressScrubber extends StatefulWidget {
+  const _ProgressScrubber({
+    required this.position,
+    required this.duration,
+    required this.onSeek,
+    required this.isBuffering,
     this.compact = false,
   });
 
-  final String trackId;
+  final Duration position;
+  final Duration duration;
+  final ValueChanged<Duration> onSeek;
+  final bool isBuffering;
   final bool compact;
 
   @override
-  Widget build(BuildContext context) {
-    final bars = _buildBars(trackId, compact ? 18 : 26);
-    return SizedBox(
-      height: compact ? 26 : 34,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: bars
-            .map(
-              (height) => Expanded(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withOpacity(0.6),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    height: height,
-                  ),
-                ),
-              ),
-            )
-            .toList(),
-      ),
+  State<_ProgressScrubber> createState() => _ProgressScrubberState();
+}
+
+class _ProgressScrubberState extends State<_ProgressScrubber>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
     );
+    if (widget.isBuffering) {
+      _controller.repeat(reverse: true);
+    }
   }
 
-  List<double> _buildBars(String seed, int count) {
-    final random = Random(seed.hashCode);
-    return List<double>.generate(
-      count,
-      (_) => 8 + random.nextDouble() * (compact ? 14 : 20),
+  @override
+  void didUpdateWidget(covariant _ProgressScrubber oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isBuffering && !_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    } else if (!widget.isBuffering && _controller.isAnimating) {
+      _controller
+        ..stop()
+        ..value = 0.0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final totalMs = widget.duration.inMilliseconds;
+    final currentMs = widget.position.inMilliseconds.clamp(0, totalMs);
+    final value = totalMs > 0 ? currentMs / totalMs : 0.0;
+    final height = widget.compact ? 32.0 : 40.0;
+    final trackHeight = widget.compact ? 4.0 : 6.0;
+    final thumbRadius = widget.compact ? 6.0 : 8.0;
+    final overlayRadius = widget.compact ? 10.0 : 12.0;
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return Column(
+      children: [
+        SizedBox(
+          height: height,
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) {
+              final pulse = widget.isBuffering ? _controller.value : 0.0;
+              final activeColor = Color.lerp(
+                    primary.withOpacity(0.6),
+                    primary,
+                    pulse,
+                  ) ??
+                  primary;
+              final inactiveColor = Color.lerp(
+                    primary.withOpacity(0.14),
+                    primary.withOpacity(0.28),
+                    pulse,
+                  ) ??
+                  primary.withOpacity(0.2);
+              return SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: trackHeight,
+                  activeTrackColor: activeColor,
+                  inactiveTrackColor: inactiveColor,
+                  thumbColor: activeColor,
+                  overlayColor: activeColor.withOpacity(0.15),
+                  thumbShape:
+                      RoundSliderThumbShape(enabledThumbRadius: thumbRadius),
+                  overlayShape:
+                      RoundSliderOverlayShape(overlayRadius: overlayRadius),
+                ),
+                child: Slider(
+                  value: value,
+                  onChanged: totalMs <= 0
+                      ? null
+                      : (newValue) {
+                          final targetMs = (totalMs * newValue).round();
+                          widget.onSeek(Duration(milliseconds: targetMs));
+                        },
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              formatDuration(widget.position),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: ColorTokens.textSecondary(context)),
+            ),
+            Text(
+              formatDuration(widget.duration),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: ColorTokens.textSecondary(context)),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -454,58 +530,6 @@ class _MiniArtwork extends StatelessWidget {
                 fit: BoxFit.cover,
               ),
       ),
-    );
-  }
-}
-
-class _ProgressBar extends StatelessWidget {
-  const _ProgressBar({
-    required this.position,
-    required this.duration,
-    required this.onSeek,
-  });
-
-  final Duration position;
-  final Duration duration;
-  final ValueChanged<Duration> onSeek;
-
-  @override
-  Widget build(BuildContext context) {
-    final maxValue = duration.inMilliseconds > 0
-        ? duration.inMilliseconds.toDouble()
-        : 1.0;
-    final rawValue = position.inMilliseconds.toDouble();
-    final currentValue = rawValue < 0
-        ? 0.0
-        : (rawValue > maxValue ? maxValue : rawValue);
-    return Column(
-      children: [
-        Slider(
-          value: currentValue,
-          min: 0,
-          max: maxValue,
-          onChanged: (value) => onSeek(Duration(milliseconds: value.toInt())),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              formatDuration(position),
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: ColorTokens.textSecondary(context)),
-            ),
-            Text(
-              formatDuration(duration),
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: ColorTokens.textSecondary(context)),
-            ),
-          ],
-        ),
-      ],
     );
   }
 }

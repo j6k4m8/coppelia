@@ -11,6 +11,7 @@
     -   [ ] make the waveform the track scrub progress bar, with thumb; faded after scrub head, solid before. vertically centered.
 -   [x] when sidebar is invisible and play is on bottom instead, the search and weird icon thingy are misaligned, and float out in the middle of nowhere instead of on the right side. in fact, the weird icon thing can be totally eliminated altogether in all layouts.
 -   [x] the giant greeting ("Good evening, jordan") should only appear on homepage, not on all pages. on other pages, that real estate should be used for page title.
+-   [ ] "prev" button should track to the start of the current track if more than 5s in, otherwise go to previous track.
 
 ## Features / Improvements
 
@@ -30,7 +31,7 @@
 -   [x] homepage improvements
     -   [x] show recently played
     -   [x] the top right Coppelia icon should show version
--   [ ] make all pages responsive
+-   [x] make all pages responsive
 -   [x] make all albums, artists, genres, playlists clickable in track listings, cards, and now-playing
 -   [x] add play history page, and queue page.
 -   [x] on long listing pages (albums, artists, etc):
@@ -42,6 +43,7 @@
 -   [x] move sign out button to settings page
 -   [x] on homepage, library stats should be for whole library, not just playlist-visible items
 -   [ ] allow resizing arbitrary shapes for responsiveness, don't limit sizes
+-   [ ] "back" button is inside album card hero / page header. instead it should be left of the title of the page, left of the text.
 
 ## Low Priority
 
@@ -54,3 +56,7 @@
 -   [ ] allow collapse of all sidebar sections, not just favs
 -   [ ] indicate how much cache / disk space is being used by cached media
 -   [ ] in appearance/themes, allow tracking the system theme which overrides the light-dark setting.
+-   [ ] "good evening {user}" should be "welcome back {user}", "good morning {user}", afternoon, and:
+    -   [ ] 4-6am: "Some early bird tunes"
+    -   [ ] 10pm-4am: "Late night vibes"
+-   [ ] bug: the library stats header say "1 artist". that's definitely wrong.

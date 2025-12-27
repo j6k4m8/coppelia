@@ -15,7 +15,6 @@ import '../widgets/favorite_albums_view.dart';
 import '../widgets/favorite_artists_view.dart';
 import '../widgets/favorite_tracks_view.dart';
 import '../widgets/gradient_background.dart';
-import '../widgets/glowing_loading_bar.dart';
 import '../widgets/library_overview.dart';
 import '../widgets/library_placeholder_view.dart';
 import '../widgets/genres_view.dart';
@@ -43,7 +42,6 @@ class HomeScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              GlowingLoadingBar(isVisible: state.isBuffering),
               Expanded(child: content),
             ],
           ),

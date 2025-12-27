@@ -704,6 +704,11 @@ class AppState extends ChangeNotifier {
 
   /// Skips to the previous track.
   Future<void> previousTrack() async {
+    const restartThreshold = Duration(seconds: 5);
+    if (_position > restartThreshold) {
+      await _playback.seek(Duration.zero);
+      return;
+    }
     await _playback.skipPrevious();
   }
 
@@ -774,6 +779,7 @@ class AppState extends ChangeNotifier {
     await _settingsStore.saveNowPlayingLayout(layout);
     notifyListeners();
   }
+
 
   /// Updates the sidebar width preference.
   Future<void> setSidebarWidth(
