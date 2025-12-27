@@ -16,8 +16,9 @@ class PlaybackShortcuts extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.read<AppState>();
     return Shortcuts(
-      shortcuts: const {
-        LogicalKeySet(LogicalKeyboardKey.mediaPlayPause): TogglePlaybackIntent(),
+      shortcuts: {
+        LogicalKeySet(LogicalKeyboardKey.mediaPlayPause):
+            TogglePlaybackIntent(),
         LogicalKeySet(LogicalKeyboardKey.mediaTrackNext): NextTrackIntent(),
         LogicalKeySet(LogicalKeyboardKey.mediaTrackPrevious):
             PreviousTrackIntent(),

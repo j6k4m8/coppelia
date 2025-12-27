@@ -21,9 +21,9 @@ class PlaylistCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return InkWell(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
       child: Container(
         width: 200,
         padding: const EdgeInsets.all(16),

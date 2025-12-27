@@ -20,9 +20,9 @@ class FeaturedTrackCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
       child: Container(
         width: 260,
         padding: const EdgeInsets.all(16),

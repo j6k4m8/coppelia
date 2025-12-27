@@ -22,7 +22,6 @@ import '../widgets/now_playing_panel.dart';
 import '../widgets/playlist_detail_view.dart';
 import '../widgets/search_results_view.dart';
 import '../widgets/settings_view.dart';
-import '../widgets/playback_shortcuts.dart';
 import '../widgets/sidebar_navigation.dart';
 import '../widgets/genre_detail_view.dart';
 
@@ -35,16 +34,14 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final content = _MainContent(state: state);
-    return PlaybackShortcuts(
-      child: Scaffold(
-        body: GradientBackground(
-          child: SafeArea(
-            child: Column(
-              children: [
-                GlowingLoadingBar(isVisible: state.isBuffering),
-                Expanded(child: content),
-              ],
-            ),
+    return Scaffold(
+      body: GradientBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              GlowingLoadingBar(isVisible: state.isBuffering),
+              Expanded(child: content),
+            ],
           ),
         ),
       ),
@@ -97,7 +94,7 @@ class _MainContent extends StatelessWidget {
     if (state.nowPlayingLayout == NowPlayingLayout.side) {
       return Row(
         children: [
-          bodyContent,
+          Expanded(child: bodyContent),
           NowPlayingPanel(layout: state.nowPlayingLayout),
         ],
       );
@@ -132,24 +129,35 @@ class _Header extends StatefulWidget {
 class _HeaderState extends State<_Header> {
   late final TextEditingController _searchController;
   Timer? _debounce;
+  late VoidCallback _stateListener;
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController(text: widget.state.searchQuery);
+    _stateListener = () {
+      if (widget.state.searchQuery.isEmpty &&
+          _searchController.text.isNotEmpty) {
+        _searchController.clear();
+        setState(() {});
+      }
+    };
+    widget.state.addListener(_stateListener);
   }
 
   @override
   void didUpdateWidget(covariant _Header oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.state.searchQuery != _searchController.text) {
-      _searchController.text = widget.state.searchQuery;
+    if (oldWidget.state != widget.state) {
+      oldWidget.state.removeListener(_stateListener);
+      widget.state.addListener(_stateListener);
     }
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
+    widget.state.removeListener(_stateListener);
     _searchController.dispose();
     super.dispose();
   }

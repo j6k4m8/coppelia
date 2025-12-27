@@ -57,6 +57,7 @@ class _AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final hasSession = state.session != null;
     return PlatformMenuBar(
       menus: [
         PlatformMenu(
@@ -70,7 +71,6 @@ class _AppShell extends StatelessWidget {
               label: 'Settings',
               onSelected: () => state.selectLibraryView(LibraryView.settings),
             ),
-            const PlatformMenuSeparator(),
             PlatformMenuItem(
               label: 'Refresh Library',
               onSelected: state.refreshLibrary,
@@ -82,18 +82,15 @@ class _AppShell extends StatelessWidget {
           menus: [
             PlatformMenuItem(
               label: state.isPlaying ? 'Pause' : 'Play',
-              onSelected: state.togglePlayback,
-              enabled: state.session != null,
+              onSelected: hasSession ? state.togglePlayback : null,
             ),
             PlatformMenuItem(
               label: 'Next Track',
-              onSelected: state.nextTrack,
-              enabled: state.session != null,
+              onSelected: hasSession ? state.nextTrack : null,
             ),
             PlatformMenuItem(
               label: 'Previous Track',
-              onSelected: state.previousTrack,
-              enabled: state.session != null,
+              onSelected: hasSession ? state.previousTrack : null,
             ),
           ],
         ),

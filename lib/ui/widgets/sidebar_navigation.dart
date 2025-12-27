@@ -143,19 +143,17 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: Scrollbar(
-              child: ListView.separated(
-                itemCount: state.playlists.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 4),
-                itemBuilder: (context, index) {
-                  final playlist = state.playlists[index];
-                  return _PlaylistTile(
-                    playlist: playlist,
-                    selected: state.selectedPlaylist?.id == playlist.id,
-                    onTap: () => state.selectPlaylist(playlist),
-                  );
-                },
-              ),
+            child: ListView.separated(
+              itemCount: state.playlists.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 4),
+              itemBuilder: (context, index) {
+                final playlist = state.playlists[index];
+                return _PlaylistTile(
+                  playlist: playlist,
+                  selected: state.selectedPlaylist?.id == playlist.id,
+                  onTap: () => state.selectPlaylist(playlist),
+                );
+              },
             ),
           ),
           const SizedBox(height: 16),
@@ -189,8 +187,8 @@ class _NavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -223,8 +221,8 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
@@ -263,8 +261,8 @@ class _PlaylistTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

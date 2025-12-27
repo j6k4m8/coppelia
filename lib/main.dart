@@ -12,7 +12,7 @@ Future<void> main() async {
     size: Size(1280, 800),
     minimumSize: Size(1100, 700),
     center: true,
-    titleBarStyle: TitleBarStyle.hiddenInset,
+    titleBarStyle: TitleBarStyle.hidden,
     backgroundColor: Colors.transparent,
   );
 
