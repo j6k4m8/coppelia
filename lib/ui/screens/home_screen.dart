@@ -305,7 +305,8 @@ class _HeaderState extends State<_Header> {
       subtitle = '${genre.trackCount} tracks';
       titleStyle = theme.textTheme.headlineMedium;
     } else if (isHome) {
-      title = 'Good evening, ${widget.userName}';
+      final greeting = _greetingFor(DateTime.now());
+      title = '$greeting, ${widget.userName}';
       subtitle = '${widget.trackCount} tracks • '
           '${widget.albumCount} albums • '
           '${widget.artistCount} artists • '
@@ -402,6 +403,23 @@ class _HeaderState extends State<_Header> {
     widget.state.clearSearch();
     setState(() {});
   }
+}
+
+String _greetingFor(DateTime time) {
+  final hour = time.hour;
+  if (hour >= 4 && hour < 6) {
+    return 'Some early bird tunes';
+  }
+  if (hour >= 22 || hour < 4) {
+    return 'Late night vibes';
+  }
+  if (hour >= 5 && hour < 12) {
+    return 'Good morning';
+  }
+  if (hour >= 12 && hour < 18) {
+    return 'Good afternoon';
+  }
+  return 'Welcome back';
 }
 
 class _LibraryContent extends StatelessWidget {

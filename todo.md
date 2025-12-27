@@ -54,7 +54,8 @@
 -   [ ] allow collapse of all sidebar sections, not just favs
 -   [ ] indicate how much cache / disk space is being used by cached media
 -   [ ] in appearance/themes, allow tracking the system theme which overrides the light-dark setting.
--   [ ] "good evening {user}" should be "welcome back {user}", "good morning {user}", afternoon, and:
-    -   [ ] 4-6am: "Some early bird tunes"
-    -   [ ] 10pm-4am: "Late night vibes"
+-   [x] "good evening {user}" should be "welcome back {user}", "good morning {user}", afternoon, and:
+    -   [x] 4-6am: "Some early bird tunes"
+    -   [x] 10pm-4am: "Late night vibes"
 -   [x] bug: the library stats header say "1 artist". that's definitely wrong.
+-   [ ] on all pages the "card" hero should be part of the scrollable area, not fixed at the top.
