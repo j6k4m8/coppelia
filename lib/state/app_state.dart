@@ -8,6 +8,7 @@ import '../models/album.dart';
 import '../models/artist.dart';
 import '../models/auth_session.dart';
 import '../models/genre.dart';
+import '../models/library_stats.dart';
 import '../models/media_item.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
@@ -16,6 +17,7 @@ import '../services/jellyfin_client.dart';
 import '../services/playback_controller.dart';
 import '../services/settings_store.dart';
 import '../services/session_store.dart';
+import 'browse_layout.dart';
 import 'library_view.dart';
 import 'now_playing_layout.dart';
 
@@ -68,6 +70,10 @@ class AppState extends ChangeNotifier {
   List<Album> _favoriteAlbums = [];
   List<Artist> _favoriteArtists = [];
   List<MediaItem> _favoriteTracks = [];
+  List<MediaItem> _recentTracks = [];
+  List<MediaItem> _playHistory = [];
+
+  LibraryStats? _libraryStats;
 
   MediaItem? _nowPlaying;
   Duration _position = Duration.zero;
@@ -76,6 +82,9 @@ class AppState extends ChangeNotifier {
   bool _isBuffering = false;
   ThemeMode _themeMode = ThemeMode.dark;
   NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.side;
+  double _sidebarWidth = 240;
+  final Map<LibraryView, BrowseLayout> _browseLayouts = {};
+  final Map<String, double> _scrollOffsets = {};
 
   StreamSubscription<Duration>? _positionSubscription;
   StreamSubscription<Duration?>? _durationSubscription;
@@ -148,6 +157,15 @@ class AppState extends ChangeNotifier {
   /// Favorite tracks.
   List<MediaItem> get favoriteTracks => List.unmodifiable(_favoriteTracks);
 
+  /// Recently played tracks.
+  List<MediaItem> get recentTracks => List.unmodifiable(_recentTracks);
+
+  /// Playback history (most recent first).
+  List<MediaItem> get playHistory => List.unmodifiable(_playHistory);
+
+  /// Aggregated library stats.
+  LibraryStats? get libraryStats => _libraryStats;
+
   /// Current search query.
   String get searchQuery => _searchQuery;
 
@@ -178,6 +196,27 @@ class AppState extends ChangeNotifier {
   /// Preferred layout for now playing.
   NowPlayingLayout get nowPlayingLayout => _nowPlayingLayout;
 
+  /// Current sidebar width.
+  double get sidebarWidth => _sidebarWidth;
+
+  /// Preferred browse layout for a library view.
+  BrowseLayout browseLayoutFor(LibraryView view) =>
+      _browseLayouts[view] ?? BrowseLayout.grid;
+
+  /// Updates the browse layout for a library view.
+  void setBrowseLayout(LibraryView view, BrowseLayout layout) {
+    _browseLayouts[view] = layout;
+    notifyListeners();
+  }
+
+  /// Returns a saved scroll offset for a key.
+  double loadScrollOffset(String key) => _scrollOffsets[key] ?? 0;
+
+  /// Saves a scroll offset for a key.
+  void saveScrollOffset(String key, double offset) {
+    _scrollOffsets[key] = offset;
+  }
+
   /// Initializes cached state and refreshes library.
   Future<void> bootstrap() async {
     _session = await _sessionStore.loadSession();
@@ -186,6 +225,7 @@ class AppState extends ChangeNotifier {
     }
     _themeMode = await _settingsStore.loadThemeMode();
     _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
+    _sidebarWidth = await _settingsStore.loadSidebarWidth();
     await _loadCachedLibrary();
     _isBootstrapping = false;
     notifyListeners();
@@ -245,6 +285,9 @@ class AppState extends ChangeNotifier {
     _favoriteAlbums = [];
     _favoriteArtists = [];
     _favoriteTracks = [];
+    _recentTracks = [];
+    _playHistory = [];
+    _libraryStats = null;
     _queue = [];
     _nowPlaying = null;
     _isBuffering = false;
@@ -263,6 +306,17 @@ class AppState extends ChangeNotifier {
       final playlists = await _client.fetchPlaylists();
       _playlists = playlists;
       await _cacheStore.savePlaylists(playlists);
+      final stats = await _client.fetchLibraryStats();
+      _libraryStats = stats;
+      await _cacheStore.saveLibraryStats(stats);
+      List<MediaItem> recent;
+      try {
+        recent = await _client.fetchRecentlyPlayedTracks();
+      } catch (_) {
+        recent = await _client.fetchRecentTracks();
+      }
+      _recentTracks = recent;
+      await _cacheStore.saveRecentTracks(recent);
       final featured = await _client.fetchRecentTracks();
       _featuredTracks = featured;
       await _cacheStore.saveFeaturedTracks(featured);
@@ -349,6 +403,40 @@ class AppState extends ChangeNotifier {
     }
     if (view == LibraryView.favoritesSongs) {
       unawaited(loadFavoriteTracks());
+    }
+  }
+
+  /// Navigates to an album by identifier.
+  Future<void> selectAlbumById(String albumId) async {
+    if (_albums.isEmpty) {
+      await loadAlbums();
+    }
+    Album? match;
+    for (final album in _albums) {
+      if (album.id == albumId) {
+        match = album;
+        break;
+      }
+    }
+    if (match != null) {
+      await selectAlbum(match);
+    }
+  }
+
+  /// Navigates to an artist by identifier.
+  Future<void> selectArtistById(String artistId) async {
+    if (_artists.isEmpty) {
+      await loadArtists();
+    }
+    Artist? match;
+    for (final artist in _artists) {
+      if (artist.id == artistId) {
+        match = artist;
+        break;
+      }
+    }
+    if (match != null) {
+      await selectArtist(match);
     }
   }
 
@@ -574,6 +662,11 @@ class AppState extends ChangeNotifier {
     await _playFromList(tracks, track);
   }
 
+  /// Plays tracks from a provided list.
+  Future<void> playFromList(List<MediaItem> tracks, MediaItem track) async {
+    await _playFromList(tracks, track);
+  }
+
   /// Plays featured tracks from the home shelf.
   Future<void> playFeatured(MediaItem track) async {
     final index = _featuredTracks.indexWhere((item) => item.id == track.id);
@@ -607,6 +700,15 @@ class AppState extends ChangeNotifier {
   /// Skips to the previous track.
   Future<void> previousTrack() async {
     await _playback.skipPrevious();
+  }
+
+  /// Jumps to a specific position in the queue.
+  Future<void> playQueueIndex(int index) async {
+    if (index < 0 || index >= _queue.length) {
+      return;
+    }
+    await _playback.seekToIndex(index);
+    await _playback.play();
   }
 
   /// Adds a track to the end of the queue.
@@ -668,6 +770,18 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Updates the sidebar width preference.
+  Future<void> setSidebarWidth(
+    double width, {
+    bool persist = true,
+  }) async {
+    _sidebarWidth = width;
+    if (persist) {
+      await _settingsStore.saveSidebarWidth(width);
+    }
+    notifyListeners();
+  }
+
   /// Clears cached metadata entries.
   Future<void> clearMetadataCache() async {
     await _cacheStore.clearMetadata();
@@ -699,6 +813,9 @@ class AppState extends ChangeNotifier {
     _favoriteAlbums = await _cacheStore.loadFavoriteAlbums();
     _favoriteArtists = await _cacheStore.loadFavoriteArtists();
     _favoriteTracks = await _cacheStore.loadFavoriteTracks();
+    _recentTracks = await _cacheStore.loadRecentTracks();
+    _playHistory = await _cacheStore.loadPlayHistory();
+    _libraryStats = await _cacheStore.loadLibraryStats();
     notifyListeners();
   }
 
@@ -720,10 +837,23 @@ class AppState extends ChangeNotifier {
     _currentIndexSubscription =
         _playback.currentIndexStream.listen((index) {
       if (index != null && index >= 0 && index < _queue.length) {
-        _nowPlaying = _queue[index];
+        final next = _queue[index];
+        if (_nowPlaying?.id != next.id) {
+          _nowPlaying = next;
+          _recordPlayHistory(next);
+        }
       }
       notifyListeners();
     });
+  }
+
+  void _recordPlayHistory(MediaItem track) {
+    _playHistory.removeWhere((item) => item.id == track.id);
+    _playHistory.insert(0, track);
+    if (_playHistory.length > 50) {
+      _playHistory = _playHistory.sublist(0, 50);
+    }
+    unawaited(_cacheStore.savePlayHistory(_playHistory));
   }
 
   Future<void> _loadAlbums() async {

@@ -90,6 +90,11 @@ class PlaybackController {
     await _player.seek(position);
   }
 
+  /// Jumps to a specific index in the queue.
+  Future<void> seekToIndex(int index) async {
+    await _player.seek(Duration.zero, index: index);
+  }
+
   /// Skips to the next track in the queue.
   Future<void> skipNext() async {
     await _player.seekToNext();

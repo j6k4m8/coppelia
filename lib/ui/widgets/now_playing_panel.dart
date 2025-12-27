@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -61,15 +63,7 @@ class _SidePanel extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 6),
-          Text(
-            track?.subtitle ?? 'Pick a track to start listening.',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: Colors.white60),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
+          _NowPlayingMeta(track: track),
           const SizedBox(height: 20),
           _ProgressBar(
             position: state.position,
@@ -83,6 +77,10 @@ class _SidePanel extends StatelessWidget {
             onNext: state.nextTrack,
             onPrevious: state.previousTrack,
           ),
+          if (track != null) ...[
+            const SizedBox(height: 16),
+            _MiniWaveform(trackId: track.id),
+          ],
           const SizedBox(height: 20),
           const Divider(color: Colors.white12),
           const SizedBox(height: 16),
@@ -138,15 +136,7 @@ class _BottomBar extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      track?.subtitle ?? 'Pick a track to start listening.',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: Colors.white60),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    _NowPlayingMeta(track: track),
                   ],
                 ),
               ),
@@ -168,6 +158,10 @@ class _BottomBar extends StatelessWidget {
             duration: state.duration,
             onSeek: state.seek,
           ),
+          if (track != null) ...[
+            const SizedBox(height: 8),
+            _MiniWaveform(trackId: track.id, compact: true),
+          ],
         ],
       ),
     );
@@ -240,6 +234,123 @@ class _QueueList extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _NowPlayingMeta extends StatelessWidget {
+  const _NowPlayingMeta({required this.track});
+
+  final MediaItem? track;
+
+  @override
+  Widget build(BuildContext context) {
+    if (track == null) {
+      return Text(
+        'Pick a track to start listening.',
+        style: Theme.of(context)
+            .textTheme
+            .bodySmall
+            ?.copyWith(color: Colors.white60),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+    final state = context.read<AppState>();
+    final baseStyle = Theme.of(context)
+        .textTheme
+        .bodySmall
+        ?.copyWith(color: Colors.white60);
+    final linkStyle = baseStyle?.copyWith(
+      color: Theme.of(context).colorScheme.primary,
+    );
+    final artistLabel = track!.artists.isNotEmpty
+        ? track!.artists.join(', ')
+        : 'Unknown Artist';
+    return Row(
+      children: [
+        Flexible(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: track!.artistIds.isEmpty
+                ? null
+                : () => state.selectArtistById(track!.artistIds.first),
+            child: Text(
+              artistLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  track!.artistIds.isEmpty ? baseStyle : linkStyle,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        const Text('•', style: TextStyle(color: Colors.white38)),
+        const SizedBox(width: 6),
+        Flexible(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: track!.albumId == null
+                ? null
+                : () => state.selectAlbumById(track!.albumId!),
+            child: Text(
+              track!.album,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: track!.albumId == null ? baseStyle : linkStyle,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MiniWaveform extends StatelessWidget {
+  const _MiniWaveform({
+    required this.trackId,
+    this.compact = false,
+  });
+
+  final String trackId;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final bars = _buildBars(trackId, compact ? 18 : 26);
+    return SizedBox(
+      height: compact ? 26 : 34,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: bars
+            .map(
+              (height) => Expanded(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    height: height,
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  List<double> _buildBars(String seed, int count) {
+    final random = Random(seed.hashCode);
+    return List<double>.generate(
+      count,
+      (_) => 8 + random.nextDouble() * (compact ? 14 : 20),
     );
   }
 }

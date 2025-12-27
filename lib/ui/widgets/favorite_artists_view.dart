@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 
 import '../../models/artist.dart';
 import '../../state/app_state.dart';
+import '../../state/library_view.dart';
 import 'context_menu.dart';
+import 'library_browse_view.dart';
 import 'library_card.dart';
-import 'section_header.dart';
+import 'library_list_tile.dart';
 
 /// Displays favorited artists.
 class FavoriteArtistsView extends StatelessWidget {
@@ -15,57 +17,44 @@ class FavoriteArtistsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(
-          title: 'Favorite Artists',
-          action: Text(
-            '${state.favoriteArtists.length} artists',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: Colors.white60),
+    return LibraryBrowseView<Artist>(
+      view: LibraryView.favoritesArtists,
+      title: 'Favorite Artists',
+      items: state.favoriteArtists,
+      titleBuilder: (artist) => artist.name,
+      subtitleBuilder: (artist) => artist.albumCount > 0
+          ? '${artist.albumCount} albums'
+          : '${artist.trackCount} tracks',
+      gridItemBuilder: (context, artist) {
+        final subtitle = artist.albumCount > 0
+            ? '${artist.albumCount} albums'
+            : '${artist.trackCount} tracks';
+        return LibraryCard(
+          title: artist.name,
+          subtitle: subtitle,
+          imageUrl: artist.imageUrl,
+          icon: Icons.people_alt,
+          onTap: () => state.selectArtist(artist),
+          onContextMenu: (position) => _showArtistMenu(
+            context,
+            position,
+            artist,
+            state,
           ),
-        ),
-        const SizedBox(height: 16),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final crossAxisCount = (constraints.maxWidth / 220).floor();
-              final columns = crossAxisCount.clamp(2, 5);
-              return GridView.builder(
-                itemCount: state.favoriteArtists.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: columns,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.05,
-                ),
-                itemBuilder: (context, index) {
-                  final artist = state.favoriteArtists[index];
-                  final subtitle = artist.albumCount > 0
-                      ? '${artist.albumCount} albums'
-                      : '${artist.trackCount} tracks';
-                  return LibraryCard(
-                    title: artist.name,
-                    subtitle: subtitle,
-                    imageUrl: artist.imageUrl,
-                    icon: Icons.people_alt,
-                    onTap: () => state.selectArtist(artist),
-                    onContextMenu: (position) => _showArtistMenu(
-                      context,
-                      position,
-                      artist,
-                      state,
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ],
+        );
+      },
+      listItemBuilder: (context, artist) {
+        final subtitle = artist.albumCount > 0
+            ? '${artist.albumCount} albums'
+            : '${artist.trackCount} tracks';
+        return LibraryListTile(
+          title: artist.name,
+          subtitle: subtitle,
+          imageUrl: artist.imageUrl,
+          icon: Icons.people_alt,
+          onTap: () => state.selectArtist(artist),
+        );
+      },
     );
   }
 

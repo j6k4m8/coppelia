@@ -14,6 +14,9 @@ class LibraryOverview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final recent = state.playHistory.isNotEmpty
+        ? state.playHistory.take(12).toList()
+        : state.recentTracks;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,6 +47,35 @@ class LibraryOverview extends StatelessWidget {
               },
             ),
           ),
+          if (recent.isNotEmpty) ...[
+            const SizedBox(height: 32),
+            SectionHeader(
+              title: 'Recently played',
+              action: Text(
+                '${recent.length} tracks',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: Colors.white60),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 110,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: recent.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 16),
+                itemBuilder: (context, index) {
+                  final track = recent[index];
+                  return FeaturedTrackCard(
+                    track: track,
+                    onTap: () => state.playFromList(recent, track),
+                  );
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 32),
           const SectionHeader(title: 'Playlists'),
           const SizedBox(height: 16),

@@ -21,7 +21,6 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     return Container(
-      width: 240,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1218),
@@ -31,8 +30,8 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
           ),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: ListView(
+        padding: EdgeInsets.zero,
         children: [
           Row(
             children: [
@@ -135,6 +134,29 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
           ),
           const SizedBox(height: 16),
           Text(
+            'Playback',
+            style: Theme.of(context)
+                .textTheme
+                .titleSmall
+                ?.copyWith(color: Colors.white70),
+          ),
+          const SizedBox(height: 8),
+          _NavTile(
+            icon: Icons.history,
+            label: 'History',
+            selected: state.selectedPlaylist == null &&
+                state.selectedView == LibraryView.history,
+            onTap: () => state.selectLibraryView(LibraryView.history),
+          ),
+          _NavTile(
+            icon: Icons.queue_music,
+            label: 'Queue',
+            selected: state.selectedPlaylist == null &&
+                state.selectedView == LibraryView.queue,
+            onTap: () => state.selectLibraryView(LibraryView.queue),
+          ),
+          const SizedBox(height: 16),
+          Text(
             'Playlists',
             style: Theme.of(context)
                 .textTheme
@@ -142,29 +164,20 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                 ?.copyWith(color: Colors.white70),
           ),
           const SizedBox(height: 12),
-          Expanded(
-            child: ListView.separated(
-              itemCount: state.playlists.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 4),
-              itemBuilder: (context, index) {
-                final playlist = state.playlists[index];
-                return _PlaylistTile(
-                  playlist: playlist,
-                  selected: state.selectedPlaylist?.id == playlist.id,
-                  onTap: () => state.selectPlaylist(playlist),
-                );
-              },
+          ...state.playlists.map(
+            (playlist) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: _PlaylistTile(
+                playlist: playlist,
+                selected: state.selectedPlaylist?.id == playlist.id,
+                onTap: () => state.selectPlaylist(playlist),
+              ),
             ),
           ),
           const SizedBox(height: 16),
           FilledButton.tonal(
             onPressed: () => state.selectLibraryView(LibraryView.settings),
             child: const Text('Settings'),
-          ),
-          const SizedBox(height: 8),
-          FilledButton.tonal(
-            onPressed: state.signOut,
-            child: const Text('Sign out'),
           ),
         ],
       ),

@@ -22,7 +22,7 @@ class FeaturedTrackCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
+      onDoubleTap: onTap,
       child: Container(
         width: 260,
         padding: const EdgeInsets.all(16),

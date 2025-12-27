@@ -10,6 +10,7 @@ class SettingsStore {
 
   static const _themeKey = 'settings_theme_mode';
   static const _layoutKey = 'settings_now_playing_layout';
+  static const _sidebarWidthKey = 'settings_sidebar_width';
 
   /// Loads the preferred theme mode.
   Future<ThemeMode> loadThemeMode() async {
@@ -46,5 +47,17 @@ class SettingsStore {
     final preferences = await SharedPreferences.getInstance();
     final value = layout == NowPlayingLayout.bottom ? 'bottom' : 'side';
     await preferences.setString(_layoutKey, value);
+  }
+
+  /// Loads the preferred sidebar width.
+  Future<double> loadSidebarWidth() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getDouble(_sidebarWidthKey) ?? 240;
+  }
+
+  /// Saves the preferred sidebar width.
+  Future<void> saveSidebarWidth(double width) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setDouble(_sidebarWidthKey, width);
   }
 }

@@ -5,21 +5,33 @@ import '../../state/app_state.dart';
 import 'section_header.dart';
 import 'track_row.dart';
 
-/// Displays favorite tracks list.
-class FavoriteTracksView extends StatelessWidget {
-  /// Creates the favorite tracks view.
-  const FavoriteTracksView({super.key});
+/// Displays recent playback history.
+class PlayHistoryView extends StatelessWidget {
+  /// Creates the play history view.
+  const PlayHistoryView({super.key});
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final history = state.playHistory;
+    if (history.isEmpty) {
+      return Center(
+        child: Text(
+          'No play history yet.',
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(color: Colors.white60),
+        ),
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionHeader(
-          title: 'Favorite Songs',
+          title: 'Play History',
           action: Text(
-            '${state.favoriteTracks.length} tracks',
+            '${history.length} tracks',
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
@@ -29,15 +41,15 @@ class FavoriteTracksView extends StatelessWidget {
         const SizedBox(height: 16),
         Expanded(
           child: ListView.separated(
-            itemCount: state.favoriteTracks.length,
+            itemCount: history.length,
             separatorBuilder: (_, __) => const SizedBox(height: 6),
             itemBuilder: (context, index) {
-              final track = state.favoriteTracks[index];
+              final track = history[index];
               return TrackRow(
                 track: track,
                 index: index,
                 isActive: state.nowPlaying?.id == track.id,
-                onTap: () => state.playFromFavorites(track),
+                onTap: () => state.playFromList(history, track),
                 onPlayNext: () => state.playNext(track),
                 onAddToQueue: () => state.enqueueTrack(track),
                 onAlbumTap: track.albumId == null

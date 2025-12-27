@@ -36,6 +36,12 @@ class PlaylistDetailView extends StatelessWidget {
                 onTap: () => state.playFromPlaylist(track),
                 onPlayNext: () => state.playNext(track),
                 onAddToQueue: () => state.enqueueTrack(track),
+                onAlbumTap: track.albumId == null
+                    ? null
+                    : () => state.selectAlbumById(track.albumId!),
+                onArtistTap: track.artistIds.isEmpty
+                    ? null
+                    : () => state.selectArtistById(track.artistIds.first),
               );
             },
           ),

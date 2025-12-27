@@ -33,11 +33,11 @@ class _GlowingLoadingBarState extends State<GlowingLoadingBar>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedOpacity(
-      opacity: widget.isVisible ? 1.0 : 0.0,
-      duration: const Duration(milliseconds: 250),
-      child: SizedBox(
-        height: widget.isVisible ? 6 : 0,
+    return SizedBox(
+      height: 6,
+      child: AnimatedOpacity(
+        opacity: widget.isVisible ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 250),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(6),
           child: TickerMode(

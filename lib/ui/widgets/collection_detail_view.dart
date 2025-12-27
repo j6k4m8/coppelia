@@ -19,6 +19,8 @@ class CollectionDetailView extends StatelessWidget {
     this.onPlayAll,
     this.onPlayNext,
     this.onAddToQueue,
+    this.onAlbumTap,
+    this.onArtistTap,
   });
 
   /// Title for the collection.
@@ -47,6 +49,12 @@ class CollectionDetailView extends StatelessWidget {
 
   /// Handler when a track should be enqueued.
   final ValueChanged<MediaItem>? onAddToQueue;
+
+  /// Handler when a track album should be opened.
+  final ValueChanged<MediaItem>? onAlbumTap;
+
+  /// Handler when a track artist should be opened.
+  final ValueChanged<MediaItem>? onArtistTap;
 
   /// Currently playing track.
   final MediaItem? nowPlaying;
@@ -81,6 +89,12 @@ class CollectionDetailView extends StatelessWidget {
                 onAddToQueue: onAddToQueue == null
                     ? null
                     : () => onAddToQueue!.call(track),
+                onAlbumTap: onAlbumTap == null
+                    ? null
+                    : () => onAlbumTap!.call(track),
+                onArtistTap: onArtistTap == null
+                    ? null
+                    : () => onArtistTap!.call(track),
               );
             },
           ),

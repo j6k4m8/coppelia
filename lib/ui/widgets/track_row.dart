@@ -6,7 +6,7 @@ import '../../models/media_item.dart';
 import 'context_menu.dart';
 
 /// Row for a track listing.
-class TrackRow extends StatelessWidget {
+class TrackRow extends StatefulWidget {
   /// Creates a track row.
   const TrackRow({
     super.key,
@@ -16,6 +16,8 @@ class TrackRow extends StatelessWidget {
     this.isActive = false,
     this.onPlayNext,
     this.onAddToQueue,
+    this.onAlbumTap,
+    this.onArtistTap,
   });
 
   /// Track metadata.
@@ -24,7 +26,7 @@ class TrackRow extends StatelessWidget {
   /// Display order number.
   final int index;
 
-  /// Tap handler.
+  /// Double-tap handler.
   final VoidCallback onTap;
 
   /// Indicates if this track is playing.
@@ -36,25 +38,48 @@ class TrackRow extends StatelessWidget {
   /// Optional handler to add the track to the queue.
   final VoidCallback? onAddToQueue;
 
+  /// Optional handler to navigate to the album.
+  final VoidCallback? onAlbumTap;
+
+  /// Optional handler to navigate to the artist.
+  final VoidCallback? onArtistTap;
+
+  @override
+  State<TrackRow> createState() => _TrackRowState();
+}
+
+class _TrackRowState extends State<TrackRow> {
+  bool _isHovering = false;
+
   @override
   Widget build(BuildContext context) {
+    final isActive = widget.isActive;
+    final highlight = isActive
+        ? Colors.white.withOpacity(0.12)
+        : _isHovering
+            ? Colors.white.withOpacity(0.06)
+            : null;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
+      onDoubleTap: widget.onTap,
       onSecondaryTapDown: (details) =>
           _showMenu(context, details.globalPosition),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white.withOpacity(0.12) : null,
-          borderRadius: BorderRadius.circular(14),
-        ),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovering = true),
+        onExit: (_) => setState(() => _isHovering = false),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: highlight,
+            borderRadius: BorderRadius.circular(14),
+          ),
         child: Row(
           children: [
             SizedBox(
               width: 32,
               child: Text(
-                '${index + 1}'.padLeft(2, '0'),
+                '${widget.index + 1}'.padLeft(2, '0'),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.white60,
                     ),
@@ -63,7 +88,7 @@ class TrackRow extends StatelessWidget {
             const SizedBox(width: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: track.imageUrl == null
+              child: widget.track.imageUrl == null
                   ? Container(
                       width: 44,
                       height: 44,
@@ -71,7 +96,7 @@ class TrackRow extends StatelessWidget {
                       child: const Icon(Icons.music_note, size: 18),
                     )
                   : CachedNetworkImage(
-                      imageUrl: track.imageUrl!,
+                      imageUrl: widget.track.imageUrl!,
                       width: 44,
                       height: 44,
                       fit: BoxFit.cover,
@@ -83,38 +108,39 @@ class TrackRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    track.title,
+                    widget.track.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    track.subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.white54,
-                        ),
+                  _TrackMetaRow(
+                    artistLabel: widget.track.artists.isNotEmpty
+                        ? widget.track.artists.join(', ')
+                        : 'Unknown Artist',
+                    albumLabel: widget.track.album,
+                    onArtistTap: widget.onArtistTap,
+                    onAlbumTap: widget.onAlbumTap,
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 12),
             Text(
-              formatDuration(track.duration),
+              formatDuration(widget.track.duration),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Colors.white60,
                   ),
             ),
           ],
         ),
+        ),
       ),
     );
   }
 
   Future<void> _showMenu(BuildContext context, Offset position) async {
-    if (onPlayNext == null && onAddToQueue == null) {
+    if (widget.onPlayNext == null && widget.onAddToQueue == null) {
       return;
     }
     final items = <PopupMenuEntry<_TrackMenuAction>>[
@@ -123,7 +149,7 @@ class TrackRow extends StatelessWidget {
         child: Text('Play'),
       ),
     ];
-    if (onPlayNext != null) {
+    if (widget.onPlayNext != null) {
       items.add(
         const PopupMenuItem(
           value: _TrackMenuAction.playNext,
@@ -131,7 +157,7 @@ class TrackRow extends StatelessWidget {
         ),
       );
     }
-    if (onAddToQueue != null) {
+    if (widget.onAddToQueue != null) {
       items.add(
         const PopupMenuItem(
           value: _TrackMenuAction.addToQueue,
@@ -145,13 +171,68 @@ class TrackRow extends StatelessWidget {
       items,
     );
     if (action == _TrackMenuAction.play) {
-      onTap();
+      widget.onTap();
     } else if (action == _TrackMenuAction.playNext) {
-      onPlayNext?.call();
+      widget.onPlayNext?.call();
     } else if (action == _TrackMenuAction.addToQueue) {
-      onAddToQueue?.call();
+      widget.onAddToQueue?.call();
     }
   }
 }
 
 enum _TrackMenuAction { play, playNext, addToQueue }
+
+class _TrackMetaRow extends StatelessWidget {
+  const _TrackMetaRow({
+    required this.artistLabel,
+    required this.albumLabel,
+    this.onArtistTap,
+    this.onAlbumTap,
+  });
+
+  final String artistLabel;
+  final String albumLabel;
+  final VoidCallback? onArtistTap;
+  final VoidCallback? onAlbumTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: Colors.white54,
+        );
+    final linkStyle = baseStyle?.copyWith(
+      color: Theme.of(context).colorScheme.primary,
+    );
+    return Row(
+      children: [
+        Flexible(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onArtistTap,
+            child: Text(
+              artistLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: onArtistTap == null ? baseStyle : linkStyle,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        const Text('•', style: TextStyle(color: Colors.white38)),
+        const SizedBox(width: 6),
+        Flexible(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onAlbumTap,
+            child: Text(
+              albumLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: onAlbumTap == null ? baseStyle : linkStyle,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

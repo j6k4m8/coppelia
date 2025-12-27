@@ -21,6 +21,12 @@ enum LibraryView {
   /// Favorite artists section.
   favoritesArtists,
 
+  /// Playback history section.
+  history,
+
+  /// Playback queue section.
+  queue,
+
   /// Application settings.
   settings,
 }
@@ -46,6 +52,10 @@ extension LibraryViewLabels on LibraryView {
         return 'Favorite Artists';
       case LibraryView.settings:
         return 'Settings';
+      case LibraryView.history:
+        return 'Play History';
+      case LibraryView.queue:
+        return 'Queue';
     }
   }
 
@@ -68,6 +78,10 @@ extension LibraryViewLabels on LibraryView {
         return 'Artists you keep on repeat.';
       case LibraryView.settings:
         return 'Tune the player to your liking.';
+      case LibraryView.history:
+        return 'Recently played tracks from this session.';
+      case LibraryView.queue:
+        return 'All upcoming tracks in the queue.';
     }
   }
 }

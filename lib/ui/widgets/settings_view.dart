@@ -88,6 +88,17 @@ class SettingsView extends StatelessWidget {
                     child: const Text('Clear'),
                   ),
                 ),
+                const Divider(height: 32, color: Colors.white12),
+                Text('Account', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 12),
+                _SettingRow(
+                  title: 'Sign out',
+                  subtitle: 'Disconnect from this Jellyfin account.',
+                  trailing: OutlinedButton(
+                    onPressed: state.signOut,
+                    child: const Text('Sign out'),
+                  ),
+                ),
               ],
             ),
           ),

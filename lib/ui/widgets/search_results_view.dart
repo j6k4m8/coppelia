@@ -62,6 +62,12 @@ class SearchResultsView extends StatelessWidget {
                   onTap: () => state.playFromSearch(track),
                   onPlayNext: () => state.playNext(track),
                   onAddToQueue: () => state.enqueueTrack(track),
+                  onAlbumTap: track.albumId == null
+                      ? null
+                      : () => state.selectAlbumById(track.albumId!),
+                  onArtistTap: track.artistIds.isEmpty
+                      ? null
+                      : () => state.selectArtistById(track.artistIds.first),
                 );
               },
             ),

@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 
 import '../../models/album.dart';
 import '../../state/app_state.dart';
+import '../../state/library_view.dart';
 import 'context_menu.dart';
+import 'library_browse_view.dart';
 import 'library_card.dart';
-import 'section_header.dart';
+import 'library_list_tile.dart';
 
 /// Displays favorited albums.
 class FavoriteAlbumsView extends StatelessWidget {
@@ -15,54 +17,32 @@ class FavoriteAlbumsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(
-          title: 'Favorite Albums',
-          action: Text(
-            '${state.favoriteAlbums.length} albums',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: Colors.white60),
-          ),
+    return LibraryBrowseView<Album>(
+      view: LibraryView.favoritesAlbums,
+      title: 'Favorite Albums',
+      items: state.favoriteAlbums,
+      titleBuilder: (album) => album.name,
+      subtitleBuilder: (album) => album.artistName,
+      gridItemBuilder: (context, album) => LibraryCard(
+        title: album.name,
+        subtitle: album.artistName,
+        imageUrl: album.imageUrl,
+        icon: Icons.album,
+        onTap: () => state.selectAlbum(album),
+        onContextMenu: (position) => _showAlbumMenu(
+          context,
+          position,
+          album,
+          state,
         ),
-        const SizedBox(height: 16),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final crossAxisCount = (constraints.maxWidth / 220).floor();
-              final columns = crossAxisCount.clamp(2, 5);
-              return GridView.builder(
-                itemCount: state.favoriteAlbums.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: columns,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.05,
-                ),
-                itemBuilder: (context, index) {
-                  final album = state.favoriteAlbums[index];
-                  return LibraryCard(
-                    title: album.name,
-                    subtitle: album.artistName,
-                    imageUrl: album.imageUrl,
-                    icon: Icons.album,
-                    onTap: () => state.selectAlbum(album),
-                    onContextMenu: (position) => _showAlbumMenu(
-                      context,
-                      position,
-                      album,
-                      state,
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ],
+      ),
+      listItemBuilder: (context, album) => LibraryListTile(
+        title: album.name,
+        subtitle: album.artistName,
+        imageUrl: album.imageUrl,
+        icon: Icons.album,
+        onTap: () => state.selectAlbum(album),
+      ),
     );
   }
 

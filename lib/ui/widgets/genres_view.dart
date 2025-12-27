@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 
 import '../../models/genre.dart';
 import '../../state/app_state.dart';
+import '../../state/library_view.dart';
 import 'context_menu.dart';
+import 'library_browse_view.dart';
 import 'library_card.dart';
-import 'section_header.dart';
+import 'library_list_tile.dart';
 
 /// Displays genre browsing grid.
 class GenresView extends StatelessWidget {
@@ -15,54 +17,32 @@ class GenresView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(
-          title: 'Genres',
-          action: Text(
-            '${state.genres.length} genres',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: Colors.white60),
-          ),
+    return LibraryBrowseView<Genre>(
+      view: LibraryView.genres,
+      title: 'Genres',
+      items: state.genres,
+      titleBuilder: (genre) => genre.name,
+      subtitleBuilder: (genre) => '${genre.trackCount} tracks',
+      gridItemBuilder: (context, genre) => LibraryCard(
+        title: genre.name,
+        subtitle: '${genre.trackCount} tracks',
+        imageUrl: genre.imageUrl,
+        icon: Icons.auto_awesome_motion,
+        onTap: () => state.selectGenre(genre),
+        onContextMenu: (position) => _showGenreMenu(
+          context,
+          position,
+          genre,
+          state,
         ),
-        const SizedBox(height: 16),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final crossAxisCount = (constraints.maxWidth / 220).floor();
-              final columns = crossAxisCount.clamp(2, 5);
-              return GridView.builder(
-                itemCount: state.genres.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: columns,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.05,
-                ),
-                itemBuilder: (context, index) {
-                  final genre = state.genres[index];
-                  return LibraryCard(
-                    title: genre.name,
-                    subtitle: '${genre.trackCount} tracks',
-                    imageUrl: genre.imageUrl,
-                    icon: Icons.auto_awesome_motion,
-                    onTap: () => state.selectGenre(genre),
-                    onContextMenu: (position) => _showGenreMenu(
-                      context,
-                      position,
-                      genre,
-                      state,
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ],
+      ),
+      listItemBuilder: (context, genre) => LibraryListTile(
+        title: genre.name,
+        subtitle: '${genre.trackCount} tracks',
+        imageUrl: genre.imageUrl,
+        icon: Icons.auto_awesome_motion,
+        onTap: () => state.selectGenre(genre),
+      ),
     );
   }
 

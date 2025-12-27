@@ -6,6 +6,7 @@ import '../models/album.dart';
 import '../models/artist.dart';
 import '../models/auth_session.dart';
 import '../models/genre.dart';
+import '../models/library_stats.dart';
 import '../models/media_item.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
@@ -502,6 +503,69 @@ class JellyfinClient {
         .toList();
   }
 
+  /// Fetches recently played tracks for the current user.
+  Future<List<MediaItem>> fetchRecentlyPlayedTracks() async {
+    final session = _requireSession();
+    final uri = Uri.parse(
+      '${session.serverUrl}/Users/${session.userId}/Items',
+    ).replace(
+      queryParameters: {
+        'IncludeItemTypes': 'Audio',
+        'SortBy': 'DatePlayed',
+        'SortOrder': 'Descending',
+        'Limit': '12',
+        'Recursive': 'true',
+        'Fields':
+            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems',
+        'api_key': session.accessToken,
+      },
+    );
+    final response = await _httpClient.get(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Unable to load recently played tracks.');
+    }
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = payload['Items'] as List<dynamic>? ?? [];
+    return items
+        .map((item) => MediaItem.fromJellyfin(
+              item as Map<String, dynamic>,
+              serverUrl: session.serverUrl,
+              token: session.accessToken,
+              userId: session.userId,
+              deviceId: deviceId,
+            ))
+        .toList();
+  }
+
+  /// Fetches library-wide counts for home stats.
+  Future<LibraryStats> fetchLibraryStats() async {
+    final session = _requireSession();
+    final counts = await Future.wait([
+      _fetchItemCount(
+        session: session,
+        includeItemTypes: 'Audio',
+      ),
+      _fetchItemCount(
+        session: session,
+        includeItemTypes: 'MusicAlbum',
+      ),
+      _fetchItemCount(
+        session: session,
+        includeItemTypes: 'MusicArtist',
+      ),
+      _fetchItemCount(
+        session: session,
+        includeItemTypes: 'Playlist',
+      ),
+    ]);
+    return LibraryStats(
+      trackCount: counts[0],
+      albumCount: counts[1],
+      artistCount: counts[2],
+      playlistCount: counts[3],
+    );
+  }
+
   /// Returns the server URL without a trailing slash.
   String _sanitizeServerUrl(String raw) {
     return raw.trim().replaceAll(RegExp(r'/+$'), '');
@@ -518,5 +582,27 @@ class JellyfinClient {
   String _authorizationHeader() {
     return 'MediaBrowser Client="$clientName", Device="$deviceName", '
         'DeviceId="$deviceId", Version="$clientVersion"';
+  }
+
+  Future<int> _fetchItemCount({
+    required AuthSession session,
+    required String includeItemTypes,
+  }) async {
+    final uri = Uri.parse(
+      '${session.serverUrl}/Users/${session.userId}/Items',
+    ).replace(
+      queryParameters: {
+        'IncludeItemTypes': includeItemTypes,
+        'Recursive': 'true',
+        'Limit': '0',
+        'api_key': session.accessToken,
+      },
+    );
+    final response = await _httpClient.get(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Unable to load item count for $includeItemTypes.');
+    }
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    return payload['TotalRecordCount'] as int? ?? 0;
   }
 }
