@@ -1,6 +1,17 @@
-# Coppelia
+<h1 align=center>Coppelia</h1>
+<p align="center">
+  A native macOS app for Jellyfin music libraries.
+</p>
 
-Coppelia is a cross-platform app designed for Jellyfin music libraries. It blends a polished, glassy UI with native Flutter rendering so the experience feels fast and at home on the desktop.
+Coppelia is a cross-platform app designed for Jellyfin music libraries. I built it because I couldn't find an app that was:
+
+-   native / low-resource
+-   beautiful
+-   open source
+
+If you hold in your heart other bulletpoints than these, please share and help make Coppelia better!
+
+## Screenshots
 
 | ![](./docs/Screenshot-Artist.jpg)   | ![](./docs/Screenshot-Queue.jpg)    |
 | ----------------------------------- | ----------------------------------- |
@@ -34,4 +45,3 @@ Hot reload is available during `flutter run` as usual (`r` in the terminal or yo
 
 -   The Jellyfin server URL should be your base URL (for example `https://jellyfin.example.com`).
 -   Cached audio is stored using Flutter's cache manager to speed up repeat playback.
--
