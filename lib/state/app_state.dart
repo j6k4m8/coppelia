@@ -82,6 +82,12 @@ class AppState extends ChangeNotifier {
   Duration _duration = Duration.zero;
   bool _isPlaying = false;
   bool _isBuffering = false;
+  final ValueNotifier<Duration> _positionNotifier =
+      ValueNotifier(Duration.zero);
+  final ValueNotifier<Duration> _durationNotifier =
+      ValueNotifier(Duration.zero);
+  final ValueNotifier<bool> _isPlayingNotifier = ValueNotifier(false);
+  final ValueNotifier<bool> _isBufferingNotifier = ValueNotifier(false);
   ThemeMode _themeMode = ThemeMode.dark;
   NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.side;
   Map<HomeSection, bool> _homeSectionVisibility = {
@@ -190,14 +196,26 @@ class AppState extends ChangeNotifier {
   /// Current playback position.
   Duration get position => _position;
 
+  /// Listenable playback position updates.
+  ValueListenable<Duration> get positionListenable => _positionNotifier;
+
   /// Duration of the current track.
   Duration get duration => _duration;
+
+  /// Listenable duration updates.
+  ValueListenable<Duration> get durationListenable => _durationNotifier;
 
   /// True when audio is playing.
   bool get isPlaying => _isPlaying;
 
+  /// Listenable play/pause updates.
+  ValueListenable<bool> get isPlayingListenable => _isPlayingNotifier;
+
   /// True when buffering audio.
   bool get isBuffering => _isBuffering;
+
+  /// Listenable buffering updates.
+  ValueListenable<bool> get isBufferingListenable => _isBufferingNotifier;
 
   /// Active theme mode.
   ThemeMode get themeMode => _themeMode;
@@ -869,6 +887,10 @@ class AppState extends ChangeNotifier {
     _durationSubscription?.cancel();
     _playerStateSubscription?.cancel();
     _currentIndexSubscription?.cancel();
+    _positionNotifier.dispose();
+    _durationNotifier.dispose();
+    _isPlayingNotifier.dispose();
+    _isBufferingNotifier.dispose();
     unawaited(_playback.dispose());
     super.dispose();
   }
@@ -891,17 +913,26 @@ class AppState extends ChangeNotifier {
   void _bindPlayback() {
     _positionSubscription = _playback.positionStream.listen((position) {
       _position = position;
-      notifyListeners();
+      _positionNotifier.value = position;
     });
     _durationSubscription = _playback.durationStream.listen((duration) {
       _duration = duration ?? Duration.zero;
-      notifyListeners();
+      _durationNotifier.value = _duration;
     });
     _playerStateSubscription = _playback.playerStateStream.listen((state) {
-      _isPlaying = state.playing;
-      _isBuffering = state.processingState == ProcessingState.loading ||
+      final nextPlaying = state.playing;
+      final nextBuffering =
+          state.processingState == ProcessingState.loading ||
           state.processingState == ProcessingState.buffering;
-      notifyListeners();
+      final playingChanged = _isPlaying != nextPlaying;
+      final bufferingChanged = _isBuffering != nextBuffering;
+      _isPlaying = nextPlaying;
+      _isBuffering = nextBuffering;
+      _isPlayingNotifier.value = _isPlaying;
+      _isBufferingNotifier.value = _isBuffering;
+      if (playingChanged || bufferingChanged) {
+        notifyListeners();
+      }
     });
     _currentIndexSubscription =
         _playback.currentIndexStream.listen((index) {

@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -64,11 +65,20 @@ class _SidePanel extends StatelessWidget {
           const SizedBox(height: 6),
           _NowPlayingMeta(track: track),
           const SizedBox(height: 20),
-          _ProgressScrubber(
-            position: state.position,
-            duration: state.duration,
-            onSeek: state.seek,
-            isBuffering: state.isBuffering,
+          AnimatedBuilder(
+            animation: Listenable.merge([
+              state.positionListenable,
+              state.durationListenable,
+              state.isBufferingListenable,
+            ]),
+            builder: (context, _) {
+              return _ProgressScrubber(
+                position: state.position,
+                duration: state.duration,
+                onSeek: state.seek,
+                isBuffering: state.isBuffering,
+              );
+            },
           ),
           const SizedBox(height: 12),
           _Controls(
@@ -158,12 +168,21 @@ class _BottomBar extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 6),
-                _ProgressScrubber(
-                  position: state.position,
-                  duration: state.duration,
-                  onSeek: state.seek,
-                  compact: true,
-                  isBuffering: state.isBuffering,
+                AnimatedBuilder(
+                  animation: Listenable.merge([
+                    state.positionListenable,
+                    state.durationListenable,
+                    state.isBufferingListenable,
+                  ]),
+                  builder: (context, _) {
+                    return _ProgressScrubber(
+                      position: state.position,
+                      duration: state.duration,
+                      onSeek: state.seek,
+                      compact: true,
+                      isBuffering: state.isBuffering,
+                    );
+                  },
                 ),
               ],
             );
@@ -189,12 +208,21 @@ class _BottomBar extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              _ProgressScrubber(
-                position: state.position,
-                duration: state.duration,
-                onSeek: state.seek,
-                compact: true,
-                isBuffering: state.isBuffering,
+              AnimatedBuilder(
+                animation: Listenable.merge([
+                  state.positionListenable,
+                  state.durationListenable,
+                  state.isBufferingListenable,
+                ]),
+                builder: (context, _) {
+                  return _ProgressScrubber(
+                    position: state.position,
+                    duration: state.duration,
+                    onSeek: state.seek,
+                    compact: true,
+                    isBuffering: state.isBuffering,
+                  );
+                },
               ),
             ],
           );

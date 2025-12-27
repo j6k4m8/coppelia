@@ -2,10 +2,11 @@
 
 ## HIGH PRIORITY
 
--   [ ] When a track is playing, the updating Now Playing section causes the entire application to re-render on each update, which makes the OS-level menu bar unusable, adds scroll janks, and thrashes performance.
+-   [x] When a track is playing, the updating Now Playing section causes the entire application to re-render on each update, which makes the OS-level menu bar unusable, adds scroll janks, and thrashes performance.
 
 ## Bugs
 
+-   [ ] queue popup doesn't respect dark/light mode. solution: delete the popup altogether and clicking queue button just navigates to queue page.
 -   [x] playback should require double-click (single click does not play).
 -   [x] bug: search is janky, typing immediately selects all and next key replaces. multi ms lag on this.
 -   [x] scroll alphabet should subsample uniformly based upon vertical space. So if your window is very vertically short, it doesn't show every letter.
@@ -54,9 +55,9 @@
 
 -   [ ] use Inter font
 -   [ ] add auto build and release pipeline to github actions workflows
--   [ ] settings page has:
-    -   [ ] toggle each section of homepage
-    -   [ ] toggle each sidebar item
+-   [x] settings page has:
+    -   [x] toggle each section of homepage
+    -   [x] toggle each sidebar item
 -   [x] make settings page a hamburger icon after Home, instead of button way at the bottom
 -   [x] allow collapse of all sidebar sections, not just favs
 -   [ ] indicate how much cache / disk space is being used by cached media
@@ -69,3 +70,5 @@
 -   [ ] should be able to click to navigate artist and album from now playing
 -   [ ] playlists on the homepage should have a circular play button on them for single click play
 -   [ ] scroll bounce jank
+-   [ ] togleably (in settings page), the cards on hero header sections should either (on) show the album art at full size, filling the card's height, or (off) show the album art as a small square thumbnail on the left side with text to the right (what it is currently).
+-   [ ] also change the settings page to have different tabs, for "Appearance" (will hold theme stuff, font stuff later), "Layout", "Cache", "Account"
