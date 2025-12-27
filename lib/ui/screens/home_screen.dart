@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
 import '../../state/now_playing_layout.dart';
-import '../../core/app_info.dart';
 import '../../core/color_tokens.dart';
 import '../widgets/album_detail_view.dart';
 import '../widgets/albums_view.dart';
@@ -200,23 +199,77 @@ class _HeaderState extends State<_Header> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final state = widget.state;
+    final isSearch = state.searchQuery.isNotEmpty || state.isSearching;
+    final hasSelection = state.selectedPlaylist != null ||
+        state.selectedAlbum != null ||
+        state.selectedArtist != null ||
+        state.selectedGenre != null;
+    final isHome = state.selectedView == LibraryView.home &&
+        !hasSelection &&
+        !isSearch;
+
+    String title;
+    String? subtitle;
+    TextStyle? titleStyle;
+
+    if (isSearch) {
+      title = 'Search';
+      subtitle = state.searchQuery.isEmpty
+          ? 'Find tracks, albums, artists, and genres'
+          : 'Results for "${state.searchQuery}"';
+      titleStyle = theme.textTheme.headlineMedium;
+    } else if (state.selectedPlaylist != null) {
+      final playlist = state.selectedPlaylist!;
+      title = playlist.name;
+      subtitle = '${playlist.trackCount} tracks';
+      titleStyle = theme.textTheme.headlineMedium;
+    } else if (state.selectedAlbum != null) {
+      final album = state.selectedAlbum!;
+      title = album.name;
+      subtitle = '${album.trackCount} tracks • ${album.artistName}';
+      titleStyle = theme.textTheme.headlineMedium;
+    } else if (state.selectedArtist != null) {
+      final artist = state.selectedArtist!;
+      title = artist.name;
+      subtitle = artist.albumCount > 0
+          ? '${artist.albumCount} albums • ${artist.trackCount} tracks'
+          : '${artist.trackCount} tracks';
+      titleStyle = theme.textTheme.headlineMedium;
+    } else if (state.selectedGenre != null) {
+      final genre = state.selectedGenre!;
+      title = genre.name;
+      subtitle = '${genre.trackCount} tracks';
+      titleStyle = theme.textTheme.headlineMedium;
+    } else if (isHome) {
+      title = 'Good evening, ${widget.userName}';
+      subtitle = '${widget.trackCount} tracks • '
+          '${widget.albumCount} albums • '
+          '${widget.artistCount} artists • '
+          '${widget.playlistCount} playlists';
+      titleStyle = theme.textTheme.headlineLarge;
+    } else {
+      title = state.selectedView.title;
+      subtitle = state.selectedView.subtitle;
+      titleStyle = theme.textTheme.headlineMedium;
+    }
+
     final heading = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Good evening, ${widget.userName}',
-          style: theme.textTheme.headlineLarge,
+          title,
+          style: titleStyle,
         ),
-        const SizedBox(height: 4),
-        Text(
-          '${widget.trackCount} tracks • '
-          '${widget.albumCount} albums • '
-          '${widget.artistCount} artists • '
-          '${widget.playlistCount} playlists',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: ColorTokens.textSecondary(context, 0.7),
+        if (subtitle != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            subtitle!,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: ColorTokens.textSecondary(context, 0.7),
+            ),
           ),
-        ),
+        ],
       ],
     );
 
@@ -244,41 +297,10 @@ class _HeaderState extends State<_Header> {
       ),
     );
 
-    final versionBadge = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-      decoration: BoxDecoration(
-        color: ColorTokens.cardFill(context, 0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: ColorTokens.border(context)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.music_note, size: 18),
-          const SizedBox(width: 8),
-          Text(
-            '${AppInfo.name} • ${AppInfo.platformLabel} v${AppInfo.version}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: ColorTokens.textSecondary(context, 0.7),
-            ),
-          ),
-        ],
-      ),
-    );
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 860;
-        final controls = Wrap(
-          spacing: 16,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          alignment: WrapAlignment.end,
-          children: [
-            searchField,
-            versionBadge,
-          ],
-        );
+        final controls = searchField;
         if (isNarrow) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,7 +315,10 @@ class _HeaderState extends State<_Header> {
           children: [
             Expanded(child: heading),
             const SizedBox(width: 24),
-            Flexible(child: controls),
+            Flexible(child: Align(
+              alignment: Alignment.centerRight,
+              child: controls,
+            )),
           ],
         );
       },

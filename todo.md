@@ -9,8 +9,8 @@
 -   [ ] show mini waveform in now playing if available for this track
     -   [ ] increase number of slices in waveform render.
     -   [ ] make the waveform the track scrub progress bar, with thumb; faded after scrub head, solid before. vertically centered.
--   [ ] when sidebar is invisible and play is on bottom instead, the search and weird icon thingy are misaligned, and float out in the middle of nowhere instead of on the right side. in fact, the weird icon thing can be totally eliminated altogether in all layouts.
--   [ ] the giant greeting ("Good evening, jordan") should only appear on homepage, not on all pages. on other pages, that real estate should be used for page title.
+-   [x] when sidebar is invisible and play is on bottom instead, the search and weird icon thingy are misaligned, and float out in the middle of nowhere instead of on the right side. in fact, the weird icon thing can be totally eliminated altogether in all layouts.
+-   [x] the giant greeting ("Good evening, jordan") should only appear on homepage, not on all pages. on other pages, that real estate should be used for page title.
 
 ## Features / Improvements
 
