@@ -10,6 +10,7 @@ import '../services/cache_store.dart';
 import '../services/jellyfin_client.dart';
 import '../services/playback_controller.dart';
 import '../services/session_store.dart';
+import 'library_view.dart';
 
 /// Central application state and Jellyfin coordination.
 class AppState extends ChangeNotifier {
@@ -36,6 +37,7 @@ class AppState extends ChangeNotifier {
   bool _isLoadingLibrary = false;
   String? _authError;
   Playlist? _selectedPlaylist;
+  LibraryView _selectedView = LibraryView.home;
 
   List<Playlist> _playlists = [];
   List<MediaItem> _playlistTracks = [];
@@ -75,6 +77,9 @@ class AppState extends ChangeNotifier {
 
   /// Currently selected playlist.
   Playlist? get selectedPlaylist => _selectedPlaylist;
+
+  /// Currently selected library view.
+  LibraryView get selectedView => _selectedView;
 
   /// Playback queue of tracks.
   List<MediaItem> get queue => List.unmodifiable(_queue);
@@ -137,6 +142,7 @@ class AppState extends ChangeNotifier {
     _session = null;
     _client.clearSession();
     _selectedPlaylist = null;
+    _selectedView = LibraryView.home;
     _playlistTracks = [];
     _featuredTracks = [];
     _playlists = [];
@@ -170,6 +176,7 @@ class AppState extends ChangeNotifier {
   /// Selects a playlist and loads its tracks.
   Future<void> selectPlaylist(Playlist playlist) async {
     _selectedPlaylist = playlist;
+    _selectedView = LibraryView.home;
     notifyListeners();
     final cached = await _cacheStore.loadPlaylistTracks(playlist.id);
     if (cached.isNotEmpty) {
@@ -188,6 +195,15 @@ class AppState extends ChangeNotifier {
 
   /// Clears the current playlist selection.
   void clearPlaylistSelection() {
+    _selectedPlaylist = null;
+    _playlistTracks = [];
+    _selectedView = LibraryView.home;
+    notifyListeners();
+  }
+
+  /// Navigates to a library view.
+  void selectLibraryView(LibraryView view) {
+    _selectedView = view;
     _selectedPlaylist = null;
     _playlistTracks = [];
     notifyListeners();

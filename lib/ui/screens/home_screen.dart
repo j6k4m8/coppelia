@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
+import '../../state/library_view.dart';
 import '../widgets/gradient_background.dart';
 import '../widgets/library_overview.dart';
+import '../widgets/library_placeholder_view.dart';
 import '../widgets/now_playing_panel.dart';
 import '../widgets/playlist_detail_view.dart';
 import '../widgets/sidebar_navigation.dart';
@@ -43,9 +45,7 @@ class HomeScreen extends StatelessWidget {
                       Expanded(
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 350),
-                          child: state.selectedPlaylist == null
-                              ? const LibraryOverview()
-                              : const PlaylistDetailView(),
+                          child: _LibraryContent(state: state),
                         ),
                       ),
                     ],
@@ -113,5 +113,22 @@ class _Header extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class _LibraryContent extends StatelessWidget {
+  const _LibraryContent({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.selectedPlaylist != null) {
+      return const PlaylistDetailView();
+    }
+    if (state.selectedView == LibraryView.home) {
+      return const LibraryOverview();
+    }
+    return LibraryPlaceholderView(view: state.selectedView);
   }
 }

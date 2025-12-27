@@ -3,11 +3,19 @@ import 'package:provider/provider.dart';
 
 import '../../models/playlist.dart';
 import '../../state/app_state.dart';
+import '../../state/library_view.dart';
 
 /// Vertical navigation rail for playlists and actions.
-class SidebarNavigation extends StatelessWidget {
+class SidebarNavigation extends StatefulWidget {
   /// Creates the sidebar navigation.
   const SidebarNavigation({super.key});
+
+  @override
+  State<SidebarNavigation> createState() => _SidebarNavigationState();
+}
+
+class _SidebarNavigationState extends State<SidebarNavigation> {
+  bool _favoritesExpanded = true;
 
   @override
   Widget build(BuildContext context) {
@@ -48,10 +56,54 @@ class SidebarNavigation extends StatelessWidget {
           _NavTile(
             icon: Icons.home_filled,
             label: 'Home',
-            selected: state.selectedPlaylist == null,
-            onTap: state.clearPlaylistSelection,
+            selected: state.selectedPlaylist == null &&
+                state.selectedView == LibraryView.home,
+            onTap: () => state.selectLibraryView(LibraryView.home),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
+          _SectionHeader(
+            title: 'Favorites',
+            isExpanded: _favoritesExpanded,
+            onTap: () => setState(() {
+              _favoritesExpanded = !_favoritesExpanded;
+            }),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            child: _favoritesExpanded
+                ? Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      _NavTile(
+                        icon: Icons.album,
+                        label: 'Albums',
+                        selected: state.selectedPlaylist == null &&
+                            state.selectedView == LibraryView.favoritesAlbums,
+                        onTap: () =>
+                            state.selectLibraryView(LibraryView.favoritesAlbums),
+                      ),
+                      _NavTile(
+                        icon: Icons.music_note,
+                        label: 'Songs',
+                        selected: state.selectedPlaylist == null &&
+                            state.selectedView == LibraryView.favoritesSongs,
+                        onTap: () =>
+                            state.selectLibraryView(LibraryView.favoritesSongs),
+                      ),
+                      _NavTile(
+                        icon: Icons.people_alt,
+                        label: 'Artists',
+                        selected: state.selectedPlaylist == null &&
+                            state.selectedView == LibraryView.favoritesArtists,
+                        onTap: () => state
+                            .selectLibraryView(LibraryView.favoritesArtists),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 20),
           Text(
             'Playlists',
             style: Theme.of(context)
@@ -116,6 +168,46 @@ class _NavTile extends StatelessWidget {
             Icon(icon, size: 18),
             const SizedBox(width: 12),
             Text(label),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    required this.isExpanded,
+    required this.onTap,
+  });
+
+  final String title;
+  final bool isExpanded;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(color: Colors.white70),
+            ),
+            AnimatedRotation(
+              turns: isExpanded ? 0.5 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: const Icon(Icons.expand_more, size: 18),
+            ),
           ],
         ),
       ),
