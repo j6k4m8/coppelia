@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:copellia/models/media_item.dart';
-import 'package:copellia/models/playlist.dart';
-import 'package:copellia/services/cache_store.dart';
+import 'package:coppelia/models/media_item.dart';
+import 'package:coppelia/models/playlist.dart';
+import 'package:coppelia/services/cache_store.dart';
 
 void main() {
   test('cache store saves and restores playlists', () async {

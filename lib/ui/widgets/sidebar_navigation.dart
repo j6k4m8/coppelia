@@ -69,7 +69,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
               ),
               const SizedBox(width: 12),
               Text(
-                'Copellia',
+                'Coppelia',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const Spacer(),

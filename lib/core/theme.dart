@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Defines the signature look and feel for Copellia.
-class CopelliaTheme {
-  CopelliaTheme._();
+/// Defines the signature look and feel for Coppelia.
+class CoppeliaTheme {
+  CoppeliaTheme._();
 
   /// Dark, glassy theme tuned for macOS surfaces.
   static ThemeData get darkTheme {

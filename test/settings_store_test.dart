@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:copellia/services/settings_store.dart';
-import 'package:copellia/state/home_section.dart';
-import 'package:copellia/state/sidebar_item.dart';
+import 'package:coppelia/services/settings_store.dart';
+import 'package:coppelia/state/home_section.dart';
+import 'package:coppelia/state/sidebar_item.dart';
 
 void main() {
   test('settings store defaults to dark theme', () async {

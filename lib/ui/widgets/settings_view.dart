@@ -9,7 +9,7 @@ import '../../core/color_tokens.dart';
 import 'glass_container.dart';
 import 'section_header.dart';
 
-/// Settings view for Copellia preferences.
+/// Settings view for Coppelia preferences.
 class SettingsView extends StatelessWidget {
   /// Creates the settings view.
   const SettingsView({super.key});

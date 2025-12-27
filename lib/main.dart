@@ -3,7 +3,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
 
-/// Entry point for the Copellia music player.
+/// Entry point for the Coppelia music player.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
@@ -21,5 +21,5 @@ Future<void> main() async {
     await windowManager.focus();
   });
 
-  runApp(const CopelliaApp());
+  runApp(const CoppeliaApp());
 }

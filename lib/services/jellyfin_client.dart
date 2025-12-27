@@ -13,13 +13,13 @@ import '../models/search_results.dart';
 /// Client wrapper for Jellyfin REST APIs.
 class JellyfinClient {
   /// Identifier used for Jellyfin device tracking.
-  static const String deviceId = 'copellia-desktop';
+  static const String deviceId = 'coppelia-desktop';
 
   /// Displayed device name in Jellyfin.
   static const String deviceName = 'macOS';
 
   /// Client name for Jellyfin analytics.
-  static const String clientName = 'Copellia';
+  static const String clientName = 'Coppelia';
 
   /// Client version for Jellyfin analytics.
   static const String clientVersion = '0.1.0';

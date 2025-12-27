@@ -1,6 +1,6 @@
-# Copellia
+# Coppelia
 
-Copellia is a cross-platform Flutter client designed for Jellyfin music libraries with a macOS-first aesthetic. It blends a polished, glassy UI with native Flutter rendering so the experience feels fast and at home on the desktop.
+Coppelia is a cross-platform Flutter client designed for Jellyfin music libraries with a macOS-first aesthetic. It blends a polished, glassy UI with native Flutter rendering so the experience feels fast and at home on the desktop.
 
 ## Features
 

@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 
-import 'package:copellia/models/auth_session.dart';
-import 'package:copellia/services/jellyfin_client.dart';
+import 'package:coppelia/models/auth_session.dart';
+import 'package:coppelia/services/jellyfin_client.dart';
 
 class _MockHttpClient extends Mock implements http.Client {}
 

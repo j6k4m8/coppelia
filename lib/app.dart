@@ -12,10 +12,10 @@ import 'state/library_view.dart';
 import 'ui/screens/home_screen.dart';
 import 'ui/screens/login_screen.dart';
 
-/// Root widget for the Copellia application.
-class CopelliaApp extends StatelessWidget {
+/// Root widget for the Coppelia application.
+class CoppeliaApp extends StatelessWidget {
   /// Creates the app shell.
-  const CopelliaApp({super.key, this.appState});
+  const CoppeliaApp({super.key, this.appState});
 
   /// Optional app state override for tests.
   final AppState? appState;
@@ -97,8 +97,8 @@ class _AppShell extends StatelessWidget {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        theme: CopelliaTheme.lightTheme,
-        darkTheme: CopelliaTheme.darkTheme,
+        theme: CoppeliaTheme.lightTheme,
+        darkTheme: CoppeliaTheme.darkTheme,
         themeMode: state.themeMode,
         home: const _RootRouter(),
       ),
