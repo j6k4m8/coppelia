@@ -59,3 +59,5 @@
     -   [x] 10pm-4am: "Late night vibes"
 -   [x] bug: the library stats header say "1 artist". that's definitely wrong.
 -   [ ] on all pages the "card" hero should be part of the scrollable area, not fixed at the top.
+-   [ ] should be able to click to navigate artist and album from now playing
+-   [ ] playlists on the homepage should have a circular play button on them for single click play

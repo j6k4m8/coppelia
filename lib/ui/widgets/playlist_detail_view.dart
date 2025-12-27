@@ -22,17 +22,21 @@ class PlaylistDetailView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _PlaylistHeader(playlist: playlist),
-        const SizedBox(height: 24),
         Expanded(
           child: ListView.separated(
-            itemCount: state.playlistTracks.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 6),
+            itemCount: state.playlistTracks.length + 1,
+            separatorBuilder: (_, index) {
+              return SizedBox(height: index == 0 ? 24 : 6);
+            },
             itemBuilder: (context, index) {
-              final track = state.playlistTracks[index];
+              if (index == 0) {
+                return _PlaylistHeader(playlist: playlist);
+              }
+              final trackIndex = index - 1;
+              final track = state.playlistTracks[trackIndex];
               return TrackRow(
                 track: track,
-                index: index,
+                index: trackIndex,
                 isActive: state.nowPlaying?.id == track.id,
                 onTap: () => state.playFromPlaylist(track),
                 onPlayNext: () => state.playNext(track),
@@ -61,6 +65,7 @@ class _PlaylistHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.read<AppState>();
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -116,10 +121,6 @@ class _PlaylistHeader extends StatelessWidget {
                             ),
                     icon: const Icon(Icons.play_arrow),
                     label: const Text('Play'),
-                  ),
-                  OutlinedButton(
-                    onPressed: state.clearPlaylistSelection,
-                    child: const Text('Back to library'),
                   ),
                 ],
               ),

@@ -22,7 +22,6 @@ class GenreDetailView extends StatelessWidget {
       imageUrl: genre.imageUrl,
       tracks: state.genreTracks,
       nowPlaying: state.nowPlaying,
-      onBack: state.clearBrowseSelection,
       onPlayAll: state.genreTracks.isEmpty
           ? null
           : () => state.playFromGenre(state.genreTracks.first),

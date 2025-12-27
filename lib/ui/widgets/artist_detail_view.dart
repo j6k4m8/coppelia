@@ -25,7 +25,6 @@ class ArtistDetailView extends StatelessWidget {
       imageUrl: artist.imageUrl,
       tracks: state.artistTracks,
       nowPlaying: state.nowPlaying,
-      onBack: state.clearBrowseSelection,
       onPlayAll: state.artistTracks.isEmpty
           ? null
           : () => state.playFromArtist(state.artistTracks.first),

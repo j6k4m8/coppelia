@@ -40,10 +40,13 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       body: GradientBackground(
         child: SafeArea(
-          child: Column(
-            children: [
-              Expanded(child: content),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Column(
+              children: [
+                Expanded(child: content),
+              ],
+            ),
           ),
         ),
       ),
@@ -318,13 +321,33 @@ class _HeaderState extends State<_Header> {
       titleStyle = theme.textTheme.headlineMedium;
     }
 
+    final VoidCallback? backAction = state.selectedPlaylist != null
+        ? state.clearPlaylistSelection
+        : state.selectedAlbum != null ||
+                state.selectedArtist != null ||
+                state.selectedGenre != null
+            ? state.clearBrowseSelection
+            : null;
+    final titleRow = backAction == null
+        ? Text(title, style: titleStyle)
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _BackButton(onPressed: backAction),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: titleStyle,
+                ),
+              ),
+            ],
+          );
+
     final heading = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: titleStyle,
-        ),
+        titleRow,
         if (subtitle != null) ...[
           const SizedBox(height: 4),
           Text(
@@ -363,7 +386,7 @@ class _HeaderState extends State<_Header> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 860;
+        final isNarrow = constraints.maxWidth < 560;
         final controls = searchField;
         if (isNarrow) {
           return Column(
@@ -420,6 +443,29 @@ String _greetingFor(DateTime time) {
     return 'Good afternoon';
   }
   return 'Welcome back';
+}
+
+class _BackButton extends StatelessWidget {
+  const _BackButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: ColorTokens.cardFill(context, 0.12),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onPressed,
+        child: const SizedBox(
+          width: 36,
+          height: 36,
+          child: Icon(Icons.chevron_left),
+        ),
+      ),
+    );
+  }
 }
 
 class _LibraryContent extends StatelessWidget {

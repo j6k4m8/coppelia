@@ -13,7 +13,6 @@ class CollectionDetailView extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.tracks,
-    required this.onBack,
     required this.onTrackTap,
     required this.nowPlaying,
     this.imageUrl,
@@ -35,9 +34,6 @@ class CollectionDetailView extends StatelessWidget {
 
   /// Artwork for the collection.
   final String? imageUrl;
-
-  /// Callback for back navigation.
-  final VoidCallback onBack;
 
   /// Callback for playing all tracks.
   final VoidCallback? onPlayAll;
@@ -65,23 +61,26 @@ class CollectionDetailView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Header(
-          title: title,
-          subtitle: subtitle,
-          imageUrl: imageUrl,
-          onBack: onBack,
-          onPlayAll: onPlayAll,
-        ),
-        const SizedBox(height: 24),
         Expanded(
           child: ListView.separated(
-            itemCount: tracks.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 6),
+            itemCount: tracks.length + 1,
+            separatorBuilder: (_, index) {
+              return SizedBox(height: index == 0 ? 24 : 6);
+            },
             itemBuilder: (context, index) {
-              final track = tracks[index];
+              if (index == 0) {
+                return _Header(
+                  title: title,
+                  subtitle: subtitle,
+                  imageUrl: imageUrl,
+                  onPlayAll: onPlayAll,
+                );
+              }
+              final trackIndex = index - 1;
+              final track = tracks[trackIndex];
               return TrackRow(
                 track: track,
-                index: index,
+                index: trackIndex,
                 isActive: nowPlaying?.id == track.id,
                 onTap: () => onTrackTap(track),
                 onPlayNext: onPlayNext == null
@@ -109,7 +108,6 @@ class _Header extends StatelessWidget {
   const _Header({
     required this.title,
     required this.subtitle,
-    required this.onBack,
     this.imageUrl,
     this.onPlayAll,
   });
@@ -117,12 +115,12 @@ class _Header extends StatelessWidget {
   final String title;
   final String subtitle;
   final String? imageUrl;
-  final VoidCallback onBack;
   final VoidCallback? onPlayAll;
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -174,10 +172,6 @@ class _Header extends StatelessWidget {
                     onPressed: onPlayAll,
                     icon: const Icon(Icons.play_arrow),
                     label: const Text('Play'),
-                  ),
-                  OutlinedButton(
-                    onPressed: onBack,
-                    child: const Text('Back'),
                   ),
                 ],
               ),

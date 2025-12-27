@@ -22,7 +22,6 @@ class AlbumDetailView extends StatelessWidget {
       imageUrl: album.imageUrl,
       tracks: state.albumTracks,
       nowPlaying: state.nowPlaying,
-      onBack: state.clearBrowseSelection,
       onPlayAll: state.albumTracks.isEmpty
           ? null
           : () => state.playFromAlbum(state.albumTracks.first),
