@@ -12,8 +12,8 @@
 ## Features / Improvements
 
 -   [ ] add ability to clear queue
--   [ ] add "Albums" to artist pages
--   [ ] add link to artist page(s) from album page
+-   [x] add "Albums" to artist pages
+-   [x] add link to artist page(s) from album page
 -   [ ] on tracks, add right click -> "Go to Album" and "Go to Artist". on albums, add right click -> "Go to Artist".
 
 ## Low Priority

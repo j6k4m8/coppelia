@@ -207,14 +207,19 @@ class _TrackMetaRow extends StatelessWidget {
     return Row(
       children: [
         Flexible(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onArtistTap,
-            child: Text(
-              artistLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: onArtistTap == null ? baseStyle : linkStyle,
+          child: MouseRegion(
+            cursor: onArtistTap == null
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.click,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onArtistTap,
+              child: Text(
+                artistLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: onArtistTap == null ? baseStyle : linkStyle,
+              ),
             ),
           ),
         ),
@@ -227,14 +232,19 @@ class _TrackMetaRow extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Flexible(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onAlbumTap,
-            child: Text(
-              albumLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: onAlbumTap == null ? baseStyle : linkStyle,
+          child: MouseRegion(
+            cursor: onAlbumTap == null
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.click,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onAlbumTap,
+              child: Text(
+                albumLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: onAlbumTap == null ? baseStyle : linkStyle,
+              ),
             ),
           ),
         ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/album.dart';
 import '../../state/app_state.dart';
 import 'collection_detail_view.dart';
+import 'section_header.dart';
 
 /// Detail view for a single album.
 class AlbumDetailView extends StatelessWidget {
@@ -16,9 +18,13 @@ class AlbumDetailView extends StatelessWidget {
     if (album == null) {
       return const SizedBox.shrink();
     }
+    final artistName = album.artistName;
+    final canLinkArtist =
+        artistName.isNotEmpty && artistName != 'Unknown Artist';
+    final subtitle = '${album.trackCount} tracks • $artistName';
     return CollectionDetailView(
       title: album.name,
-      subtitle: '${album.trackCount} tracks • ${album.artistName}',
+      subtitle: subtitle,
       imageUrl: album.imageUrl,
       tracks: state.albumTracks,
       nowPlaying: state.nowPlaying,
@@ -38,6 +44,46 @@ class AlbumDetailView extends StatelessWidget {
           state.selectArtistById(track.artistIds.first);
         }
       },
+      headerFooter: canLinkArtist
+          ? _ArtistInlineLink(
+              artistName: artistName,
+              onTap: () => state.selectArtistByName(artistName),
+            )
+          : null,
+    );
+  }
+}
+
+class _ArtistInlineLink extends StatelessWidget {
+  const _ArtistInlineLink({
+    required this.artistName,
+    required this.onTap,
+  });
+
+  final String artistName;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: SectionHeader(
+        title: 'Artist',
+        action: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: Text(
+              artistName,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

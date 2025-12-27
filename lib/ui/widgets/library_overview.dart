@@ -104,6 +104,9 @@ class LibraryOverview extends StatelessWidget {
               return FeaturedTrackCard(
                 track: track,
                 onTap: () => state.playFromList(recent, track),
+                onArtistTap: track.artistIds.isEmpty
+                    ? null
+                    : () => state.selectArtistById(track.artistIds.first),
               );
             },
           ),
@@ -167,15 +170,18 @@ class _HeaderAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.w600,
-            ),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
       ),
     );
   }

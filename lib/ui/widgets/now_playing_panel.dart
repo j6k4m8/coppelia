@@ -334,17 +334,22 @@ class _NowPlayingMeta extends StatelessWidget {
     return Row(
       children: [
         Flexible(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: track!.artistIds.isEmpty
-                ? null
-                : () => state.selectArtistById(track!.artistIds.first),
-            child: Text(
-              artistLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style:
-                  track!.artistIds.isEmpty ? baseStyle : linkStyle,
+          child: MouseRegion(
+            cursor: track!.artistIds.isEmpty
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.click,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: track!.artistIds.isEmpty
+                  ? null
+                  : () => state.selectArtistById(track!.artistIds.first),
+              child: Text(
+                artistLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style:
+                    track!.artistIds.isEmpty ? baseStyle : linkStyle,
+              ),
             ),
           ),
         ),
@@ -357,16 +362,21 @@ class _NowPlayingMeta extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Flexible(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: track!.albumId == null
-                ? null
-                : () => state.selectAlbumById(track!.albumId!),
-            child: Text(
-              track!.album,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: track!.albumId == null ? baseStyle : linkStyle,
+          child: MouseRegion(
+            cursor: track!.albumId == null
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.click,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: track!.albumId == null
+                  ? null
+                  : () => state.selectAlbumById(track!.albumId!),
+              child: Text(
+                track!.album,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: track!.albumId == null ? baseStyle : linkStyle,
+              ),
             ),
           ),
         ),

@@ -509,6 +509,29 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Navigates to an artist by name.
+  Future<void> selectArtistByName(String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+    if (_artists.isEmpty) {
+      await loadArtists();
+    }
+    final target = trimmed.toLowerCase();
+    Artist? match;
+    for (final artist in _artists) {
+      if (artist.name.trim().toLowerCase() == target) {
+        match = artist;
+        break;
+      }
+    }
+    if (match == null) {
+      return;
+    }
+    await selectArtist(match);
+  }
+
   /// Performs a search across the library.
   Future<void> searchLibrary(String query) async {
     final trimmed = query.trim();

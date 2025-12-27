@@ -21,6 +21,7 @@ class CollectionDetailView extends StatelessWidget {
     this.onAddToQueue,
     this.onAlbumTap,
     this.onArtistTap,
+    this.headerFooter,
   });
 
   /// Title for the collection.
@@ -56,6 +57,9 @@ class CollectionDetailView extends StatelessWidget {
   /// Currently playing track.
   final MediaItem? nowPlaying;
 
+  /// Optional widget to render below the header.
+  final Widget? headerFooter;
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -63,9 +67,12 @@ class CollectionDetailView extends StatelessWidget {
       children: [
         Expanded(
           child: ListView.separated(
-            itemCount: tracks.length + 1,
+            itemCount: tracks.length + 1 + (headerFooter == null ? 0 : 1),
             separatorBuilder: (_, index) {
-              return SizedBox(height: index == 0 ? 24 : 6);
+              if (index == 0 || (headerFooter != null && index == 1)) {
+                return const SizedBox(height: 24);
+              }
+              return const SizedBox(height: 6);
             },
             itemBuilder: (context, index) {
               if (index == 0) {
@@ -76,7 +83,11 @@ class CollectionDetailView extends StatelessWidget {
                   onPlayAll: onPlayAll,
                 );
               }
-              final trackIndex = index - 1;
+              if (headerFooter != null && index == 1) {
+                return headerFooter!;
+              }
+              final trackIndex =
+                  index - (headerFooter == null ? 1 : 2);
               final track = tracks[trackIndex];
               return TrackRow(
                 track: track,

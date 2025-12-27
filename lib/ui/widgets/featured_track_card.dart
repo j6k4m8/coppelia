@@ -11,6 +11,7 @@ class FeaturedTrackCard extends StatelessWidget {
     super.key,
     required this.track,
     required this.onTap,
+    this.onArtistTap,
   });
 
   /// Track to display.
@@ -18,6 +19,9 @@ class FeaturedTrackCard extends StatelessWidget {
 
   /// Tap handler.
   final VoidCallback onTap;
+
+  /// Optional handler for tapping the artist label.
+  final VoidCallback? onArtistTap;
 
   @override
   Widget build(BuildContext context) {
@@ -68,13 +72,26 @@ class FeaturedTrackCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    track.subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: ColorTokens.textSecondary(context),
-                        ),
+                  MouseRegion(
+                    cursor: onArtistTap == null
+                        ? SystemMouseCursors.basic
+                        : SystemMouseCursors.click,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: onArtistTap,
+                      child: Text(
+                        track.subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: onArtistTap == null
+                                  ? ColorTokens.textSecondary(context)
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .primary,
+                            ),
+                      ),
+                    ),
                   ),
                 ],
               ),
