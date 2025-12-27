@@ -7,6 +7,18 @@ import '../models/media_item.dart';
 import '../models/playlist.dart';
 /// Client wrapper for Jellyfin REST APIs.
 class JellyfinClient {
+  /// Identifier used for Jellyfin device tracking.
+  static const String deviceId = 'copellia-desktop';
+
+  /// Displayed device name in Jellyfin.
+  static const String deviceName = 'macOS';
+
+  /// Client name for Jellyfin analytics.
+  static const String clientName = 'Copellia';
+
+  /// Client version for Jellyfin analytics.
+  static const String clientVersion = '0.1.0';
+
   /// Creates a client with an optional HTTP override.
   JellyfinClient({
     http.Client? httpClient,
@@ -18,6 +30,9 @@ class JellyfinClient {
 
   /// Currently authenticated session.
   AuthSession? get session => _session;
+
+  /// Authorization header for Jellyfin requests.
+  String get authorizationHeader => _authorizationHeader();
 
   /// Attaches a saved session for authenticated calls.
   void updateSession(AuthSession session) {
@@ -115,6 +130,8 @@ class JellyfinClient {
               item as Map<String, dynamic>,
               serverUrl: session.serverUrl,
               token: session.accessToken,
+              userId: session.userId,
+              deviceId: deviceId,
             ))
         .toList();
   }
@@ -146,6 +163,8 @@ class JellyfinClient {
               item as Map<String, dynamic>,
               serverUrl: session.serverUrl,
               token: session.accessToken,
+              userId: session.userId,
+              deviceId: deviceId,
             ))
         .toList();
   }
@@ -164,7 +183,7 @@ class JellyfinClient {
   }
 
   String _authorizationHeader() {
-    return 'MediaBrowser Client="Copellia", Device="macOS", '
-        'DeviceId="copellia-desktop", Version="0.1.0"';
+    return 'MediaBrowser Client="$clientName", Device="$deviceName", '
+        'DeviceId="$deviceId", Version="$clientVersion"';
   }
 }

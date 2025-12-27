@@ -40,6 +40,8 @@ class MediaItem {
     Map<String, dynamic> json, {
     required String serverUrl,
     required String token,
+    required String userId,
+    required String deviceId,
   }) {
     final id = json['Id'] as String;
     final runtimeTicks = (json['RunTimeTicks'] as num?)?.toInt() ?? 0;
@@ -47,7 +49,18 @@ class MediaItem {
     final imageUrl = json['ImageTags']?['Primary'] != null
         ? '$serverUrl/Items/$id/Images/Primary?fillWidth=500&quality=90'
         : null;
-    final streamUrl = '$serverUrl/Audio/$id/stream?api_key=$token';
+    final streamUri = Uri.parse('$serverUrl/Audio/$id/universal').replace(
+      queryParameters: {
+        'UserId': userId,
+        'DeviceId': deviceId,
+        'Container': 'mp3',
+        'AudioCodec': 'mp3',
+        'TranscodingContainer': 'mp3',
+        'TranscodingProtocol': 'http',
+        'api_key': token,
+      },
+    );
+    final streamUrl = streamUri.toString();
 
     return MediaItem(
       id: id,

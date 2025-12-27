@@ -38,6 +38,7 @@ class PlaybackController {
     List<MediaItem> items, {
     int startIndex = 0,
     CacheStore? cacheStore,
+    Map<String, String>? headers,
   }) async {
     final sources = <AudioSource>[];
     for (final item in items) {
@@ -46,7 +47,13 @@ class PlaybackController {
       if (file != null) {
         sources.add(AudioSource.file(file.path, tag: item));
       } else {
-        sources.add(AudioSource.uri(Uri.parse(item.streamUrl), tag: item));
+        sources.add(
+          AudioSource.uri(
+            Uri.parse(item.streamUrl),
+            headers: headers,
+            tag: item,
+          ),
+        );
         unawaited(cacheStore?.prefetchAudio(item));
       }
     }

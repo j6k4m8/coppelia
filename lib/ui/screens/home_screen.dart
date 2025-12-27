@@ -28,7 +28,14 @@ class HomeScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _Header(userName: state.session?.userName ?? 'Listener'),
+                      _Header(
+                        userName: state.session?.userName ?? 'Listener',
+                        playlistCount: state.playlists.length,
+                        trackCount: state.playlists.fold(
+                          0,
+                          (total, playlist) => total + playlist.trackCount,
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       if (state.isLoadingLibrary)
                         const LinearProgressIndicator(minHeight: 2),
@@ -55,9 +62,15 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.userName});
+  const _Header({
+    required this.userName,
+    required this.playlistCount,
+    required this.trackCount,
+  });
 
   final String userName;
+  final int playlistCount;
+  final int trackCount;
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +84,7 @@ class _Header extends StatelessWidget {
             Text('Good evening, $userName', style: theme.textTheme.headlineLarge),
             const SizedBox(height: 4),
             Text(
-              'Your Jellyfin library, reimagined.',
+              '$playlistCount playlists • $trackCount tracks',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: Colors.white70,
               ),

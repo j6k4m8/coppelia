@@ -204,6 +204,7 @@ class AppState extends ChangeNotifier {
       _queue,
       startIndex: index,
       cacheStore: _cacheStore,
+      headers: _playbackHeaders(),
     );
     await _playback.play();
   }
@@ -219,6 +220,7 @@ class AppState extends ChangeNotifier {
       _queue,
       startIndex: index,
       cacheStore: _cacheStore,
+      headers: _playbackHeaders(),
     );
     await _playback.play();
   }
@@ -284,5 +286,17 @@ class AppState extends ChangeNotifier {
       }
       notifyListeners();
     });
+  }
+
+  Map<String, String>? _playbackHeaders() {
+    final session = _session;
+    if (session == null) {
+      return null;
+    }
+    return {
+      'X-Emby-Token': session.accessToken,
+      'X-Emby-Authorization': _client.authorizationHeader,
+      'User-Agent': JellyfinClient.clientName,
+    };
   }
 }
