@@ -83,7 +83,7 @@ class LibraryOverview extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final crossAxisCount = (constraints.maxWidth / 220).floor();
-              final columns = crossAxisCount.clamp(2, 4);
+              final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
               return GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),

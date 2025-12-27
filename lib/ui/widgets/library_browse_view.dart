@@ -356,8 +356,8 @@ class _GridMetrics {
     required double width,
     required double itemAspectRatio,
   }) {
-    final crossAxisCount = (width / 220).floor().clamp(2, 6);
-    final columns = crossAxisCount;
+    final crossAxisCount = (width / 220).floor();
+    final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
     final spacing = 16 * (columns - 1);
     final itemWidth = (width - spacing) / columns;
     final itemHeight = itemWidth / itemAspectRatio;

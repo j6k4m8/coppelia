@@ -6,12 +6,10 @@
 -   [x] bug: search is janky, typing immediately selects all and next key replaces. multi ms lag on this.
 -   [x] scroll alphabet should subsample uniformly based upon vertical space. So if your window is very vertically short, it doesn't show every letter.
 -   [x] bug: light mode doesn't change backgrounds, it just changes text color and then it's invisible/ugly.
--   [ ] show mini waveform in now playing if available for this track
-    -   [ ] increase number of slices in waveform render.
-    -   [ ] make the waveform the track scrub progress bar, with thumb; faded after scrub head, solid before. vertically centered.
+-   [x] scrub bar is progress-only and pulses while buffering
 -   [x] when sidebar is invisible and play is on bottom instead, the search and weird icon thingy are misaligned, and float out in the middle of nowhere instead of on the right side. in fact, the weird icon thing can be totally eliminated altogether in all layouts.
 -   [x] the giant greeting ("Good evening, jordan") should only appear on homepage, not on all pages. on other pages, that real estate should be used for page title.
--   [ ] "prev" button should track to the start of the current track if more than 5s in, otherwise go to previous track.
+-   [x] "prev" button should track to the start of the current track if more than 5s in, otherwise go to previous track.
 
 ## Features / Improvements
 
