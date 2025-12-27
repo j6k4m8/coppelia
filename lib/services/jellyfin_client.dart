@@ -315,6 +315,97 @@ class JellyfinClient {
         .toList();
   }
 
+  /// Fetches favorited albums from Jellyfin.
+  Future<List<Album>> fetchFavoriteAlbums() async {
+    final session = _requireSession();
+    final uri = Uri.parse(
+      '${session.serverUrl}/Users/${session.userId}/Items',
+    ).replace(
+      queryParameters: {
+        'IncludeItemTypes': 'MusicAlbum',
+        'Recursive': 'true',
+        'Filters': 'IsFavorite',
+        'SortBy': 'SortName',
+        'Fields': 'ImageTags,ChildCount,AlbumArtist,AlbumArtists',
+        'api_key': session.accessToken,
+      },
+    );
+    final response = await _httpClient.get(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Unable to load favorite albums.');
+    }
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = payload['Items'] as List<dynamic>? ?? [];
+    return items
+        .map((item) => Album.fromJellyfin(
+              item as Map<String, dynamic>,
+              serverUrl: session.serverUrl,
+            ))
+        .toList();
+  }
+
+  /// Fetches favorited artists from Jellyfin.
+  Future<List<Artist>> fetchFavoriteArtists() async {
+    final session = _requireSession();
+    final uri = Uri.parse(
+      '${session.serverUrl}/Users/${session.userId}/Items',
+    ).replace(
+      queryParameters: {
+        'IncludeItemTypes': 'MusicArtist',
+        'Recursive': 'true',
+        'Filters': 'IsFavorite',
+        'SortBy': 'SortName',
+        'Fields': 'ImageTags',
+        'api_key': session.accessToken,
+      },
+    );
+    final response = await _httpClient.get(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Unable to load favorite artists.');
+    }
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = payload['Items'] as List<dynamic>? ?? [];
+    return items
+        .map((item) => Artist.fromJellyfin(
+              item as Map<String, dynamic>,
+              serverUrl: session.serverUrl,
+            ))
+        .toList();
+  }
+
+  /// Fetches favorited tracks from Jellyfin.
+  Future<List<MediaItem>> fetchFavoriteTracks() async {
+    final session = _requireSession();
+    final uri = Uri.parse(
+      '${session.serverUrl}/Users/${session.userId}/Items',
+    ).replace(
+      queryParameters: {
+        'IncludeItemTypes': 'Audio',
+        'Recursive': 'true',
+        'Filters': 'IsFavorite',
+        'SortBy': 'SortName',
+        'Fields':
+            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems',
+        'api_key': session.accessToken,
+      },
+    );
+    final response = await _httpClient.get(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Unable to load favorite tracks.');
+    }
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = payload['Items'] as List<dynamic>? ?? [];
+    return items
+        .map((item) => MediaItem.fromJellyfin(
+              item as Map<String, dynamic>,
+              serverUrl: session.serverUrl,
+              token: session.accessToken,
+              userId: session.userId,
+              deviceId: deviceId,
+            ))
+        .toList();
+  }
+
   /// Searches the library for matching items.
   Future<SearchResults> searchLibrary(String query) async {
     final session = _requireSession();

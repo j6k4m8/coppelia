@@ -5,8 +5,10 @@ import 'core/theme.dart';
 import 'services/cache_store.dart';
 import 'services/jellyfin_client.dart';
 import 'services/playback_controller.dart';
+import 'services/settings_store.dart';
 import 'services/session_store.dart';
 import 'state/app_state.dart';
+import 'state/library_view.dart';
 import 'ui/screens/home_screen.dart';
 import 'ui/screens/login_screen.dart';
 
@@ -27,28 +29,80 @@ class CopelliaApp extends StatelessWidget {
           final sessionStore = SessionStore();
           final playback = PlaybackController();
           final client = JellyfinClient();
+          final settingsStore = SettingsStore();
           final appState = AppState(
             cacheStore: cacheStore,
             client: client,
             playback: playback,
             sessionStore: sessionStore,
+            settingsStore: settingsStore,
           );
           appState.bootstrap();
           return appState;
         },
-        child: MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: CopelliaTheme.darkTheme,
-          home: const _RootRouter(),
-        ),
+        child: const _AppShell(),
       );
     }
 
     return ChangeNotifierProvider<AppState>.value(
       value: appState!,
+      child: const _AppShell(),
+    );
+  }
+}
+
+class _AppShell extends StatelessWidget {
+  const _AppShell();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    return PlatformMenuBar(
+      menus: [
+        PlatformMenu(
+          label: 'Library',
+          menus: [
+            PlatformMenuItem(
+              label: 'Home',
+              onSelected: () => state.selectLibraryView(LibraryView.home),
+            ),
+            PlatformMenuItem(
+              label: 'Settings',
+              onSelected: () => state.selectLibraryView(LibraryView.settings),
+            ),
+            const PlatformMenuSeparator(),
+            PlatformMenuItem(
+              label: 'Refresh Library',
+              onSelected: state.refreshLibrary,
+            ),
+          ],
+        ),
+        PlatformMenu(
+          label: 'Playback',
+          menus: [
+            PlatformMenuItem(
+              label: state.isPlaying ? 'Pause' : 'Play',
+              onSelected: state.togglePlayback,
+              enabled: state.session != null,
+            ),
+            PlatformMenuItem(
+              label: 'Next Track',
+              onSelected: state.nextTrack,
+              enabled: state.session != null,
+            ),
+            PlatformMenuItem(
+              label: 'Previous Track',
+              onSelected: state.previousTrack,
+              enabled: state.session != null,
+            ),
+          ],
+        ),
+      ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        theme: CopelliaTheme.darkTheme,
+        theme: CopelliaTheme.lightTheme,
+        darkTheme: CopelliaTheme.darkTheme,
+        themeMode: state.themeMode,
         home: const _RootRouter(),
       ),
     );

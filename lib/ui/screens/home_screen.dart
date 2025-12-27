@@ -5,17 +5,24 @@ import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
+import '../../state/now_playing_layout.dart';
 import '../widgets/album_detail_view.dart';
 import '../widgets/albums_view.dart';
 import '../widgets/artist_detail_view.dart';
 import '../widgets/artists_view.dart';
+import '../widgets/favorite_albums_view.dart';
+import '../widgets/favorite_artists_view.dart';
+import '../widgets/favorite_tracks_view.dart';
 import '../widgets/gradient_background.dart';
+import '../widgets/glowing_loading_bar.dart';
 import '../widgets/library_overview.dart';
 import '../widgets/library_placeholder_view.dart';
 import '../widgets/genres_view.dart';
 import '../widgets/now_playing_panel.dart';
 import '../widgets/playlist_detail_view.dart';
 import '../widgets/search_results_view.dart';
+import '../widgets/settings_view.dart';
+import '../widgets/playback_shortcuts.dart';
 import '../widgets/sidebar_navigation.dart';
 import '../widgets/genre_detail_view.dart';
 
@@ -27,46 +34,80 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    return Scaffold(
-      body: GradientBackground(
-        child: SafeArea(
-          child: Row(
-            children: [
-              const SidebarNavigation(),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(32, 24, 24, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _Header(
-                        userName: state.session?.userName ?? 'Listener',
-                        playlistCount: state.playlists.length,
-                        trackCount: state.playlists.fold(
-                          0,
-                          (total, playlist) => total + playlist.trackCount,
-                        ),
-                        state: state,
-                      ),
-                      const SizedBox(height: 24),
-                      if (state.isLoadingLibrary)
-                        const LinearProgressIndicator(minHeight: 2),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 350),
-                          child: _LibraryContent(state: state),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const NowPlayingPanel(),
-            ],
+    final content = _MainContent(state: state);
+    return PlaybackShortcuts(
+      child: Scaffold(
+        body: GradientBackground(
+          child: SafeArea(
+            child: Column(
+              children: [
+                GlowingLoadingBar(isVisible: state.isBuffering),
+                Expanded(child: content),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MainContent extends StatelessWidget {
+  const _MainContent({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final bodyContent = Row(
+      children: [
+        const SidebarNavigation(),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(32, 24, 24, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Header(
+                  userName: state.session?.userName ?? 'Listener',
+                  playlistCount: state.playlists.length,
+                  trackCount: state.playlists.fold(
+                    0,
+                    (total, playlist) => total + playlist.trackCount,
+                  ),
+                  state: state,
+                ),
+                const SizedBox(height: 24),
+                if (state.isLoadingLibrary)
+                  const LinearProgressIndicator(minHeight: 2),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 350),
+                    child: _LibraryContent(state: state),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (state.nowPlayingLayout == NowPlayingLayout.side) {
+      return Row(
+        children: [
+          bodyContent,
+          NowPlayingPanel(layout: state.nowPlayingLayout),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        Expanded(child: bodyContent),
+        NowPlayingPanel(layout: state.nowPlayingLayout),
+      ],
     );
   }
 }
@@ -235,6 +276,18 @@ class _LibraryContent extends StatelessWidget {
     }
     if (state.selectedView == LibraryView.genres) {
       return const GenresView();
+    }
+    if (state.selectedView == LibraryView.favoritesAlbums) {
+      return const FavoriteAlbumsView();
+    }
+    if (state.selectedView == LibraryView.favoritesArtists) {
+      return const FavoriteArtistsView();
+    }
+    if (state.selectedView == LibraryView.favoritesSongs) {
+      return const FavoriteTracksView();
+    }
+    if (state.selectedView == LibraryView.settings) {
+      return const SettingsView();
     }
     return LibraryPlaceholderView(view: state.selectedView);
   }

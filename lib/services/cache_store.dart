@@ -24,6 +24,9 @@ class CacheStore {
   static const _albumTracksKey = 'cached_album_tracks';
   static const _artistTracksKey = 'cached_artist_tracks';
   static const _genreTracksKey = 'cached_genre_tracks';
+  static const _favoriteAlbumsKey = 'cached_favorite_albums';
+  static const _favoriteArtistsKey = 'cached_favorite_artists';
+  static const _favoriteTracksKey = 'cached_favorite_tracks';
 
   final DefaultCacheManager _audioCache = DefaultCacheManager();
 
@@ -197,6 +200,66 @@ class CacheStore {
     return _loadTrackMap(_genreTracksKey, genreId);
   }
 
+  /// Persists favorite albums for quick access.
+  Future<void> saveFavoriteAlbums(List<Album> albums) async {
+    final preferences = await SharedPreferences.getInstance();
+    final payload = albums.map((album) => album.toJson()).toList();
+    await preferences.setString(_favoriteAlbumsKey, jsonEncode(payload));
+  }
+
+  /// Loads cached favorite albums.
+  Future<List<Album>> loadFavoriteAlbums() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_favoriteAlbumsKey);
+    if (raw == null || raw.isEmpty) {
+      return [];
+    }
+    final decoded = jsonDecode(raw) as List<dynamic>;
+    return decoded
+        .map((entry) => Album.fromJson(entry as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Persists favorite artists.
+  Future<void> saveFavoriteArtists(List<Artist> artists) async {
+    final preferences = await SharedPreferences.getInstance();
+    final payload = artists.map((artist) => artist.toJson()).toList();
+    await preferences.setString(_favoriteArtistsKey, jsonEncode(payload));
+  }
+
+  /// Loads cached favorite artists.
+  Future<List<Artist>> loadFavoriteArtists() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_favoriteArtistsKey);
+    if (raw == null || raw.isEmpty) {
+      return [];
+    }
+    final decoded = jsonDecode(raw) as List<dynamic>;
+    return decoded
+        .map((entry) => Artist.fromJson(entry as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Persists favorite tracks.
+  Future<void> saveFavoriteTracks(List<MediaItem> tracks) async {
+    final preferences = await SharedPreferences.getInstance();
+    final payload = tracks.map((track) => track.toJson()).toList();
+    await preferences.setString(_favoriteTracksKey, jsonEncode(payload));
+  }
+
+  /// Loads cached favorite tracks.
+  Future<List<MediaItem>> loadFavoriteTracks() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_favoriteTracksKey);
+    if (raw == null || raw.isEmpty) {
+      return [];
+    }
+    final decoded = jsonDecode(raw) as List<dynamic>;
+    return decoded
+        .map((entry) => MediaItem.fromJson(entry as Map<String, dynamic>))
+        .toList();
+  }
+
   /// Returns a cached audio file if present.
   Future<File?> getCachedAudio(MediaItem item) async {
     final cached = await _audioCache.getFileFromCache(item.streamUrl);
@@ -220,6 +283,9 @@ class CacheStore {
     await preferences.remove(_albumTracksKey);
     await preferences.remove(_artistTracksKey);
     await preferences.remove(_genreTracksKey);
+    await preferences.remove(_favoriteAlbumsKey);
+    await preferences.remove(_favoriteArtistsKey);
+    await preferences.remove(_favoriteTracksKey);
   }
 
   /// Clears cached audio files.

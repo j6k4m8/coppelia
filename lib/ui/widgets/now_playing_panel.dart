@@ -5,11 +5,31 @@ import 'package:provider/provider.dart';
 import '../../core/formatters.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
+import '../../state/now_playing_layout.dart';
 
 /// Right-side panel for playback and queue control.
 class NowPlayingPanel extends StatelessWidget {
   /// Creates the now playing panel.
-  const NowPlayingPanel({super.key});
+  const NowPlayingPanel({
+    super.key,
+    this.layout = NowPlayingLayout.side,
+  });
+
+  /// Layout preference for the panel.
+  final NowPlayingLayout layout;
+
+  @override
+  Widget build(BuildContext context) {
+    return layout == NowPlayingLayout.side
+        ? _SidePanel(layout: layout)
+        : _BottomBar(layout: layout);
+  }
+}
+
+class _SidePanel extends StatelessWidget {
+  const _SidePanel({required this.layout});
+
+  final NowPlayingLayout layout;
 
   @override
   Widget build(BuildContext context) {
@@ -83,6 +103,103 @@ class NowPlayingPanel extends StatelessWidget {
   }
 }
 
+class _BottomBar extends StatelessWidget {
+  const _BottomBar({required this.layout});
+
+  final NowPlayingLayout layout;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final track = state.nowPlaying;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1218),
+        border: Border(
+          top: BorderSide(color: Colors.white.withOpacity(0.08)),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              _MiniArtwork(track: track),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      track?.title ?? 'Nothing queued',
+                      style: Theme.of(context).textTheme.titleMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      track?.subtitle ?? 'Pick a track to start listening.',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: Colors.white60),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.queue_music),
+                onPressed: () => _showQueue(context, state),
+              ),
+              _Controls(
+                isPlaying: state.isPlaying,
+                onPlayPause: state.togglePlayback,
+                onNext: state.nextTrack,
+                onPrevious: state.previousTrack,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _ProgressBar(
+            position: state.position,
+            duration: state.duration,
+            onSeek: state.seek,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showQueue(BuildContext context, AppState state) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF10131A),
+          title: const Text('Queue'),
+          content: SizedBox(
+            width: 360,
+            height: 320,
+            child: _QueueList(
+              queue: state.queue,
+              nowPlaying: state.nowPlaying,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _QueueList extends StatelessWidget {
   const _QueueList({required this.queue, required this.nowPlaying});
 
@@ -143,6 +260,33 @@ class _Artwork extends StatelessWidget {
             ? Container(
                 color: Colors.white10,
                 child: const Icon(Icons.music_note, size: 48),
+              )
+            : CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+              ),
+      ),
+    );
+  }
+}
+
+class _MiniArtwork extends StatelessWidget {
+  const _MiniArtwork({this.track});
+
+  final MediaItem? track;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = track?.imageUrl;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: SizedBox(
+        width: 56,
+        height: 56,
+        child: imageUrl == null
+            ? Container(
+                color: Colors.white10,
+                child: const Icon(Icons.music_note, size: 24),
               )
             : CachedNetworkImage(
                 imageUrl: imageUrl,
@@ -221,6 +365,7 @@ class _Controls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         IconButton(

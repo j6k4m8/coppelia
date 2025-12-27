@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:just_audio/just_audio.dart';
 
 import '../models/album.dart';
@@ -13,8 +14,10 @@ import '../models/search_results.dart';
 import '../services/cache_store.dart';
 import '../services/jellyfin_client.dart';
 import '../services/playback_controller.dart';
+import '../services/settings_store.dart';
 import '../services/session_store.dart';
 import 'library_view.dart';
+import 'now_playing_layout.dart';
 
 /// Central application state and Jellyfin coordination.
 class AppState extends ChangeNotifier {
@@ -24,10 +27,12 @@ class AppState extends ChangeNotifier {
     required JellyfinClient client,
     required PlaybackController playback,
     required SessionStore sessionStore,
+    required SettingsStore settingsStore,
   })  : _cacheStore = cacheStore,
         _client = client,
         _playback = playback,
-        _sessionStore = sessionStore {
+        _sessionStore = sessionStore,
+        _settingsStore = settingsStore {
     _bindPlayback();
   }
 
@@ -35,6 +40,7 @@ class AppState extends ChangeNotifier {
   final JellyfinClient _client;
   final PlaybackController _playback;
   final SessionStore _sessionStore;
+  final SettingsStore _settingsStore;
 
   AuthSession? _session;
   bool _isBootstrapping = true;
@@ -59,11 +65,17 @@ class AppState extends ChangeNotifier {
   List<MediaItem> _albumTracks = [];
   List<MediaItem> _artistTracks = [];
   List<MediaItem> _genreTracks = [];
+  List<Album> _favoriteAlbums = [];
+  List<Artist> _favoriteArtists = [];
+  List<MediaItem> _favoriteTracks = [];
 
   MediaItem? _nowPlaying;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   bool _isPlaying = false;
+  bool _isBuffering = false;
+  ThemeMode _themeMode = ThemeMode.dark;
+  NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.side;
 
   StreamSubscription<Duration>? _positionSubscription;
   StreamSubscription<Duration?>? _durationSubscription;
@@ -127,6 +139,15 @@ class AppState extends ChangeNotifier {
   /// Tracks for the selected genre.
   List<MediaItem> get genreTracks => List.unmodifiable(_genreTracks);
 
+  /// Favorite albums.
+  List<Album> get favoriteAlbums => List.unmodifiable(_favoriteAlbums);
+
+  /// Favorite artists.
+  List<Artist> get favoriteArtists => List.unmodifiable(_favoriteArtists);
+
+  /// Favorite tracks.
+  List<MediaItem> get favoriteTracks => List.unmodifiable(_favoriteTracks);
+
   /// Current search query.
   String get searchQuery => _searchQuery;
 
@@ -148,12 +169,23 @@ class AppState extends ChangeNotifier {
   /// True when audio is playing.
   bool get isPlaying => _isPlaying;
 
+  /// True when buffering audio.
+  bool get isBuffering => _isBuffering;
+
+  /// Active theme mode.
+  ThemeMode get themeMode => _themeMode;
+
+  /// Preferred layout for now playing.
+  NowPlayingLayout get nowPlayingLayout => _nowPlayingLayout;
+
   /// Initializes cached state and refreshes library.
   Future<void> bootstrap() async {
     _session = await _sessionStore.loadSession();
     if (_session != null) {
       _client.updateSession(_session!);
     }
+    _themeMode = await _settingsStore.loadThemeMode();
+    _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
     await _loadCachedLibrary();
     _isBootstrapping = false;
     notifyListeners();
@@ -210,8 +242,12 @@ class AppState extends ChangeNotifier {
     _albumTracks = [];
     _artistTracks = [];
     _genreTracks = [];
+    _favoriteAlbums = [];
+    _favoriteArtists = [];
+    _favoriteTracks = [];
     _queue = [];
     _nowPlaying = null;
+    _isBuffering = false;
     await _sessionStore.saveSession(null);
     notifyListeners();
   }
@@ -239,6 +275,15 @@ class AppState extends ChangeNotifier {
       if (_genres.isNotEmpty) {
         await _loadGenres();
       }
+      if (_favoriteAlbums.isNotEmpty) {
+        await _loadFavoriteAlbums();
+      }
+      if (_favoriteArtists.isNotEmpty) {
+        await _loadFavoriteArtists();
+      }
+      if (_favoriteTracks.isNotEmpty) {
+        await _loadFavoriteTracks();
+      }
     } catch (_) {
       // Keep cached content if refresh fails.
     }
@@ -251,6 +296,7 @@ class AppState extends ChangeNotifier {
     _selectedPlaylist = playlist;
     _selectedView = LibraryView.home;
     clearBrowseSelection(notify: false);
+    clearSearch(notify: false);
     notifyListeners();
     final cached = await _cacheStore.loadPlaylistTracks(playlist.id);
     if (cached.isNotEmpty) {
@@ -294,6 +340,15 @@ class AppState extends ChangeNotifier {
     }
     if (view == LibraryView.genres) {
       unawaited(loadGenres());
+    }
+    if (view == LibraryView.favoritesAlbums) {
+      unawaited(loadFavoriteAlbums());
+    }
+    if (view == LibraryView.favoritesArtists) {
+      unawaited(loadFavoriteArtists());
+    }
+    if (view == LibraryView.favoritesSongs) {
+      unawaited(loadFavoriteTracks());
     }
   }
 
@@ -357,11 +412,42 @@ class AppState extends ChangeNotifier {
     await _loadGenres();
   }
 
+  /// Loads favorite albums.
+  Future<void> loadFavoriteAlbums() async {
+    final cached = await _cacheStore.loadFavoriteAlbums();
+    if (cached.isNotEmpty) {
+      _favoriteAlbums = cached;
+      notifyListeners();
+    }
+    await _loadFavoriteAlbums();
+  }
+
+  /// Loads favorite artists.
+  Future<void> loadFavoriteArtists() async {
+    final cached = await _cacheStore.loadFavoriteArtists();
+    if (cached.isNotEmpty) {
+      _favoriteArtists = cached;
+      notifyListeners();
+    }
+    await _loadFavoriteArtists();
+  }
+
+  /// Loads favorite tracks.
+  Future<void> loadFavoriteTracks() async {
+    final cached = await _cacheStore.loadFavoriteTracks();
+    if (cached.isNotEmpty) {
+      _favoriteTracks = cached;
+      notifyListeners();
+    }
+    await _loadFavoriteTracks();
+  }
+
   /// Selects an album and loads its tracks.
   Future<void> selectAlbum(Album album) async {
     _selectedAlbum = album;
     _selectedArtist = null;
     _selectedGenre = null;
+    clearSearch(notify: false);
     notifyListeners();
     final cached = await _cacheStore.loadAlbumTracks(album.id);
     if (cached.isNotEmpty) {
@@ -391,6 +477,7 @@ class AppState extends ChangeNotifier {
     _selectedArtist = artist;
     _selectedAlbum = null;
     _selectedGenre = null;
+    clearSearch(notify: false);
     notifyListeners();
     final cached = await _cacheStore.loadArtistTracks(artist.id);
     if (cached.isNotEmpty) {
@@ -420,6 +507,7 @@ class AppState extends ChangeNotifier {
     _selectedGenre = genre;
     _selectedAlbum = null;
     _selectedArtist = null;
+    clearSearch(notify: false);
     notifyListeners();
     final cached = await _cacheStore.loadGenreTracks(genre.id);
     if (cached.isNotEmpty) {
@@ -473,6 +561,11 @@ class AppState extends ChangeNotifier {
   /// Plays tracks from the selected genre.
   Future<void> playFromGenre(MediaItem track) async {
     await _playFromList(_genreTracks, track);
+  }
+
+  /// Plays tracks from favorites.
+  Future<void> playFromFavorites(MediaItem track) async {
+    await _playFromList(_favoriteTracks, track);
   }
 
   /// Plays tracks from search results.
@@ -561,6 +654,31 @@ class AppState extends ChangeNotifier {
     await _playback.seek(position);
   }
 
+  /// Updates the theme preference.
+  Future<void> setThemeMode(ThemeMode mode) async {
+    _themeMode = mode;
+    await _settingsStore.saveThemeMode(mode);
+    notifyListeners();
+  }
+
+  /// Updates the now playing layout preference.
+  Future<void> setNowPlayingLayout(NowPlayingLayout layout) async {
+    _nowPlayingLayout = layout;
+    await _settingsStore.saveNowPlayingLayout(layout);
+    notifyListeners();
+  }
+
+  /// Clears cached metadata entries.
+  Future<void> clearMetadataCache() async {
+    await _cacheStore.clearMetadata();
+    await refreshLibrary();
+  }
+
+  /// Clears cached audio files.
+  Future<void> clearAudioCache() async {
+    await _cacheStore.clearAudioCache();
+  }
+
   /// Releases audio resources.
   @override
   void dispose() {
@@ -578,6 +696,9 @@ class AppState extends ChangeNotifier {
     _albums = await _cacheStore.loadAlbums();
     _artists = await _cacheStore.loadArtists();
     _genres = await _cacheStore.loadGenres();
+    _favoriteAlbums = await _cacheStore.loadFavoriteAlbums();
+    _favoriteArtists = await _cacheStore.loadFavoriteArtists();
+    _favoriteTracks = await _cacheStore.loadFavoriteTracks();
     notifyListeners();
   }
 
@@ -592,6 +713,8 @@ class AppState extends ChangeNotifier {
     });
     _playerStateSubscription = _playback.playerStateStream.listen((state) {
       _isPlaying = state.playing;
+      _isBuffering = state.processingState == ProcessingState.loading ||
+          state.processingState == ProcessingState.buffering;
       notifyListeners();
     });
     _currentIndexSubscription =
@@ -649,6 +772,60 @@ class AppState extends ChangeNotifier {
       final genres = await _client.fetchGenres();
       _genres = genres;
       await _cacheStore.saveGenres(genres);
+    } catch (_) {
+      // Use cached results when available.
+    } finally {
+      _isLoadingLibrary = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadFavoriteAlbums() async {
+    if (_session == null) {
+      return;
+    }
+    try {
+      _isLoadingLibrary = true;
+      notifyListeners();
+      final albums = await _client.fetchFavoriteAlbums();
+      _favoriteAlbums = albums;
+      await _cacheStore.saveFavoriteAlbums(albums);
+    } catch (_) {
+      // Use cached results when available.
+    } finally {
+      _isLoadingLibrary = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadFavoriteArtists() async {
+    if (_session == null) {
+      return;
+    }
+    try {
+      _isLoadingLibrary = true;
+      notifyListeners();
+      final artists = await _client.fetchFavoriteArtists();
+      _favoriteArtists = artists;
+      await _cacheStore.saveFavoriteArtists(artists);
+    } catch (_) {
+      // Use cached results when available.
+    } finally {
+      _isLoadingLibrary = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadFavoriteTracks() async {
+    if (_session == null) {
+      return;
+    }
+    try {
+      _isLoadingLibrary = true;
+      notifyListeners();
+      final tracks = await _client.fetchFavoriteTracks();
+      _favoriteTracks = tracks;
+      await _cacheStore.saveFavoriteTracks(tracks);
     } catch (_) {
       // Use cached results when available.
     } finally {

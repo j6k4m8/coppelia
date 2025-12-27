@@ -1,0 +1,50 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../state/app_state.dart';
+import 'section_header.dart';
+import 'track_row.dart';
+
+/// Displays favorite tracks list.
+class FavoriteTracksView extends StatelessWidget {
+  /// Creates the favorite tracks view.
+  const FavoriteTracksView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: 'Favorite Songs',
+          action: Text(
+            '${state.favoriteTracks.length} tracks',
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: Colors.white60),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: ListView.separated(
+            itemCount: state.favoriteTracks.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 6),
+            itemBuilder: (context, index) {
+              final track = state.favoriteTracks[index];
+              return TrackRow(
+                track: track,
+                index: index,
+                isActive: state.nowPlaying?.id == track.id,
+                onTap: () => state.playFromFavorites(track),
+                onPlayNext: () => state.playNext(track),
+                onAddToQueue: () => state.enqueueTrack(track),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
