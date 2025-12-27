@@ -3,12 +3,18 @@ import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
+import '../widgets/album_detail_view.dart';
+import '../widgets/albums_view.dart';
+import '../widgets/artist_detail_view.dart';
+import '../widgets/artists_view.dart';
 import '../widgets/gradient_background.dart';
 import '../widgets/library_overview.dart';
 import '../widgets/library_placeholder_view.dart';
+import '../widgets/genres_view.dart';
 import '../widgets/now_playing_panel.dart';
 import '../widgets/playlist_detail_view.dart';
 import '../widgets/sidebar_navigation.dart';
+import '../widgets/genre_detail_view.dart';
 
 /// Main shell for authenticated users.
 class HomeScreen extends StatelessWidget {
@@ -126,8 +132,26 @@ class _LibraryContent extends StatelessWidget {
     if (state.selectedPlaylist != null) {
       return const PlaylistDetailView();
     }
+    if (state.selectedAlbum != null) {
+      return const AlbumDetailView();
+    }
+    if (state.selectedArtist != null) {
+      return const ArtistDetailView();
+    }
+    if (state.selectedGenre != null) {
+      return const GenreDetailView();
+    }
     if (state.selectedView == LibraryView.home) {
       return const LibraryOverview();
+    }
+    if (state.selectedView == LibraryView.albums) {
+      return const AlbumsView();
+    }
+    if (state.selectedView == LibraryView.artists) {
+      return const ArtistsView();
+    }
+    if (state.selectedView == LibraryView.genres) {
+      return const GenresView();
     }
     return LibraryPlaceholderView(view: state.selectedView);
   }

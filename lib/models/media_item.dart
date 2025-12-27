@@ -9,6 +9,8 @@ class MediaItem {
     required this.duration,
     required this.imageUrl,
     required this.streamUrl,
+    this.albumId,
+    this.artistIds = const [],
   });
 
   /// Jellyfin item identifier.
@@ -31,6 +33,12 @@ class MediaItem {
 
   /// Streamable URL for playback.
   final String streamUrl;
+
+  /// Album identifier when available.
+  final String? albumId;
+
+  /// Artist identifiers when available.
+  final List<String> artistIds;
 
   /// User-friendly subtitle.
   String get subtitle => artists.isEmpty ? album : artists.join(', ');
@@ -61,6 +69,13 @@ class MediaItem {
       },
     );
     final streamUrl = streamUri.toString();
+    final albumId = json['AlbumId'] as String?;
+    final artistItems = json['ArtistItems'] as List<dynamic>?;
+    final artistIds = artistItems
+            ?.map((entry) => entry['Id']?.toString())
+            .whereType<String>()
+            .toList() ??
+        const <String>[];
 
     return MediaItem(
       id: id,
@@ -72,6 +87,8 @@ class MediaItem {
       duration: runtime,
       imageUrl: imageUrl,
       streamUrl: streamUrl,
+      albumId: albumId,
+      artistIds: artistIds,
     );
   }
 
@@ -84,6 +101,8 @@ class MediaItem {
         'durationMs': duration.inMilliseconds,
         'imageUrl': imageUrl,
         'streamUrl': streamUrl,
+        'albumId': albumId,
+        'artistIds': artistIds,
       };
 
   /// Restores a track from cached JSON.
@@ -98,5 +117,10 @@ class MediaItem {
         duration: Duration(milliseconds: json['durationMs'] as int? ?? 0),
         imageUrl: json['imageUrl'] as String?,
         streamUrl: json['streamUrl'] as String,
+        albumId: json['albumId'] as String?,
+        artistIds: (json['artistIds'] as List<dynamic>?)
+                ?.map((entry) => entry.toString())
+                .toList() ??
+            const [],
       );
 }

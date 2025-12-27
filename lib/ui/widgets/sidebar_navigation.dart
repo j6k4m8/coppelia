@@ -105,6 +105,36 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
           ),
           const SizedBox(height: 20),
           Text(
+            'Browse',
+            style: Theme.of(context)
+                .textTheme
+                .titleSmall
+                ?.copyWith(color: Colors.white70),
+          ),
+          const SizedBox(height: 8),
+          _NavTile(
+            icon: Icons.album,
+            label: 'Albums',
+            selected: state.selectedPlaylist == null &&
+                state.selectedView == LibraryView.albums,
+            onTap: () => state.selectLibraryView(LibraryView.albums),
+          ),
+          _NavTile(
+            icon: Icons.people_alt,
+            label: 'Artists',
+            selected: state.selectedPlaylist == null &&
+                state.selectedView == LibraryView.artists,
+            onTap: () => state.selectLibraryView(LibraryView.artists),
+          ),
+          _NavTile(
+            icon: Icons.auto_awesome_motion,
+            label: 'Genres',
+            selected: state.selectedPlaylist == null &&
+                state.selectedView == LibraryView.genres,
+            onTap: () => state.selectLibraryView(LibraryView.genres),
+          ),
+          const SizedBox(height: 16),
+          Text(
             'Playlists',
             style: Theme.of(context)
                 .textTheme
@@ -129,6 +159,11 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             ),
           ),
           const SizedBox(height: 16),
+          FilledButton.tonal(
+            onPressed: () => state.selectLibraryView(LibraryView.settings),
+            child: const Text('Settings'),
+          ),
+          const SizedBox(height: 8),
           FilledButton.tonal(
             onPressed: state.signOut,
             child: const Text('Sign out'),

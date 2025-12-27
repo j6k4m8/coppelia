@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
+import '../models/album.dart';
+import '../models/artist.dart';
 import '../models/auth_session.dart';
+import '../models/genre.dart';
 import '../models/media_item.dart';
 import '../models/playlist.dart';
 import '../services/cache_store.dart';
@@ -38,11 +41,20 @@ class AppState extends ChangeNotifier {
   String? _authError;
   Playlist? _selectedPlaylist;
   LibraryView _selectedView = LibraryView.home;
+  Album? _selectedAlbum;
+  Artist? _selectedArtist;
+  Genre? _selectedGenre;
 
   List<Playlist> _playlists = [];
   List<MediaItem> _playlistTracks = [];
   List<MediaItem> _featuredTracks = [];
   List<MediaItem> _queue = [];
+  List<Album> _albums = [];
+  List<Artist> _artists = [];
+  List<Genre> _genres = [];
+  List<MediaItem> _albumTracks = [];
+  List<MediaItem> _artistTracks = [];
+  List<MediaItem> _genreTracks = [];
 
   MediaItem? _nowPlaying;
   Duration _position = Duration.zero;
@@ -81,8 +93,35 @@ class AppState extends ChangeNotifier {
   /// Currently selected library view.
   LibraryView get selectedView => _selectedView;
 
+  /// Currently selected album.
+  Album? get selectedAlbum => _selectedAlbum;
+
+  /// Currently selected artist.
+  Artist? get selectedArtist => _selectedArtist;
+
+  /// Currently selected genre.
+  Genre? get selectedGenre => _selectedGenre;
+
   /// Playback queue of tracks.
   List<MediaItem> get queue => List.unmodifiable(_queue);
+
+  /// Available albums.
+  List<Album> get albums => List.unmodifiable(_albums);
+
+  /// Available artists.
+  List<Artist> get artists => List.unmodifiable(_artists);
+
+  /// Available genres.
+  List<Genre> get genres => List.unmodifiable(_genres);
+
+  /// Tracks for the selected album.
+  List<MediaItem> get albumTracks => List.unmodifiable(_albumTracks);
+
+  /// Tracks for the selected artist.
+  List<MediaItem> get artistTracks => List.unmodifiable(_artistTracks);
+
+  /// Tracks for the selected genre.
+  List<MediaItem> get genreTracks => List.unmodifiable(_genreTracks);
 
   /// Currently playing track.
   MediaItem? get nowPlaying => _nowPlaying;
@@ -143,9 +182,18 @@ class AppState extends ChangeNotifier {
     _client.clearSession();
     _selectedPlaylist = null;
     _selectedView = LibraryView.home;
+    _selectedAlbum = null;
+    _selectedArtist = null;
+    _selectedGenre = null;
     _playlistTracks = [];
     _featuredTracks = [];
     _playlists = [];
+    _albums = [];
+    _artists = [];
+    _genres = [];
+    _albumTracks = [];
+    _artistTracks = [];
+    _genreTracks = [];
     _queue = [];
     _nowPlaying = null;
     await _sessionStore.saveSession(null);
@@ -166,6 +214,15 @@ class AppState extends ChangeNotifier {
       final featured = await _client.fetchRecentTracks();
       _featuredTracks = featured;
       await _cacheStore.saveFeaturedTracks(featured);
+      if (_albums.isNotEmpty) {
+        await _loadAlbums();
+      }
+      if (_artists.isNotEmpty) {
+        await _loadArtists();
+      }
+      if (_genres.isNotEmpty) {
+        await _loadGenres();
+      }
     } catch (_) {
       // Keep cached content if refresh fails.
     }
@@ -177,6 +234,7 @@ class AppState extends ChangeNotifier {
   Future<void> selectPlaylist(Playlist playlist) async {
     _selectedPlaylist = playlist;
     _selectedView = LibraryView.home;
+    clearBrowseSelection(notify: false);
     notifyListeners();
     final cached = await _cacheStore.loadPlaylistTracks(playlist.id);
     if (cached.isNotEmpty) {
@@ -198,6 +256,7 @@ class AppState extends ChangeNotifier {
     _selectedPlaylist = null;
     _playlistTracks = [];
     _selectedView = LibraryView.home;
+    clearBrowseSelection(notify: false);
     notifyListeners();
   }
 
@@ -206,7 +265,134 @@ class AppState extends ChangeNotifier {
     _selectedView = view;
     _selectedPlaylist = null;
     _playlistTracks = [];
+    clearBrowseSelection(notify: false);
     notifyListeners();
+    if (view == LibraryView.albums) {
+      unawaited(loadAlbums());
+    }
+    if (view == LibraryView.artists) {
+      unawaited(loadArtists());
+    }
+    if (view == LibraryView.genres) {
+      unawaited(loadGenres());
+    }
+  }
+
+  /// Loads albums, using cached results when possible.
+  Future<void> loadAlbums() async {
+    final cached = await _cacheStore.loadAlbums();
+    if (cached.isNotEmpty) {
+      _albums = cached;
+      notifyListeners();
+    }
+    await _loadAlbums();
+  }
+
+  /// Loads artists, using cached results when possible.
+  Future<void> loadArtists() async {
+    final cached = await _cacheStore.loadArtists();
+    if (cached.isNotEmpty) {
+      _artists = cached;
+      notifyListeners();
+    }
+    await _loadArtists();
+  }
+
+  /// Loads genres, using cached results when possible.
+  Future<void> loadGenres() async {
+    final cached = await _cacheStore.loadGenres();
+    if (cached.isNotEmpty) {
+      _genres = cached;
+      notifyListeners();
+    }
+    await _loadGenres();
+  }
+
+  /// Selects an album and loads its tracks.
+  Future<void> selectAlbum(Album album) async {
+    _selectedAlbum = album;
+    _selectedArtist = null;
+    _selectedGenre = null;
+    notifyListeners();
+    final cached = await _cacheStore.loadAlbumTracks(album.id);
+    if (cached.isNotEmpty) {
+      _albumTracks = cached;
+      notifyListeners();
+    }
+    try {
+      final tracks = await _client.fetchAlbumTracks(album.id);
+      _albumTracks = tracks;
+      await _cacheStore.saveAlbumTracks(album.id, tracks);
+      notifyListeners();
+    } catch (_) {
+      // Keep cached tracks if refresh fails.
+    }
+  }
+
+  /// Loads an album and starts playback.
+  Future<void> playAlbum(Album album) async {
+    await selectAlbum(album);
+    if (_albumTracks.isNotEmpty) {
+      await playFromAlbum(_albumTracks.first);
+    }
+  }
+
+  /// Selects an artist and loads their tracks.
+  Future<void> selectArtist(Artist artist) async {
+    _selectedArtist = artist;
+    _selectedAlbum = null;
+    _selectedGenre = null;
+    notifyListeners();
+    final cached = await _cacheStore.loadArtistTracks(artist.id);
+    if (cached.isNotEmpty) {
+      _artistTracks = cached;
+      notifyListeners();
+    }
+    try {
+      final tracks = await _client.fetchArtistTracks(artist.id);
+      _artistTracks = tracks;
+      await _cacheStore.saveArtistTracks(artist.id, tracks);
+      notifyListeners();
+    } catch (_) {
+      // Keep cached tracks if refresh fails.
+    }
+  }
+
+  /// Loads an artist and starts playback.
+  Future<void> playArtist(Artist artist) async {
+    await selectArtist(artist);
+    if (_artistTracks.isNotEmpty) {
+      await playFromArtist(_artistTracks.first);
+    }
+  }
+
+  /// Selects a genre and loads its tracks.
+  Future<void> selectGenre(Genre genre) async {
+    _selectedGenre = genre;
+    _selectedAlbum = null;
+    _selectedArtist = null;
+    notifyListeners();
+    final cached = await _cacheStore.loadGenreTracks(genre.id);
+    if (cached.isNotEmpty) {
+      _genreTracks = cached;
+      notifyListeners();
+    }
+    try {
+      final tracks = await _client.fetchGenreTracks(genre.id);
+      _genreTracks = tracks;
+      await _cacheStore.saveGenreTracks(genre.id, tracks);
+      notifyListeners();
+    } catch (_) {
+      // Keep cached tracks if refresh fails.
+    }
+  }
+
+  /// Loads a genre and starts playback.
+  Future<void> playGenre(Genre genre) async {
+    await selectGenre(genre);
+    if (_genreTracks.isNotEmpty) {
+      await playFromGenre(_genreTracks.first);
+    }
   }
 
   /// Starts playback from a selected track.
@@ -223,6 +409,21 @@ class AppState extends ChangeNotifier {
       headers: _playbackHeaders(),
     );
     await _playback.play();
+  }
+
+  /// Plays tracks from the selected album.
+  Future<void> playFromAlbum(MediaItem track) async {
+    await _playFromList(_albumTracks, track);
+  }
+
+  /// Plays tracks from the selected artist.
+  Future<void> playFromArtist(MediaItem track) async {
+    await _playFromList(_artistTracks, track);
+  }
+
+  /// Plays tracks from the selected genre.
+  Future<void> playFromGenre(MediaItem track) async {
+    await _playFromList(_genreTracks, track);
   }
 
   /// Plays featured tracks from the home shelf.
@@ -279,6 +480,9 @@ class AppState extends ChangeNotifier {
   Future<void> _loadCachedLibrary() async {
     _playlists = await _cacheStore.loadPlaylists();
     _featuredTracks = await _cacheStore.loadFeaturedTracks();
+    _albums = await _cacheStore.loadAlbums();
+    _artists = await _cacheStore.loadArtists();
+    _genres = await _cacheStore.loadGenres();
     notifyListeners();
   }
 
@@ -302,6 +506,91 @@ class AppState extends ChangeNotifier {
       }
       notifyListeners();
     });
+  }
+
+  Future<void> _loadAlbums() async {
+    if (_session == null) {
+      return;
+    }
+    try {
+      _isLoadingLibrary = true;
+      notifyListeners();
+      final albums = await _client.fetchAlbums();
+      _albums = albums;
+      await _cacheStore.saveAlbums(albums);
+    } catch (_) {
+      // Use cached results when available.
+    } finally {
+      _isLoadingLibrary = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadArtists() async {
+    if (_session == null) {
+      return;
+    }
+    try {
+      _isLoadingLibrary = true;
+      notifyListeners();
+      final artists = await _client.fetchArtists();
+      _artists = artists;
+      await _cacheStore.saveArtists(artists);
+    } catch (_) {
+      // Use cached results when available.
+    } finally {
+      _isLoadingLibrary = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadGenres() async {
+    if (_session == null) {
+      return;
+    }
+    try {
+      _isLoadingLibrary = true;
+      notifyListeners();
+      final genres = await _client.fetchGenres();
+      _genres = genres;
+      await _cacheStore.saveGenres(genres);
+    } catch (_) {
+      // Use cached results when available.
+    } finally {
+      _isLoadingLibrary = false;
+      notifyListeners();
+    }
+  }
+
+  /// Clears album, artist, and genre selections.
+  void clearBrowseSelection({bool notify = true}) {
+    _selectedAlbum = null;
+    _selectedArtist = null;
+    _selectedGenre = null;
+    _albumTracks = [];
+    _artistTracks = [];
+    _genreTracks = [];
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  Future<void> _playFromList(
+    List<MediaItem> tracks,
+    MediaItem track,
+  ) async {
+    final index = tracks.indexWhere((item) => item.id == track.id);
+    if (index < 0) {
+      return;
+    }
+    _queue = tracks;
+    await _playback.setQueue(
+      _queue,
+      startIndex: index,
+      cacheStore: _cacheStore,
+      headers: _playbackHeaders(),
+    );
+    await _playback.play();
   }
 
   Map<String, String>? _playbackHeaders() {
