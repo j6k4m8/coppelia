@@ -9,7 +9,10 @@ import '../../core/color_tokens.dart';
 /// Vertical navigation rail for playlists and actions.
 class SidebarNavigation extends StatefulWidget {
   /// Creates the sidebar navigation.
-  const SidebarNavigation({super.key});
+  const SidebarNavigation({super.key, this.onCollapse});
+
+  /// Optional handler to collapse the sidebar.
+  final VoidCallback? onCollapse;
 
   @override
   State<SidebarNavigation> createState() => _SidebarNavigationState();
@@ -50,6 +53,13 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                 'Copellia',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
+              const Spacer(),
+              if (widget.onCollapse != null)
+                IconButton(
+                  onPressed: widget.onCollapse,
+                  icon: const Icon(Icons.chevron_left, size: 18),
+                  tooltip: 'Collapse sidebar',
+                ),
             ],
           ),
           const SizedBox(height: 32),

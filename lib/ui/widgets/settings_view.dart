@@ -128,28 +128,42 @@ class _SettingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 520;
+        final textBlock = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.bodyLarge),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: ColorTokens.textSecondary(context)),
+            ),
+          ],
+        );
+        if (isNarrow) {
+          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: Theme.of(context).textTheme.bodyLarge),
-              const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: ColorTokens.textSecondary(context)),
-                ),
+              textBlock,
+              const SizedBox(height: 12),
+              trailing,
             ],
-          ),
-        ),
-        const SizedBox(width: 16),
-        trailing,
-      ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: textBlock),
+            const SizedBox(width: 16),
+            trailing,
+          ],
+        );
+      },
     );
   }
 }

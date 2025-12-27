@@ -119,51 +119,95 @@ class _BottomBar extends StatelessWidget {
           top: BorderSide(color: ColorTokens.border(context)),
         ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 680;
+          final titleBlock = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _MiniArtwork(track: track),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Text(
+                track?.title ?? 'Nothing queued',
+                style: Theme.of(context).textTheme.titleMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              _NowPlayingMeta(track: track),
+            ],
+          );
+          if (isNarrow) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
                   children: [
-                    Text(
-                      track?.title ?? 'Nothing queued',
-                      style: Theme.of(context).textTheme.titleMedium,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    _NowPlayingMeta(track: track),
+                    _MiniArtwork(track: track),
+                    const SizedBox(width: 12),
+                    Expanded(child: titleBlock),
                   ],
                 ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.queue_music),
+                      onPressed: () => _showQueue(context, state),
+                    ),
+                    _Controls(
+                      isPlaying: state.isPlaying,
+                      onPlayPause: state.togglePlayback,
+                      onNext: state.nextTrack,
+                      onPrevious: state.previousTrack,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                _ProgressBar(
+                  position: state.position,
+                  duration: state.duration,
+                  onSeek: state.seek,
+                ),
+                if (track != null) ...[
+                  const SizedBox(height: 8),
+                  _MiniWaveform(trackId: track.id, compact: true),
+                ],
+              ],
+            );
+          }
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  _MiniArtwork(track: track),
+                  const SizedBox(width: 16),
+                  Expanded(child: titleBlock),
+                  IconButton(
+                    icon: const Icon(Icons.queue_music),
+                    onPressed: () => _showQueue(context, state),
+                  ),
+                  _Controls(
+                    isPlaying: state.isPlaying,
+                    onPlayPause: state.togglePlayback,
+                    onNext: state.nextTrack,
+                    onPrevious: state.previousTrack,
+                  ),
+                ],
               ),
-              IconButton(
-                icon: const Icon(Icons.queue_music),
-                onPressed: () => _showQueue(context, state),
+              const SizedBox(height: 6),
+              _ProgressBar(
+                position: state.position,
+                duration: state.duration,
+                onSeek: state.seek,
               ),
-              _Controls(
-                isPlaying: state.isPlaying,
-                onPlayPause: state.togglePlayback,
-                onNext: state.nextTrack,
-                onPrevious: state.previousTrack,
-              ),
+              if (track != null) ...[
+                const SizedBox(height: 8),
+                _MiniWaveform(trackId: track.id, compact: true),
+              ],
             ],
-          ),
-          const SizedBox(height: 6),
-          _ProgressBar(
-            position: state.position,
-            duration: state.duration,
-            onSeek: state.seek,
-          ),
-          if (track != null) ...[
-            const SizedBox(height: 8),
-            _MiniWaveform(trackId: track.id, compact: true),
-          ],
-        ],
+          );
+        },
       ),
     );
   }

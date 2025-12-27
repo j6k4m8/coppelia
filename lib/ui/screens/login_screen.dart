@@ -38,78 +38,87 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: GradientBackground(
         child: Center(
-          child: SizedBox(
-            width: 440,
-            child: GlassContainer(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Welcome back',
-                    style: theme.textTheme.headlineMedium,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final available = constraints.maxWidth - 32;
+              final maxWidth = available < 280
+                  ? constraints.maxWidth * 0.9
+                  : 440.0;
+              return ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                child: GlassContainer(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Welcome back',
+                        style: theme.textTheme.headlineMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Connect your Jellyfin music library and start listening.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: ColorTokens.textSecondary(context, 0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      _buildField(
+                        label: 'Server URL',
+                        controller: _serverController,
+                        hint: 'https://jellyfin.yourdomain.com',
+                      ),
+                      const SizedBox(height: 16),
+                      _buildField(
+                        label: 'Username',
+                        controller: _usernameController,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildField(
+                        label: 'Password',
+                        controller: _passwordController,
+                        obscureText: true,
+                      ),
+                      const SizedBox(height: 24),
+                      if (appState.authError != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text(
+                            appState.authError!,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.error,
+                            ),
+                          ),
+                        ),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: _isSubmitting
+                              ? null
+                              : () => _handleSignIn(appState),
+                          child: _isSubmitting
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Sign in'),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Tip: Use a local Jellyfin user with music library access.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: ColorTokens.textSecondary(context, 0.55),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Connect your Jellyfin music library and start listening.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: ColorTokens.textSecondary(context, 0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  _buildField(
-                    label: 'Server URL',
-                    controller: _serverController,
-                    hint: 'https://jellyfin.yourdomain.com',
-                  ),
-                  const SizedBox(height: 16),
-                  _buildField(
-                    label: 'Username',
-                    controller: _usernameController,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildField(
-                    label: 'Password',
-                    controller: _passwordController,
-                    obscureText: true,
-                  ),
-                  const SizedBox(height: 24),
-                  if (appState.authError != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        appState.authError!,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-                    ),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _isSubmitting
-                          ? null
-                          : () => _handleSignIn(appState),
-                      child: _isSubmitting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Sign in'),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Tip: Use a local Jellyfin user with music library access.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: ColorTokens.textSecondary(context, 0.55),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),

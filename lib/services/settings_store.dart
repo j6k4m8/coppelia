@@ -11,6 +11,7 @@ class SettingsStore {
   static const _themeKey = 'settings_theme_mode';
   static const _layoutKey = 'settings_now_playing_layout';
   static const _sidebarWidthKey = 'settings_sidebar_width';
+  static const _sidebarCollapsedKey = 'settings_sidebar_collapsed';
 
   /// Loads the preferred theme mode.
   Future<ThemeMode> loadThemeMode() async {
@@ -59,5 +60,17 @@ class SettingsStore {
   Future<void> saveSidebarWidth(double width) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setDouble(_sidebarWidthKey, width);
+  }
+
+  /// Loads the preferred sidebar collapsed state.
+  Future<bool> loadSidebarCollapsed() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_sidebarCollapsedKey) ?? false;
+  }
+
+  /// Saves the preferred sidebar collapsed state.
+  Future<void> saveSidebarCollapsed(bool collapsed) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_sidebarCollapsedKey, collapsed);
   }
 }

@@ -69,22 +69,55 @@ class _MainContent extends StatelessWidget {
         );
     final albumCount = stats?.albumCount ?? state.albums.length;
     final artistCount = stats?.artistCount ?? state.artists.length;
-    final bodyContent = Row(
-      children: [
-        SizedBox(
-          width: state.sidebarWidth,
-          child: const SidebarNavigation(),
-        ),
-        SidebarResizeHandle(
-          onDragUpdate: (delta) {
-            final nextWidth = (state.sidebarWidth + delta).clamp(200.0, 360.0);
-            state.setSidebarWidth(nextWidth, persist: false);
-          },
-          onDragEnd: () {
-            state.setSidebarWidth(state.sidebarWidth, persist: true);
-          },
-        ),
-        Expanded(
+    final bodyContent = LayoutBuilder(
+      builder: (context, constraints) {
+        const autoCollapseWidth = 980.0;
+        const collapseThreshold = 140.0;
+        final autoCollapsed = constraints.maxWidth < autoCollapseWidth;
+        final allowManual = !autoCollapsed;
+        final effectiveCollapsed = autoCollapsed || state.isSidebarCollapsed;
+        final currentWidth =
+            effectiveCollapsed ? 0.0 : state.sidebarWidth;
+
+        final navigation = effectiveCollapsed
+            ? const SizedBox.shrink()
+            : SizedBox(
+                width: state.sidebarWidth,
+                child: SidebarNavigation(
+                  onCollapse: allowManual
+                      ? () => state.setSidebarCollapsed(true)
+                      : null,
+                ),
+              );
+
+        final handle = SidebarResizeHandle(
+          onDragUpdate: allowManual
+              ? (delta) {
+                  final nextWidth =
+                      (currentWidth + delta).clamp(0.0, 360.0);
+                  if (nextWidth < collapseThreshold) {
+                    state.setSidebarCollapsed(true, persist: false);
+                  } else {
+                    if (state.isSidebarCollapsed) {
+                      state.setSidebarCollapsed(false, persist: false);
+                    }
+                    state.setSidebarWidth(nextWidth, persist: false);
+                  }
+                }
+              : (_) {},
+          onDragEnd: allowManual
+              ? () {
+                  if (state.isSidebarCollapsed) {
+                    state.setSidebarCollapsed(true, persist: true);
+                  } else {
+                    state.setSidebarWidth(state.sidebarWidth, persist: true);
+                    state.setSidebarCollapsed(false, persist: true);
+                  }
+                }
+              : null,
+        );
+
+        final content = Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(32, 24, 24, 24),
             child: Column(
@@ -117,8 +150,40 @@ class _MainContent extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ],
+        );
+
+        final row = Row(
+          children: [
+            navigation,
+            handle,
+            content,
+          ],
+        );
+
+        return Stack(
+          children: [
+            row,
+            if (allowManual && effectiveCollapsed)
+              Positioned(
+                top: 24,
+                left: 12,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => state.setSidebarCollapsed(false),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: ColorTokens.cardFill(context, 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: ColorTokens.border(context)),
+                    ),
+                    child: const Icon(Icons.chevron_right, size: 18),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
 
     if (state.nowPlayingLayout == NowPlayingLayout.side) {
@@ -306,19 +371,20 @@ class _HeaderState extends State<_Header> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               heading,
-              const SizedBox(height: 16),
-              Align(alignment: Alignment.centerRight, child: controls),
+              const SizedBox(height: 12),
+              controls,
             ],
           );
         }
         return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(child: heading),
             const SizedBox(width: 24),
-            Flexible(child: Align(
-              alignment: Alignment.centerRight,
+            Align(
+              alignment: Alignment.topRight,
               child: controls,
-            )),
+            ),
           ],
         );
       },

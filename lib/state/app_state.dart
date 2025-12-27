@@ -83,6 +83,7 @@ class AppState extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.dark;
   NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.side;
   double _sidebarWidth = 240;
+  bool _sidebarCollapsed = false;
   final Map<LibraryView, BrowseLayout> _browseLayouts = {};
   final Map<String, double> _scrollOffsets = {};
 
@@ -199,6 +200,9 @@ class AppState extends ChangeNotifier {
   /// Current sidebar width.
   double get sidebarWidth => _sidebarWidth;
 
+  /// True when the sidebar is collapsed.
+  bool get isSidebarCollapsed => _sidebarCollapsed;
+
   /// Preferred browse layout for a library view.
   BrowseLayout browseLayoutFor(LibraryView view) =>
       _browseLayouts[view] ?? BrowseLayout.grid;
@@ -226,6 +230,7 @@ class AppState extends ChangeNotifier {
     _themeMode = await _settingsStore.loadThemeMode();
     _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
     _sidebarWidth = await _settingsStore.loadSidebarWidth();
+    _sidebarCollapsed = await _settingsStore.loadSidebarCollapsed();
     await _loadCachedLibrary();
     _isBootstrapping = false;
     notifyListeners();
@@ -778,6 +783,18 @@ class AppState extends ChangeNotifier {
     _sidebarWidth = width;
     if (persist) {
       await _settingsStore.saveSidebarWidth(width);
+    }
+    notifyListeners();
+  }
+
+  /// Updates the sidebar collapsed preference.
+  Future<void> setSidebarCollapsed(
+    bool collapsed, {
+    bool persist = true,
+  }) async {
+    _sidebarCollapsed = collapsed;
+    if (persist) {
+      await _settingsStore.saveSidebarCollapsed(collapsed);
     }
     notifyListeners();
   }

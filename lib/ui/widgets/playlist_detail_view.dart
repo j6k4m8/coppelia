@@ -69,64 +69,80 @@ class _PlaylistHeader extends StatelessWidget {
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: ColorTokens.border(context)),
       ),
-      child: Row(
-        children: [
-          ClipRRect(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 720;
+          final artwork = ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: playlist.imageUrl == null
                 ? Container(
-                    width: 140,
-                    height: 140,
+                    width: isNarrow ? 160 : 140,
+                    height: isNarrow ? 160 : 140,
                     color: ColorTokens.cardFillStrong(context),
                     child: const Icon(Icons.queue_music, size: 36),
                   )
                 : CachedNetworkImage(
                     imageUrl: playlist.imageUrl!,
-                    width: 140,
-                    height: 140,
+                    width: isNarrow ? 160 : 140,
+                    height: isNarrow ? 160 : 140,
                     fit: BoxFit.cover,
                   ),
-          ),
-          const SizedBox(width: 24),
-          Expanded(
-            child: Column(
+          );
+          final details = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                playlist.name,
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${playlist.trackCount} tracks',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: ColorTokens.textSecondary(context)),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: state.playlistTracks.isEmpty
+                        ? null
+                        : () => state.playFromPlaylist(
+                              state.playlistTracks.first,
+                            ),
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text('Play'),
+                  ),
+                  OutlinedButton(
+                    onPressed: state.clearPlaylistSelection,
+                    child: const Text('Back to library'),
+                  ),
+                ],
+              ),
+            ],
+          );
+          if (isNarrow) {
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  playlist.name,
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${playlist.trackCount} tracks',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: ColorTokens.textSecondary(context)),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    FilledButton.icon(
-                      onPressed: state.playlistTracks.isEmpty
-                          ? null
-                          : () => state.playFromPlaylist(
-                                state.playlistTracks.first,
-                              ),
-                      icon: const Icon(Icons.play_arrow),
-                      label: const Text('Play'),
-                    ),
-                    const SizedBox(width: 12),
-                    OutlinedButton(
-                      onPressed: state.clearPlaylistSelection,
-                      child: const Text('Back to library'),
-                    ),
-                  ],
-                ),
+                artwork,
+                const SizedBox(height: 20),
+                details,
               ],
-            ),
-          ),
-        ],
+            );
+          }
+          return Row(
+            children: [
+              artwork,
+              const SizedBox(width: 24),
+              Expanded(child: details),
+            ],
+          );
+        },
       ),
     );
   }

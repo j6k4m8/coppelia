@@ -131,60 +131,76 @@ class _Header extends StatelessWidget {
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: ColorTokens.border(context)),
       ),
-      child: Row(
-        children: [
-          ClipRRect(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 720;
+          final artwork = ClipRRect(
             borderRadius: BorderRadius.circular(20),
-                child: imageUrl == null
-                    ? Container(
-                      width: 140,
-                      height: 140,
-                      color: ColorTokens.cardFillStrong(context),
-                      child: const Icon(Icons.library_music, size: 36),
-                    )
+            child: imageUrl == null
+                ? Container(
+                    width: isNarrow ? 160 : 140,
+                    height: isNarrow ? 160 : 140,
+                    color: ColorTokens.cardFillStrong(context),
+                    child: const Icon(Icons.library_music, size: 36),
+                  )
                 : CachedNetworkImage(
                     imageUrl: imageUrl!,
-                    width: 140,
-                    height: 140,
+                    width: isNarrow ? 160 : 140,
+                    height: isNarrow ? 160 : 140,
                     fit: BoxFit.cover,
                   ),
-          ),
-          const SizedBox(width: 24),
-          Expanded(
-            child: Column(
+          );
+          final details = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: ColorTokens.textSecondary(context)),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: onPlayAll,
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text('Play'),
+                  ),
+                  OutlinedButton(
+                    onPressed: onBack,
+                    child: const Text('Back'),
+                  ),
+                ],
+              ),
+            ],
+          );
+          if (isNarrow) {
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  subtitle,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: ColorTokens.textSecondary(context)),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    FilledButton.icon(
-                      onPressed: onPlayAll,
-                      icon: const Icon(Icons.play_arrow),
-                      label: const Text('Play'),
-                    ),
-                    const SizedBox(width: 12),
-                    OutlinedButton(
-                      onPressed: onBack,
-                      child: const Text('Back'),
-                    ),
-                  ],
-                ),
+                artwork,
+                const SizedBox(height: 20),
+                details,
               ],
-            ),
-          ),
-        ],
+            );
+          }
+          return Row(
+            children: [
+              artwork,
+              const SizedBox(width: 24),
+              Expanded(child: details),
+            ],
+          );
+        },
       ),
     );
   }
