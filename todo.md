@@ -50,7 +50,7 @@
 -   [ ] settings page has:
     -   [ ] toggle each section of homepage
     -   [ ] toggle each sidebar item
--   [ ] make settings page a hamburger icon after Home, instead of button way at the bottom
+-   [x] make settings page a hamburger icon after Home, instead of button way at the bottom
 -   [ ] allow collapse of all sidebar sections, not just favs
 -   [ ] indicate how much cache / disk space is being used by cached media
 -   [ ] in appearance/themes, allow tracking the system theme which overrides the light-dark setting.

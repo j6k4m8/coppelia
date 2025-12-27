@@ -70,6 +70,13 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                 state.selectedView == LibraryView.home,
             onTap: () => state.selectLibraryView(LibraryView.home),
           ),
+          _NavTile(
+            icon: Icons.menu,
+            label: 'Settings',
+            selected: state.selectedPlaylist == null &&
+                state.selectedView == LibraryView.settings,
+            onTap: () => state.selectLibraryView(LibraryView.settings),
+          ),
           const SizedBox(height: 20),
           _SectionHeader(
             title: 'Favorites',
@@ -186,10 +193,6 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             ),
           ),
           const SizedBox(height: 16),
-          FilledButton.tonal(
-            onPressed: () => state.selectLibraryView(LibraryView.settings),
-            child: const Text('Settings'),
-          ),
         ],
       ),
     );
