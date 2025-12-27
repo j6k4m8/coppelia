@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../state/now_playing_layout.dart';
+import '../state/home_section.dart';
+import '../state/sidebar_item.dart';
 
 /// Persists user preferences for the app.
 class SettingsStore {
@@ -12,6 +16,8 @@ class SettingsStore {
   static const _layoutKey = 'settings_now_playing_layout';
   static const _sidebarWidthKey = 'settings_sidebar_width';
   static const _sidebarCollapsedKey = 'settings_sidebar_collapsed';
+  static const _homeSectionKey = 'settings_home_sections';
+  static const _sidebarVisibilityKey = 'settings_sidebar_visibility';
 
   /// Loads the preferred theme mode.
   Future<ThemeMode> loadThemeMode() async {
@@ -78,5 +84,69 @@ class SettingsStore {
   Future<void> saveSidebarCollapsed(bool collapsed) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_sidebarCollapsedKey, collapsed);
+  }
+
+  /// Loads the preferred home section visibility map.
+  Future<Map<HomeSection, bool>> loadHomeSectionVisibility() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_homeSectionKey);
+    final visibility = {
+      for (final section in HomeSection.values) section: true,
+    };
+    if (raw == null) {
+      return visibility;
+    }
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    for (final section in HomeSection.values) {
+      final value = decoded[section.storageKey];
+      if (value is bool) {
+        visibility[section] = value;
+      }
+    }
+    return visibility;
+  }
+
+  /// Saves the preferred home section visibility map.
+  Future<void> saveHomeSectionVisibility(
+    Map<HomeSection, bool> visibility,
+  ) async {
+    final preferences = await SharedPreferences.getInstance();
+    final payload = <String, bool>{
+      for (final section in HomeSection.values)
+        section.storageKey: visibility[section] ?? true,
+    };
+    await preferences.setString(_homeSectionKey, jsonEncode(payload));
+  }
+
+  /// Loads the preferred sidebar visibility map.
+  Future<Map<SidebarItem, bool>> loadSidebarVisibility() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_sidebarVisibilityKey);
+    final visibility = {
+      for (final item in SidebarItem.values) item: true,
+    };
+    if (raw == null) {
+      return visibility;
+    }
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    for (final item in SidebarItem.values) {
+      final value = decoded[item.storageKey];
+      if (value is bool) {
+        visibility[item] = value;
+      }
+    }
+    return visibility;
+  }
+
+  /// Saves the preferred sidebar visibility map.
+  Future<void> saveSidebarVisibility(
+    Map<SidebarItem, bool> visibility,
+  ) async {
+    final preferences = await SharedPreferences.getInstance();
+    final payload = <String, bool>{
+      for (final item in SidebarItem.values)
+        item.storageKey: visibility[item] ?? true,
+    };
+    await preferences.setString(_sidebarVisibilityKey, jsonEncode(payload));
   }
 }

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
+import '../../state/home_section.dart';
 import '../../state/now_playing_layout.dart';
+import '../../state/sidebar_item.dart';
 import '../../core/color_tokens.dart';
 import 'glass_container.dart';
 import 'section_header.dart';
@@ -72,6 +74,171 @@ class SettingsView extends StatelessWidget {
                       final layout = selection.first;
                       state.setNowPlayingLayout(layout);
                     },
+                  ),
+                ),
+                Divider(height: 32, color: ColorTokens.border(context, 0.12)),
+                Text('Home', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 12),
+                ...HomeSection.values.map(
+                  (section) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _SettingRow(
+                      title: section.label,
+                      subtitle: section.description,
+                      trailing: Switch(
+                        value: state.isHomeSectionVisible(section),
+                        onChanged: (value) =>
+                            state.setHomeSectionVisible(section, value),
+                      ),
+                    ),
+                  ),
+                ),
+                Divider(height: 32, color: ColorTokens.border(context, 0.12)),
+                Text('Sidebar', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 12),
+                _SettingsSubheader(title: 'Main'),
+                const SizedBox(height: 8),
+                _SettingRow(
+                  title: SidebarItem.home.label,
+                  subtitle: 'Show Home in the sidebar.',
+                  trailing: Switch(
+                    value: state.isSidebarItemVisible(SidebarItem.home),
+                    onChanged: (value) =>
+                        state.setSidebarItemVisible(SidebarItem.home, value),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _SettingRow(
+                  title: SidebarItem.settings.label,
+                  subtitle: 'Show Settings in the sidebar.',
+                  trailing: Switch(
+                    value: state.isSidebarItemVisible(SidebarItem.settings),
+                    onChanged: (value) =>
+                        state.setSidebarItemVisible(SidebarItem.settings, value),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _SettingsSubheader(title: 'Favorites'),
+                const SizedBox(height: 8),
+                _SettingRow(
+                  title: SidebarItem.favoritesAlbums.label,
+                  subtitle: 'Show favorite albums.',
+                  trailing: Switch(
+                    value: state.isSidebarItemVisible(
+                      SidebarItem.favoritesAlbums,
+                    ),
+                    onChanged: (value) => state.setSidebarItemVisible(
+                      SidebarItem.favoritesAlbums,
+                      value,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _SettingRow(
+                  title: SidebarItem.favoritesSongs.label,
+                  subtitle: 'Show favorite songs.',
+                  trailing: Switch(
+                    value: state.isSidebarItemVisible(
+                      SidebarItem.favoritesSongs,
+                    ),
+                    onChanged: (value) => state.setSidebarItemVisible(
+                      SidebarItem.favoritesSongs,
+                      value,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _SettingRow(
+                  title: SidebarItem.favoritesArtists.label,
+                  subtitle: 'Show favorite artists.',
+                  trailing: Switch(
+                    value: state.isSidebarItemVisible(
+                      SidebarItem.favoritesArtists,
+                    ),
+                    onChanged: (value) => state.setSidebarItemVisible(
+                      SidebarItem.favoritesArtists,
+                      value,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _SettingsSubheader(title: 'Browse'),
+                const SizedBox(height: 8),
+                _SettingRow(
+                  title: SidebarItem.browseAlbums.label,
+                  subtitle: 'Show albums in Browse.',
+                  trailing: Switch(
+                    value: state.isSidebarItemVisible(
+                      SidebarItem.browseAlbums,
+                    ),
+                    onChanged: (value) => state.setSidebarItemVisible(
+                      SidebarItem.browseAlbums,
+                      value,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _SettingRow(
+                  title: SidebarItem.browseArtists.label,
+                  subtitle: 'Show artists in Browse.',
+                  trailing: Switch(
+                    value: state.isSidebarItemVisible(
+                      SidebarItem.browseArtists,
+                    ),
+                    onChanged: (value) => state.setSidebarItemVisible(
+                      SidebarItem.browseArtists,
+                      value,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _SettingRow(
+                  title: SidebarItem.browseGenres.label,
+                  subtitle: 'Show genres in Browse.',
+                  trailing: Switch(
+                    value: state.isSidebarItemVisible(
+                      SidebarItem.browseGenres,
+                    ),
+                    onChanged: (value) => state.setSidebarItemVisible(
+                      SidebarItem.browseGenres,
+                      value,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _SettingsSubheader(title: 'Playback'),
+                const SizedBox(height: 8),
+                _SettingRow(
+                  title: SidebarItem.history.label,
+                  subtitle: 'Show playback history.',
+                  trailing: Switch(
+                    value: state.isSidebarItemVisible(SidebarItem.history),
+                    onChanged: (value) =>
+                        state.setSidebarItemVisible(SidebarItem.history, value),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _SettingRow(
+                  title: SidebarItem.queue.label,
+                  subtitle: 'Show the play queue.',
+                  trailing: Switch(
+                    value: state.isSidebarItemVisible(SidebarItem.queue),
+                    onChanged: (value) =>
+                        state.setSidebarItemVisible(SidebarItem.queue, value),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _SettingsSubheader(title: 'Playlists'),
+                const SizedBox(height: 8),
+                _SettingRow(
+                  title: SidebarItem.playlists.label,
+                  subtitle: 'Show playlist list in the sidebar.',
+                  trailing: Switch(
+                    value: state.isSidebarItemVisible(SidebarItem.playlists),
+                    onChanged: (value) => state.setSidebarItemVisible(
+                      SidebarItem.playlists,
+                      value,
+                    ),
                   ),
                 ),
                 Divider(height: 32, color: ColorTokens.border(context, 0.12)),
@@ -179,6 +346,23 @@ class _SettingRow extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _SettingsSubheader extends StatelessWidget {
+  const _SettingsSubheader({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: Theme.of(context)
+          .textTheme
+          .titleSmall
+          ?.copyWith(color: ColorTokens.textSecondary(context, 0.75)),
     );
   }
 }

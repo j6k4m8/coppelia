@@ -18,8 +18,10 @@ import '../services/playback_controller.dart';
 import '../services/settings_store.dart';
 import '../services/session_store.dart';
 import 'browse_layout.dart';
+import 'home_section.dart';
 import 'library_view.dart';
 import 'now_playing_layout.dart';
+import 'sidebar_item.dart';
 
 /// Central application state and Jellyfin coordination.
 class AppState extends ChangeNotifier {
@@ -82,6 +84,12 @@ class AppState extends ChangeNotifier {
   bool _isBuffering = false;
   ThemeMode _themeMode = ThemeMode.dark;
   NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.side;
+  Map<HomeSection, bool> _homeSectionVisibility = {
+    for (final section in HomeSection.values) section: true,
+  };
+  Map<SidebarItem, bool> _sidebarVisibility = {
+    for (final item in SidebarItem.values) item: true,
+  };
   double _sidebarWidth = 240;
   bool _sidebarCollapsed = false;
   final Map<LibraryView, BrowseLayout> _browseLayouts = {};
@@ -197,6 +205,14 @@ class AppState extends ChangeNotifier {
   /// Preferred layout for now playing.
   NowPlayingLayout get nowPlayingLayout => _nowPlayingLayout;
 
+  /// Home section visibility settings.
+  Map<HomeSection, bool> get homeSectionVisibility =>
+      Map.unmodifiable(_homeSectionVisibility);
+
+  /// Sidebar item visibility settings.
+  Map<SidebarItem, bool> get sidebarVisibility =>
+      Map.unmodifiable(_sidebarVisibility);
+
   /// Current sidebar width.
   double get sidebarWidth => _sidebarWidth;
 
@@ -207,9 +223,37 @@ class AppState extends ChangeNotifier {
   BrowseLayout browseLayoutFor(LibraryView view) =>
       _browseLayouts[view] ?? BrowseLayout.grid;
 
+  /// Returns whether a home section should be shown.
+  bool isHomeSectionVisible(HomeSection section) =>
+      _homeSectionVisibility[section] ?? true;
+
+  /// Returns whether a sidebar item should be shown.
+  bool isSidebarItemVisible(SidebarItem item) =>
+      _sidebarVisibility[item] ?? true;
+
   /// Updates the browse layout for a library view.
   void setBrowseLayout(LibraryView view, BrowseLayout layout) {
     _browseLayouts[view] = layout;
+    notifyListeners();
+  }
+
+  /// Updates the visibility of a home section.
+  Future<void> setHomeSectionVisible(
+    HomeSection section,
+    bool visible,
+  ) async {
+    _homeSectionVisibility[section] = visible;
+    await _settingsStore.saveHomeSectionVisibility(_homeSectionVisibility);
+    notifyListeners();
+  }
+
+  /// Updates the visibility of a sidebar item.
+  Future<void> setSidebarItemVisible(
+    SidebarItem item,
+    bool visible,
+  ) async {
+    _sidebarVisibility[item] = visible;
+    await _settingsStore.saveSidebarVisibility(_sidebarVisibility);
     notifyListeners();
   }
 
@@ -229,6 +273,8 @@ class AppState extends ChangeNotifier {
     }
     _themeMode = await _settingsStore.loadThemeMode();
     _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
+    _homeSectionVisibility = await _settingsStore.loadHomeSectionVisibility();
+    _sidebarVisibility = await _settingsStore.loadSidebarVisibility();
     _sidebarWidth = await _settingsStore.loadSidebarWidth();
     _sidebarCollapsed = await _settingsStore.loadSidebarCollapsed();
     await _loadCachedLibrary();

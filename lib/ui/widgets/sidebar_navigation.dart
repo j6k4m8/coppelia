@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/playlist.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
+import '../../state/sidebar_item.dart';
 import '../../core/color_tokens.dart';
 
 /// Vertical navigation rail for playlists and actions.
@@ -27,6 +28,21 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final showFavoritesSection = state.isSidebarItemVisible(
+          SidebarItem.favoritesAlbums,
+        ) ||
+        state.isSidebarItemVisible(SidebarItem.favoritesSongs) ||
+        state.isSidebarItemVisible(SidebarItem.favoritesArtists);
+    final showBrowseSection = state.isSidebarItemVisible(
+          SidebarItem.browseAlbums,
+        ) ||
+        state.isSidebarItemVisible(SidebarItem.browseArtists) ||
+        state.isSidebarItemVisible(SidebarItem.browseGenres);
+    final showPlaybackSection =
+        state.isSidebarItemVisible(SidebarItem.history) ||
+            state.isSidebarItemVisible(SidebarItem.queue);
+    final showPlaylistsSection =
+        state.isSidebarItemVisible(SidebarItem.playlists);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
@@ -66,165 +82,210 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             ],
           ),
           const SizedBox(height: 32),
-          _NavTile(
-            icon: Icons.home_filled,
-            label: 'Home',
-            selected: state.selectedPlaylist == null &&
-                state.selectedView == LibraryView.home,
-            onTap: () => state.selectLibraryView(LibraryView.home),
-          ),
-          _NavTile(
-            icon: Icons.menu,
-            label: 'Settings',
-            selected: state.selectedPlaylist == null &&
-                state.selectedView == LibraryView.settings,
-            onTap: () => state.selectLibraryView(LibraryView.settings),
-          ),
+          if (state.isSidebarItemVisible(SidebarItem.home))
+            _NavTile(
+              icon: Icons.home_filled,
+              label: 'Home',
+              selected: state.selectedPlaylist == null &&
+                  state.selectedView == LibraryView.home,
+              onTap: () => state.selectLibraryView(LibraryView.home),
+            ),
+          if (state.isSidebarItemVisible(SidebarItem.settings))
+            _NavTile(
+              icon: Icons.menu,
+              label: 'Settings',
+              selected: state.selectedPlaylist == null &&
+                  state.selectedView == LibraryView.settings,
+              onTap: () => state.selectLibraryView(LibraryView.settings),
+            ),
           const SizedBox(height: 20),
-          _SectionHeader(
-            title: 'Favorites',
-            isExpanded: _favoritesExpanded,
-            onTap: () => setState(() {
-              _favoritesExpanded = !_favoritesExpanded;
-            }),
-          ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            child: _favoritesExpanded
-                ? Column(
-                    children: [
-                      const SizedBox(height: 8),
-                      _NavTile(
-                        icon: Icons.album,
-                        label: 'Albums',
-                        selected: state.selectedPlaylist == null &&
-                            state.selectedView == LibraryView.favoritesAlbums,
-                        onTap: () =>
-                            state.selectLibraryView(LibraryView.favoritesAlbums),
-                      ),
-                      _NavTile(
-                        icon: Icons.music_note,
-                        label: 'Songs',
-                        selected: state.selectedPlaylist == null &&
-                            state.selectedView == LibraryView.favoritesSongs,
-                        onTap: () =>
-                            state.selectLibraryView(LibraryView.favoritesSongs),
-                      ),
-                      _NavTile(
-                        icon: Icons.people_alt,
-                        label: 'Artists',
-                        selected: state.selectedPlaylist == null &&
-                            state.selectedView == LibraryView.favoritesArtists,
-                        onTap: () => state
-                            .selectLibraryView(LibraryView.favoritesArtists),
-                      ),
-                    ],
-                  )
-                : const SizedBox.shrink(),
-          ),
+          if (showFavoritesSection) ...[
+            _SectionHeader(
+              title: 'Favorites',
+              isExpanded: _favoritesExpanded,
+              onTap: () => setState(() {
+                _favoritesExpanded = !_favoritesExpanded;
+              }),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              child: _favoritesExpanded
+                  ? Column(
+                      children: [
+                        const SizedBox(height: 8),
+                        if (state.isSidebarItemVisible(
+                          SidebarItem.favoritesAlbums,
+                        ))
+                          _NavTile(
+                            icon: Icons.album,
+                            label: 'Albums',
+                            selected: state.selectedPlaylist == null &&
+                                state.selectedView ==
+                                    LibraryView.favoritesAlbums,
+                            onTap: () => state
+                                .selectLibraryView(
+                                  LibraryView.favoritesAlbums,
+                                ),
+                          ),
+                        if (state.isSidebarItemVisible(
+                          SidebarItem.favoritesSongs,
+                        ))
+                          _NavTile(
+                            icon: Icons.music_note,
+                            label: 'Songs',
+                            selected: state.selectedPlaylist == null &&
+                                state.selectedView ==
+                                    LibraryView.favoritesSongs,
+                            onTap: () => state
+                                .selectLibraryView(
+                                  LibraryView.favoritesSongs,
+                                ),
+                          ),
+                        if (state.isSidebarItemVisible(
+                          SidebarItem.favoritesArtists,
+                        ))
+                          _NavTile(
+                            icon: Icons.people_alt,
+                            label: 'Artists',
+                            selected: state.selectedPlaylist == null &&
+                                state.selectedView ==
+                                    LibraryView.favoritesArtists,
+                            onTap: () => state
+                                .selectLibraryView(
+                                  LibraryView.favoritesArtists,
+                                ),
+                          ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
           const SizedBox(height: 20),
-          _SectionHeader(
-            title: 'Browse',
-            isExpanded: _browseExpanded,
-            onTap: () => setState(() {
-              _browseExpanded = !_browseExpanded;
-            }),
-          ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            child: _browseExpanded
-                ? Column(
-                    children: [
-                      const SizedBox(height: 8),
-                      _NavTile(
-                        icon: Icons.album,
-                        label: 'Albums',
-                        selected: state.selectedPlaylist == null &&
-                            state.selectedView == LibraryView.albums,
-                        onTap: () => state.selectLibraryView(LibraryView.albums),
-                      ),
-                      _NavTile(
-                        icon: Icons.people_alt,
-                        label: 'Artists',
-                        selected: state.selectedPlaylist == null &&
-                            state.selectedView == LibraryView.artists,
-                        onTap: () => state.selectLibraryView(LibraryView.artists),
-                      ),
-                      _NavTile(
-                        icon: Icons.auto_awesome_motion,
-                        label: 'Genres',
-                        selected: state.selectedPlaylist == null &&
-                            state.selectedView == LibraryView.genres,
-                        onTap: () => state.selectLibraryView(LibraryView.genres),
-                      ),
-                    ],
-                  )
-                : const SizedBox.shrink(),
-          ),
+          if (showBrowseSection) ...[
+            _SectionHeader(
+              title: 'Browse',
+              isExpanded: _browseExpanded,
+              onTap: () => setState(() {
+                _browseExpanded = !_browseExpanded;
+              }),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              child: _browseExpanded
+                  ? Column(
+                      children: [
+                        const SizedBox(height: 8),
+                        if (state.isSidebarItemVisible(
+                          SidebarItem.browseAlbums,
+                        ))
+                          _NavTile(
+                            icon: Icons.album,
+                            label: 'Albums',
+                            selected: state.selectedPlaylist == null &&
+                                state.selectedView == LibraryView.albums,
+                            onTap: () =>
+                                state.selectLibraryView(LibraryView.albums),
+                          ),
+                        if (state.isSidebarItemVisible(
+                          SidebarItem.browseArtists,
+                        ))
+                          _NavTile(
+                            icon: Icons.people_alt,
+                            label: 'Artists',
+                            selected: state.selectedPlaylist == null &&
+                                state.selectedView == LibraryView.artists,
+                            onTap: () =>
+                                state.selectLibraryView(LibraryView.artists),
+                          ),
+                        if (state.isSidebarItemVisible(
+                          SidebarItem.browseGenres,
+                        ))
+                          _NavTile(
+                            icon: Icons.auto_awesome_motion,
+                            label: 'Genres',
+                            selected: state.selectedPlaylist == null &&
+                                state.selectedView == LibraryView.genres,
+                            onTap: () =>
+                                state.selectLibraryView(LibraryView.genres),
+                          ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
           const SizedBox(height: 16),
-          _SectionHeader(
-            title: 'Playback',
-            isExpanded: _playbackExpanded,
-            onTap: () => setState(() {
-              _playbackExpanded = !_playbackExpanded;
-            }),
-          ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            child: _playbackExpanded
-                ? Column(
-                    children: [
-                      const SizedBox(height: 8),
-                      _NavTile(
-                        icon: Icons.history,
-                        label: 'History',
-                        selected: state.selectedPlaylist == null &&
-                            state.selectedView == LibraryView.history,
-                        onTap: () => state.selectLibraryView(LibraryView.history),
-                      ),
-                      _NavTile(
-                        icon: Icons.queue_music,
-                        label: 'Queue',
-                        selected: state.selectedPlaylist == null &&
-                            state.selectedView == LibraryView.queue,
-                        onTap: () => state.selectLibraryView(LibraryView.queue),
-                      ),
-                    ],
-                  )
-                : const SizedBox.shrink(),
-          ),
+          if (showPlaybackSection) ...[
+            _SectionHeader(
+              title: 'Playback',
+              isExpanded: _playbackExpanded,
+              onTap: () => setState(() {
+                _playbackExpanded = !_playbackExpanded;
+              }),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              child: _playbackExpanded
+                  ? Column(
+                      children: [
+                        const SizedBox(height: 8),
+                        if (state.isSidebarItemVisible(SidebarItem.history))
+                          _NavTile(
+                            icon: Icons.history,
+                            label: 'History',
+                            selected: state.selectedPlaylist == null &&
+                                state.selectedView == LibraryView.history,
+                            onTap: () =>
+                                state.selectLibraryView(LibraryView.history),
+                          ),
+                        if (state.isSidebarItemVisible(SidebarItem.queue))
+                          _NavTile(
+                            icon: Icons.queue_music,
+                            label: 'Queue',
+                            selected: state.selectedPlaylist == null &&
+                                state.selectedView == LibraryView.queue,
+                            onTap: () =>
+                                state.selectLibraryView(LibraryView.queue),
+                          ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
           const SizedBox(height: 16),
-          _SectionHeader(
-            title: 'Playlists',
-            isExpanded: _playlistsExpanded,
-            onTap: () => setState(() {
-              _playlistsExpanded = !_playlistsExpanded;
-            }),
-          ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            child: _playlistsExpanded
-                ? Column(
-                    children: [
-                      const SizedBox(height: 12),
-                      ...state.playlists.map(
-                        (playlist) => Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: _PlaylistTile(
-                            playlist: playlist,
-                            selected: state.selectedPlaylist?.id == playlist.id,
-                            onTap: () => state.selectPlaylist(playlist),
+          if (showPlaylistsSection) ...[
+            _SectionHeader(
+              title: 'Playlists',
+              isExpanded: _playlistsExpanded,
+              onTap: () => setState(() {
+                _playlistsExpanded = !_playlistsExpanded;
+              }),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              child: _playlistsExpanded
+                  ? Column(
+                      children: [
+                        const SizedBox(height: 12),
+                        ...state.playlists.map(
+                          (playlist) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: _PlaylistTile(
+                              playlist: playlist,
+                              selected:
+                                  state.selectedPlaylist?.id == playlist.id,
+                              onTap: () => state.selectPlaylist(playlist),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  )
-                : const SizedBox.shrink(),
-          ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
           const SizedBox(height: 16),
         ],
       ),

@@ -1,5 +1,9 @@
 # TODO
 
+## HIGH PRIORITY
+
+-   [ ] When a track is playing, the updating Now Playing section causes the entire application to re-render on each update, which makes the OS-level menu bar unusable, adds scroll janks, and thrashes performance.
+
 ## Bugs
 
 -   [x] playback should require double-click (single click does not play).
