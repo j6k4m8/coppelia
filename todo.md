@@ -40,7 +40,7 @@
 -   [x] make sidebar scrollable and resizable
 -   [x] move sign out button to settings page
 -   [x] on homepage, library stats should be for whole library, not just playlist-visible items
--   [ ] allow resizing arbitrary shapes for responsiveness, don't limit sizes
+-   [x] allow resizing arbitrary shapes for responsiveness, don't limit sizes
 -   [ ] "back" button is inside album card hero / page header. instead it should be left of the title of the page, left of the text.
 
 ## Low Priority
@@ -57,4 +57,4 @@
 -   [ ] "good evening {user}" should be "welcome back {user}", "good morning {user}", afternoon, and:
     -   [ ] 4-6am: "Some early bird tunes"
     -   [ ] 10pm-4am: "Late night vibes"
--   [ ] bug: the library stats header say "1 artist". that's definitely wrong.
+-   [x] bug: the library stats header say "1 artist". that's definitely wrong.

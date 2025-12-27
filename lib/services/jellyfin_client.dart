@@ -549,10 +549,7 @@ class JellyfinClient {
         session: session,
         includeItemTypes: 'MusicAlbum',
       ),
-      _fetchItemCount(
-        session: session,
-        includeItemTypes: 'MusicArtist',
-      ),
+      _fetchArtistCount(session),
       _fetchItemCount(
         session: session,
         includeItemTypes: 'Playlist',
@@ -604,5 +601,26 @@ class JellyfinClient {
     }
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
     return payload['TotalRecordCount'] as int? ?? 0;
+  }
+
+  Future<int> _fetchArtistCount(AuthSession session) async {
+    final uri = Uri.parse('${session.serverUrl}/Artists').replace(
+      queryParameters: {
+        'UserId': session.userId,
+        'Limit': '0',
+        'api_key': session.accessToken,
+      },
+    );
+    final response = await _httpClient.get(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Unable to load artist count.');
+    }
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    final total = payload['TotalRecordCount'] as int?;
+    if (total != null) {
+      return total;
+    }
+    final items = payload['Items'] as List<dynamic>? ?? [];
+    return items.length;
   }
 }
