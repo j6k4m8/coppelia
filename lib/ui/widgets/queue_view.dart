@@ -31,12 +31,21 @@ class QueueView extends StatelessWidget {
       children: [
         SectionHeader(
           title: 'Queue',
-          action: Text(
-            '${queue.length} tracks',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: ColorTokens.textSecondary(context)),
+          action: Row(
+            children: [
+              Text(
+                '${queue.length} tracks',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: ColorTokens.textSecondary(context)),
+              ),
+              const SizedBox(width: 8),
+              _HeaderAction(
+                label: 'Clear',
+                onTap: state.clearQueue,
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 16),
@@ -64,6 +73,31 @@ class QueueView extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _HeaderAction extends StatelessWidget {
+  const _HeaderAction({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+      ),
     );
   }
 }

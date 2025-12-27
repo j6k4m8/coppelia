@@ -110,6 +110,29 @@ class PlaybackController {
     await _player.dispose();
   }
 
+  /// Clears upcoming items from the queue.
+  Future<void> clearQueue({bool keepCurrent = true}) async {
+    final source = _queueSource;
+    if (source == null || source.length == 0) {
+      await _player.stop();
+      final emptyQueue = ConcatenatingAudioSource(children: []);
+      await _player.setAudioSource(emptyQueue);
+      _queueSource = emptyQueue;
+      return;
+    }
+    final index = currentIndex ?? -1;
+    if (keepCurrent && index >= 0) {
+      if (index + 1 < source.length) {
+        await source.removeRange(index + 1, source.length);
+      }
+      return;
+    }
+    await _player.stop();
+    final emptyQueue = ConcatenatingAudioSource(children: []);
+    await _player.setAudioSource(emptyQueue);
+    _queueSource = emptyQueue;
+  }
+
   Future<AudioSource> _buildSource(
     MediaItem item,
     CacheStore? cacheStore,

@@ -848,6 +848,31 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Clears the current playback queue.
+  Future<void> clearQueue() async {
+    final currentIndex = _playback.currentIndex;
+    if (_queue.isEmpty || currentIndex == null || currentIndex < 0) {
+      await _playback.clearQueue(keepCurrent: false);
+      _queue = [];
+      _nowPlaying = null;
+      _position = Duration.zero;
+      _duration = Duration.zero;
+      _positionNotifier.value = _position;
+      _durationNotifier.value = _duration;
+      _isPlaying = false;
+      _isBuffering = false;
+      _isPlayingNotifier.value = _isPlaying;
+      _isBufferingNotifier.value = _isBuffering;
+      notifyListeners();
+      return;
+    }
+    await _playback.clearQueue(keepCurrent: true);
+    if (currentIndex + 1 < _queue.length) {
+      _queue = _queue.sublist(0, currentIndex + 1);
+    }
+    notifyListeners();
+  }
+
   /// Seeks to a specific playback position.
   Future<void> seek(Duration position) async {
     await _playback.seek(position);
