@@ -9,6 +9,7 @@ import '../models/auth_session.dart';
 import '../models/genre.dart';
 import '../models/media_item.dart';
 import '../models/playlist.dart';
+import '../models/search_results.dart';
 import '../services/cache_store.dart';
 import '../services/jellyfin_client.dart';
 import '../services/playback_controller.dart';
@@ -44,6 +45,9 @@ class AppState extends ChangeNotifier {
   Album? _selectedAlbum;
   Artist? _selectedArtist;
   Genre? _selectedGenre;
+  String _searchQuery = '';
+  bool _isSearching = false;
+  SearchResults? _searchResults;
 
   List<Playlist> _playlists = [];
   List<MediaItem> _playlistTracks = [];
@@ -123,6 +127,15 @@ class AppState extends ChangeNotifier {
   /// Tracks for the selected genre.
   List<MediaItem> get genreTracks => List.unmodifiable(_genreTracks);
 
+  /// Current search query.
+  String get searchQuery => _searchQuery;
+
+  /// True while search results are loading.
+  bool get isSearching => _isSearching;
+
+  /// Search results, when available.
+  SearchResults? get searchResults => _searchResults;
+
   /// Currently playing track.
   MediaItem? get nowPlaying => _nowPlaying;
 
@@ -185,6 +198,9 @@ class AppState extends ChangeNotifier {
     _selectedAlbum = null;
     _selectedArtist = null;
     _selectedGenre = null;
+    _searchQuery = '';
+    _searchResults = null;
+    _isSearching = false;
     _playlistTracks = [];
     _featuredTracks = [];
     _playlists = [];
@@ -266,6 +282,9 @@ class AppState extends ChangeNotifier {
     _selectedPlaylist = null;
     _playlistTracks = [];
     clearBrowseSelection(notify: false);
+    if (view != LibraryView.home) {
+      clearSearch(notify: false);
+    }
     notifyListeners();
     if (view == LibraryView.albums) {
       unawaited(loadAlbums());
@@ -275,6 +294,36 @@ class AppState extends ChangeNotifier {
     }
     if (view == LibraryView.genres) {
       unawaited(loadGenres());
+    }
+  }
+
+  /// Performs a search across the library.
+  Future<void> searchLibrary(String query) async {
+    final trimmed = query.trim();
+    _searchQuery = trimmed;
+    if (trimmed.isEmpty) {
+      clearSearch();
+      return;
+    }
+    _isSearching = true;
+    notifyListeners();
+    try {
+      _searchResults = await _client.searchLibrary(trimmed);
+    } catch (_) {
+      _searchResults = const SearchResults();
+    } finally {
+      _isSearching = false;
+      notifyListeners();
+    }
+  }
+
+  /// Clears the current search results.
+  void clearSearch({bool notify = true}) {
+    _searchQuery = '';
+    _searchResults = null;
+    _isSearching = false;
+    if (notify) {
+      notifyListeners();
     }
   }
 
@@ -424,6 +473,12 @@ class AppState extends ChangeNotifier {
   /// Plays tracks from the selected genre.
   Future<void> playFromGenre(MediaItem track) async {
     await _playFromList(_genreTracks, track);
+  }
+
+  /// Plays tracks from search results.
+  Future<void> playFromSearch(MediaItem track) async {
+    final tracks = _searchResults?.tracks ?? const <MediaItem>[];
+    await _playFromList(tracks, track);
   }
 
   /// Plays featured tracks from the home shelf.

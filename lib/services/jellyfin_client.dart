@@ -8,6 +8,7 @@ import '../models/auth_session.dart';
 import '../models/genre.dart';
 import '../models/media_item.dart';
 import '../models/playlist.dart';
+import '../models/search_results.dart';
 /// Client wrapper for Jellyfin REST APIs.
 class JellyfinClient {
   /// Identifier used for Jellyfin device tracking.
@@ -312,6 +313,68 @@ class JellyfinClient {
               deviceId: deviceId,
             ))
         .toList();
+  }
+
+  /// Searches the library for matching items.
+  Future<SearchResults> searchLibrary(String query) async {
+    final session = _requireSession();
+    final uri = Uri.parse(
+      '${session.serverUrl}/Users/${session.userId}/Items',
+    ).replace(
+      queryParameters: {
+        'SearchTerm': query,
+        'IncludeItemTypes': 'Audio,MusicAlbum,MusicArtist,Genre',
+        'Recursive': 'true',
+        'Limit': '60',
+        'Fields':
+            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+                'ChildCount,AlbumArtist,AlbumArtists',
+        'api_key': session.accessToken,
+      },
+    );
+    final response = await _httpClient.get(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Unable to search library.');
+    }
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = payload['Items'] as List<dynamic>? ?? [];
+    final tracks = <MediaItem>[];
+    final albums = <Album>[];
+    final artists = <Artist>[];
+    final genres = <Genre>[];
+    for (final entry in items) {
+      final item = entry as Map<String, dynamic>;
+      final type = item['Type']?.toString();
+      if (type == 'Audio') {
+        tracks.add(
+          MediaItem.fromJellyfin(
+            item,
+            serverUrl: session.serverUrl,
+            token: session.accessToken,
+            userId: session.userId,
+            deviceId: deviceId,
+          ),
+        );
+      } else if (type == 'MusicAlbum') {
+        albums.add(
+          Album.fromJellyfin(item, serverUrl: session.serverUrl),
+        );
+      } else if (type == 'MusicArtist') {
+        artists.add(
+          Artist.fromJellyfin(item, serverUrl: session.serverUrl),
+        );
+      } else if (type == 'Genre') {
+        genres.add(
+          Genre.fromJellyfin(item, serverUrl: session.serverUrl),
+        );
+      }
+    }
+    return SearchResults(
+      tracks: tracks,
+      albums: albums,
+      artists: artists,
+      genres: genres,
+    );
   }
 
   /// Fetches recently added tracks for the home shelf.
