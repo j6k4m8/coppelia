@@ -41,7 +41,8 @@
 -   [x] move sign out button to settings page
 -   [x] on homepage, library stats should be for whole library, not just playlist-visible items
 -   [x] allow resizing arbitrary shapes for responsiveness, don't limit sizes
--   [ ] "back" button is inside album card hero / page header. instead it should be left of the title of the page, left of the text.
+-   [x] "back" button is inside album card hero / page header. instead it should be left of the title of the page, left of the text.
+-   [ ] add ability to clear queue
 
 ## Low Priority
 

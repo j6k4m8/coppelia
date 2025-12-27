@@ -20,6 +20,9 @@ class SidebarNavigation extends StatefulWidget {
 
 class _SidebarNavigationState extends State<SidebarNavigation> {
   bool _favoritesExpanded = true;
+  bool _browseExpanded = true;
+  bool _playbackExpanded = true;
+  bool _playlistsExpanded = true;
 
   @override
   Widget build(BuildContext context) {
@@ -121,76 +124,106 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                 : const SizedBox.shrink(),
           ),
           const SizedBox(height: 20),
-          Text(
-            'Browse',
-            style: Theme.of(context)
-                .textTheme
-                .titleSmall
-                ?.copyWith(color: ColorTokens.textSecondary(context, 0.7)),
+          _SectionHeader(
+            title: 'Browse',
+            isExpanded: _browseExpanded,
+            onTap: () => setState(() {
+              _browseExpanded = !_browseExpanded;
+            }),
           ),
-          const SizedBox(height: 8),
-          _NavTile(
-            icon: Icons.album,
-            label: 'Albums',
-            selected: state.selectedPlaylist == null &&
-                state.selectedView == LibraryView.albums,
-            onTap: () => state.selectLibraryView(LibraryView.albums),
-          ),
-          _NavTile(
-            icon: Icons.people_alt,
-            label: 'Artists',
-            selected: state.selectedPlaylist == null &&
-                state.selectedView == LibraryView.artists,
-            onTap: () => state.selectLibraryView(LibraryView.artists),
-          ),
-          _NavTile(
-            icon: Icons.auto_awesome_motion,
-            label: 'Genres',
-            selected: state.selectedPlaylist == null &&
-                state.selectedView == LibraryView.genres,
-            onTap: () => state.selectLibraryView(LibraryView.genres),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Playback',
-            style: Theme.of(context)
-                .textTheme
-                .titleSmall
-                ?.copyWith(color: ColorTokens.textSecondary(context, 0.7)),
-          ),
-          const SizedBox(height: 8),
-          _NavTile(
-            icon: Icons.history,
-            label: 'History',
-            selected: state.selectedPlaylist == null &&
-                state.selectedView == LibraryView.history,
-            onTap: () => state.selectLibraryView(LibraryView.history),
-          ),
-          _NavTile(
-            icon: Icons.queue_music,
-            label: 'Queue',
-            selected: state.selectedPlaylist == null &&
-                state.selectedView == LibraryView.queue,
-            onTap: () => state.selectLibraryView(LibraryView.queue),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            child: _browseExpanded
+                ? Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      _NavTile(
+                        icon: Icons.album,
+                        label: 'Albums',
+                        selected: state.selectedPlaylist == null &&
+                            state.selectedView == LibraryView.albums,
+                        onTap: () => state.selectLibraryView(LibraryView.albums),
+                      ),
+                      _NavTile(
+                        icon: Icons.people_alt,
+                        label: 'Artists',
+                        selected: state.selectedPlaylist == null &&
+                            state.selectedView == LibraryView.artists,
+                        onTap: () => state.selectLibraryView(LibraryView.artists),
+                      ),
+                      _NavTile(
+                        icon: Icons.auto_awesome_motion,
+                        label: 'Genres',
+                        selected: state.selectedPlaylist == null &&
+                            state.selectedView == LibraryView.genres,
+                        onTap: () => state.selectLibraryView(LibraryView.genres),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
           ),
           const SizedBox(height: 16),
-          Text(
-            'Playlists',
-            style: Theme.of(context)
-                .textTheme
-                .titleSmall
-                ?.copyWith(color: ColorTokens.textSecondary(context, 0.7)),
+          _SectionHeader(
+            title: 'Playback',
+            isExpanded: _playbackExpanded,
+            onTap: () => setState(() {
+              _playbackExpanded = !_playbackExpanded;
+            }),
           ),
-          const SizedBox(height: 12),
-          ...state.playlists.map(
-            (playlist) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: _PlaylistTile(
-                playlist: playlist,
-                selected: state.selectedPlaylist?.id == playlist.id,
-                onTap: () => state.selectPlaylist(playlist),
-              ),
-            ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            child: _playbackExpanded
+                ? Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      _NavTile(
+                        icon: Icons.history,
+                        label: 'History',
+                        selected: state.selectedPlaylist == null &&
+                            state.selectedView == LibraryView.history,
+                        onTap: () => state.selectLibraryView(LibraryView.history),
+                      ),
+                      _NavTile(
+                        icon: Icons.queue_music,
+                        label: 'Queue',
+                        selected: state.selectedPlaylist == null &&
+                            state.selectedView == LibraryView.queue,
+                        onTap: () => state.selectLibraryView(LibraryView.queue),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 16),
+          _SectionHeader(
+            title: 'Playlists',
+            isExpanded: _playlistsExpanded,
+            onTap: () => setState(() {
+              _playlistsExpanded = !_playlistsExpanded;
+            }),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            child: _playlistsExpanded
+                ? Column(
+                    children: [
+                      const SizedBox(height: 12),
+                      ...state.playlists.map(
+                        (playlist) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: _PlaylistTile(
+                            playlist: playlist,
+                            selected: state.selectedPlaylist?.id == playlist.id,
+                            onTap: () => state.selectPlaylist(playlist),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
           ),
           const SizedBox(height: 16),
         ],
