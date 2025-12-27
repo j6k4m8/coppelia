@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/media_item.dart';
+import '../../core/color_tokens.dart';
 import 'track_row.dart';
 
 /// Generic detail view for albums, artists, or genres.
@@ -125,25 +126,22 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            const Color(0xFF1F2433),
-            Colors.white.withOpacity(0.03),
-          ],
+          colors: ColorTokens.heroGradient(context),
         ),
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: ColorTokens.border(context)),
       ),
       child: Row(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
-            child: imageUrl == null
-                ? Container(
-                    width: 140,
-                    height: 140,
-                    color: Colors.white10,
-                    child: const Icon(Icons.library_music, size: 36),
-                  )
+                child: imageUrl == null
+                    ? Container(
+                      width: 140,
+                      height: 140,
+                      color: ColorTokens.cardFillStrong(context),
+                      child: const Icon(Icons.library_music, size: 36),
+                    )
                 : CachedNetworkImage(
                     imageUrl: imageUrl!,
                     width: 140,
@@ -166,7 +164,7 @@ class _Header extends StatelessWidget {
                   style: Theme.of(context)
                       .textTheme
                       .bodyMedium
-                      ?.copyWith(color: Colors.white60),
+                      ?.copyWith(color: ColorTokens.textSecondary(context)),
                 ),
                 const SizedBox(height: 16),
                 Row(

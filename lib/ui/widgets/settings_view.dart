@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
 import '../../state/now_playing_layout.dart';
+import '../../core/color_tokens.dart';
 import 'glass_container.dart';
 import 'section_header.dart';
 
@@ -36,7 +37,7 @@ class SettingsView extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Divider(height: 32, color: Colors.white12),
+                Divider(height: 32, color: ColorTokens.border(context, 0.12)),
                 Text('Now Playing', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 12),
                 _SettingRow(
@@ -58,7 +59,7 @@ class SettingsView extends StatelessWidget {
                     },
                   ),
                 ),
-                const Divider(height: 32, color: Colors.white12),
+                Divider(height: 32, color: ColorTokens.border(context, 0.12)),
                 Text('Cache', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 12),
                 _SettingRow(
@@ -88,7 +89,7 @@ class SettingsView extends StatelessWidget {
                     child: const Text('Clear'),
                   ),
                 ),
-                const Divider(height: 32, color: Colors.white12),
+                Divider(height: 32, color: ColorTokens.border(context, 0.12)),
                 Text('Account', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 12),
                 _SettingRow(
@@ -136,13 +137,13 @@ class _SettingRow extends StatelessWidget {
             children: [
               Text(title, style: Theme.of(context).textTheme.bodyLarge),
               const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: Colors.white60),
-              ),
+                Text(
+                  subtitle,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: ColorTokens.textSecondary(context)),
+                ),
             ],
           ),
         ),

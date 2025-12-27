@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/color_tokens.dart';
 /// Card for album, artist, or genre tiles.
 class LibraryCard extends StatelessWidget {
   /// Creates a library card.
@@ -42,9 +43,9 @@ class LibraryCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: ColorTokens.cardFill(context),
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: ColorTokens.border(context)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,10 +54,10 @@ class LibraryCard extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: imageUrl == null
-                    ? Container(
-                        color: Colors.white.withOpacity(0.08),
-                        child: Center(child: Icon(icon, size: 32)),
-                      )
+                      ? Container(
+                          color: ColorTokens.cardFillStrong(context),
+                          child: Center(child: Icon(icon, size: 32)),
+                        )
                     : CachedNetworkImage(
                         imageUrl: imageUrl!,
                         fit: BoxFit.cover,
@@ -71,15 +72,15 @@ class LibraryCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: Colors.white60),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+              Text(
+                subtitle,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: ColorTokens.textSecondary(context)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
           ],
         ),
       ),

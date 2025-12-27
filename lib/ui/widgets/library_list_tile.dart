@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/color_tokens.dart';
+
 /// Compact list tile for library items.
 class LibraryListTile extends StatelessWidget {
   /// Creates a library list tile.
@@ -36,9 +38,9 @@ class LibraryListTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.04),
+          color: ColorTokens.cardFill(context, 0.04),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: ColorTokens.border(context)),
         ),
         child: Row(
           children: [
@@ -48,7 +50,7 @@ class LibraryListTile extends StatelessWidget {
                   ? Container(
                       width: 48,
                       height: 48,
-                      color: Colors.white.withOpacity(0.08),
+                      color: ColorTokens.cardFillStrong(context),
                       child: Icon(icon, size: 20),
                     )
                   : CachedNetworkImage(
@@ -77,13 +79,17 @@ class LibraryListTile extends StatelessWidget {
                     style: Theme.of(context)
                         .textTheme
                         .bodySmall
-                        ?.copyWith(color: Colors.white60),
+                        ?.copyWith(color: ColorTokens.textSecondary(context)),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, size: 18, color: Colors.white54),
+            Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: ColorTokens.textSecondary(context, 0.55),
+            ),
           ],
         ),
       ),

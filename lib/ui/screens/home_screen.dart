@@ -7,6 +7,7 @@ import '../../state/app_state.dart';
 import '../../state/library_view.dart';
 import '../../state/now_playing_layout.dart';
 import '../../core/app_info.dart';
+import '../../core/color_tokens.dart';
 import '../widgets/album_detail_view.dart';
 import '../widgets/albums_view.dart';
 import '../widgets/artist_detail_view.dart';
@@ -213,7 +214,7 @@ class _HeaderState extends State<_Header> {
           '${widget.artistCount} artists • '
           '${widget.playlistCount} playlists',
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: Colors.white70,
+            color: ColorTokens.textSecondary(context, 0.7),
           ),
         ),
       ],
@@ -234,7 +235,7 @@ class _HeaderState extends State<_Header> {
                   onPressed: _clearSearch,
                 ),
           filled: true,
-          fillColor: Colors.white.withOpacity(0.05),
+          fillColor: ColorTokens.cardFill(context, 0.06),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
@@ -246,9 +247,9 @@ class _HeaderState extends State<_Header> {
     final versionBadge = Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
+        color: ColorTokens.cardFill(context, 0.08),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: ColorTokens.border(context)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -258,7 +259,7 @@ class _HeaderState extends State<_Header> {
           Text(
             '${AppInfo.name} • ${AppInfo.platformLabel} v${AppInfo.version}',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: Colors.white70,
+              color: ColorTokens.textSecondary(context, 0.7),
             ),
           ),
         ],

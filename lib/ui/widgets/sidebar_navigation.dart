@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/playlist.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
+import '../../core/color_tokens.dart';
 
 /// Vertical navigation rail for playlists and actions.
 class SidebarNavigation extends StatefulWidget {
@@ -23,10 +24,10 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1218),
+        color: ColorTokens.panelBackground(context),
         border: Border(
           right: BorderSide(
-            color: Colors.white.withOpacity(0.08),
+            color: ColorTokens.border(context),
           ),
         ),
       ),
@@ -108,7 +109,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             style: Theme.of(context)
                 .textTheme
                 .titleSmall
-                ?.copyWith(color: Colors.white70),
+                ?.copyWith(color: ColorTokens.textSecondary(context, 0.7)),
           ),
           const SizedBox(height: 8),
           _NavTile(
@@ -138,7 +139,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             style: Theme.of(context)
                 .textTheme
                 .titleSmall
-                ?.copyWith(color: Colors.white70),
+                ?.copyWith(color: ColorTokens.textSecondary(context, 0.7)),
           ),
           const SizedBox(height: 8),
           _NavTile(
@@ -161,7 +162,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             style: Theme.of(context)
                 .textTheme
                 .titleSmall
-                ?.copyWith(color: Colors.white70),
+                ?.copyWith(color: ColorTokens.textSecondary(context, 0.7)),
           ),
           const SizedBox(height: 12),
           ...state.playlists.map(
@@ -206,7 +207,7 @@ class _NavTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? Colors.white.withOpacity(0.12) : Colors.transparent,
+          color: selected ? ColorTokens.activeRow(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
@@ -247,7 +248,7 @@ class _SectionHeader extends StatelessWidget {
               style: Theme.of(context)
                   .textTheme
                   .titleSmall
-                  ?.copyWith(color: Colors.white70),
+                  ?.copyWith(color: ColorTokens.textSecondary(context, 0.7)),
             ),
             AnimatedRotation(
               turns: isExpanded ? 0.5 : 0.0,
@@ -280,7 +281,7 @@ class _PlaylistTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? Colors.white.withOpacity(0.12) : Colors.transparent,
+          color: selected ? ColorTokens.activeRow(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(

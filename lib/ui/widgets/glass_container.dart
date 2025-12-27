@@ -2,6 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../core/color_tokens.dart';
+
 /// Frosted glass container for elevated panels.
 class GlassContainer extends StatelessWidget {
   /// Creates a glass container.
@@ -30,10 +32,10 @@ class GlassContainer extends StatelessWidget {
         child: Container(
           padding: padding,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.06),
+            color: ColorTokens.cardFill(context, 0.08),
             borderRadius: BorderRadius.circular(borderRadius),
             border: Border.all(
-              color: Colors.white.withOpacity(0.08),
+              color: ColorTokens.border(context),
               width: 1,
             ),
           ),

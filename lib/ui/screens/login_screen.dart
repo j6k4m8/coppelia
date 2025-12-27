@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
+import '../../core/color_tokens.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/gradient_background.dart';
 
@@ -53,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'Connect your Jellyfin music library and start listening.',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.white70,
+                      color: ColorTokens.textSecondary(context, 0.7),
                     ),
                   ),
                   const SizedBox(height: 28),
@@ -79,10 +80,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Text(
                         appState.authError!,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.redAccent,
-                        ),
-                      ),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
                     ),
                   SizedBox(
                     width: double.infinity,
@@ -103,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'Tip: Use a local Jellyfin user with music library access.',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.white54,
+                      color: ColorTokens.textSecondary(context, 0.55),
                     ),
                   ),
                 ],
@@ -132,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
           decoration: InputDecoration(
             hintText: hint,
             filled: true,
-            fillColor: Colors.white.withOpacity(0.05),
+            fillColor: ColorTokens.cardFill(context, 0.06),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide.none,

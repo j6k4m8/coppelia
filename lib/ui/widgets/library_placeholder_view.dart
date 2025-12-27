@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../state/library_view.dart';
+import '../../core/color_tokens.dart';
 import 'glass_container.dart';
 
 /// Placeholder content for upcoming library sections.
@@ -34,7 +35,7 @@ class LibraryPlaceholderView extends StatelessWidget {
               child: Text(
                 view.subtitle,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.white70,
+                  color: ColorTokens.textSecondary(context, 0.7),
                 ),
               ),
             ),
@@ -42,7 +43,7 @@ class LibraryPlaceholderView extends StatelessWidget {
             Text(
               'Coming soon.',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: Colors.white54,
+                color: ColorTokens.textSecondary(context, 0.55),
               ),
             ),
           ],

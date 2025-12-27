@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
 import '../../models/media_item.dart';
 import 'context_menu.dart';
@@ -55,9 +56,9 @@ class _TrackRowState extends State<TrackRow> {
   Widget build(BuildContext context) {
     final isActive = widget.isActive;
     final highlight = isActive
-        ? Colors.white.withOpacity(0.12)
+        ? ColorTokens.activeRow(context)
         : _isHovering
-            ? Colors.white.withOpacity(0.06)
+            ? ColorTokens.hoverRow(context)
             : null;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -81,18 +82,18 @@ class _TrackRowState extends State<TrackRow> {
               child: Text(
                 '${widget.index + 1}'.padLeft(2, '0'),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.white60,
+                      color: ColorTokens.textSecondary(context),
                     ),
               ),
             ),
             const SizedBox(width: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: widget.track.imageUrl == null
-                  ? Container(
+                child: widget.track.imageUrl == null
+                    ? Container(
                       width: 44,
                       height: 44,
-                      color: Colors.white10,
+                      color: ColorTokens.cardFillStrong(context),
                       child: const Icon(Icons.music_note, size: 18),
                     )
                   : CachedNetworkImage(
@@ -129,7 +130,7 @@ class _TrackRowState extends State<TrackRow> {
             Text(
               formatDuration(widget.track.duration),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white60,
+                    color: ColorTokens.textSecondary(context),
                   ),
             ),
           ],
@@ -198,7 +199,7 @@ class _TrackMetaRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final baseStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Colors.white54,
+          color: ColorTokens.textSecondary(context, 0.55),
         );
     final linkStyle = baseStyle?.copyWith(
       color: Theme.of(context).colorScheme.primary,
@@ -218,7 +219,12 @@ class _TrackMetaRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 6),
-        const Text('•', style: TextStyle(color: Colors.white38)),
+        Text(
+          '•',
+          style: TextStyle(
+            color: ColorTokens.textSecondary(context, 0.4),
+          ),
+        ),
         const SizedBox(width: 6),
         Flexible(
           child: GestureDetector(

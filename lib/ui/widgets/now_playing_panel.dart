@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
@@ -41,9 +42,9 @@ class _SidePanel extends StatelessWidget {
       width: 320,
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1218),
+        color: ColorTokens.panelBackground(context),
         border: Border(
-          left: BorderSide(color: Colors.white.withOpacity(0.08)),
+          left: BorderSide(color: ColorTokens.border(context)),
         ),
       ),
       child: Column(
@@ -82,14 +83,14 @@ class _SidePanel extends StatelessWidget {
             _MiniWaveform(trackId: track.id),
           ],
           const SizedBox(height: 20),
-          const Divider(color: Colors.white12),
+          Divider(color: ColorTokens.border(context, 0.12)),
           const SizedBox(height: 16),
           Text(
             'Playing next',
             style: Theme.of(context)
                 .textTheme
                 .titleSmall
-                ?.copyWith(color: Colors.white70),
+                ?.copyWith(color: ColorTokens.textSecondary(context, 0.7)),
           ),
           const SizedBox(height: 12),
           Expanded(
@@ -113,9 +114,9 @@ class _BottomBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1218),
+        color: ColorTokens.panelBackground(context),
         border: Border(
-          top: BorderSide(color: Colors.white.withOpacity(0.08)),
+          top: BorderSide(color: ColorTokens.border(context)),
         ),
       ),
       child: Column(
@@ -208,7 +209,7 @@ class _QueueList extends StatelessWidget {
         style: Theme.of(context)
             .textTheme
             .bodySmall
-            ?.copyWith(color: Colors.white60),
+            ?.copyWith(color: ColorTokens.textSecondary(context)),
       );
     }
     final startIndex = nowPlaying == null
@@ -226,8 +227,8 @@ class _QueueList extends StatelessWidget {
             item.title,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: item.id == nowPlaying?.id
-                      ? Colors.white
-                      : Colors.white60,
+                      ? ColorTokens.textPrimary(context)
+                      : ColorTokens.textSecondary(context),
                 ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -251,7 +252,7 @@ class _NowPlayingMeta extends StatelessWidget {
         style: Theme.of(context)
             .textTheme
             .bodySmall
-            ?.copyWith(color: Colors.white60),
+            ?.copyWith(color: ColorTokens.textSecondary(context)),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       );
@@ -260,7 +261,7 @@ class _NowPlayingMeta extends StatelessWidget {
     final baseStyle = Theme.of(context)
         .textTheme
         .bodySmall
-        ?.copyWith(color: Colors.white60);
+        ?.copyWith(color: ColorTokens.textSecondary(context));
     final linkStyle = baseStyle?.copyWith(
       color: Theme.of(context).colorScheme.primary,
     );
@@ -285,7 +286,12 @@ class _NowPlayingMeta extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 6),
-        const Text('•', style: TextStyle(color: Colors.white38)),
+        Text(
+          '•',
+          style: TextStyle(
+            color: ColorTokens.textSecondary(context, 0.4),
+          ),
+        ),
         const SizedBox(width: 6),
         Flexible(
           child: GestureDetector(
@@ -369,7 +375,7 @@ class _Artwork extends StatelessWidget {
         aspectRatio: 1,
         child: imageUrl == null
             ? Container(
-                color: Colors.white10,
+                color: ColorTokens.cardFillStrong(context),
                 child: const Icon(Icons.music_note, size: 48),
               )
             : CachedNetworkImage(
@@ -396,7 +402,7 @@ class _MiniArtwork extends StatelessWidget {
         height: 56,
         child: imageUrl == null
             ? Container(
-                color: Colors.white10,
+                color: ColorTokens.cardFillStrong(context),
                 child: const Icon(Icons.music_note, size: 24),
               )
             : CachedNetworkImage(
@@ -444,14 +450,14 @@ class _ProgressBar extends StatelessWidget {
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
-                  ?.copyWith(color: Colors.white60),
+                  ?.copyWith(color: ColorTokens.textSecondary(context)),
             ),
             Text(
               formatDuration(duration),
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
-                  ?.copyWith(color: Colors.white60),
+                  ?.copyWith(color: ColorTokens.textSecondary(context)),
             ),
           ],
         ),

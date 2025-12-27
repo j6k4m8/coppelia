@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/media_item.dart';
+import '../../core/color_tokens.dart';
 
 /// Prominent card for spotlight tracks.
 class FeaturedTrackCard extends StatelessWidget {
@@ -29,22 +30,22 @@ class FeaturedTrackCard extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Colors.white.withOpacity(0.08),
-              Colors.white.withOpacity(0.02),
+              ColorTokens.cardFill(context, 0.1),
+              ColorTokens.cardFill(context, 0.04),
             ],
           ),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: ColorTokens.border(context)),
         ),
         child: Row(
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: track.imageUrl == null
-                  ? Container(
+                child: track.imageUrl == null
+                    ? Container(
                       width: 72,
                       height: 72,
-                      color: Colors.white10,
+                      color: ColorTokens.cardFillStrong(context),
                       child: const Icon(Icons.music_note),
                     )
                   : CachedNetworkImage(
@@ -72,7 +73,7 @@ class FeaturedTrackCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.white60,
+                          color: ColorTokens.textSecondary(context),
                         ),
                   ),
                 ],

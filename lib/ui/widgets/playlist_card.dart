@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/playlist.dart';
+import '../../core/color_tokens.dart';
 
 /// Artwork tile for a playlist.
 class PlaylistCard extends StatelessWidget {
@@ -28,9 +29,9 @@ class PlaylistCard extends StatelessWidget {
         width: 200,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: ColorTokens.cardFill(context),
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: ColorTokens.border(context)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -40,7 +41,7 @@ class PlaylistCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 child: playlist.imageUrl == null
                     ? Container(
-                        color: Colors.white.withOpacity(0.08),
+                        color: ColorTokens.cardFillStrong(context),
                         child: const Center(
                           child: Icon(Icons.queue_music, size: 32),
                         ),
@@ -62,7 +63,7 @@ class PlaylistCard extends StatelessWidget {
             Text(
               '${playlist.trackCount} tracks',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: Colors.white60,
+                color: ColorTokens.textSecondary(context),
               ),
             ),
           ],

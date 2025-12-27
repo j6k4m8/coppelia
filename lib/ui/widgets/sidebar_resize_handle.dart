@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/color_tokens.dart';
+
 /// Draggable handle to resize the sidebar width.
 class SidebarResizeHandle extends StatelessWidget {
   /// Creates the resize handle.
@@ -27,7 +29,7 @@ class SidebarResizeHandle extends StatelessWidget {
           gradient: LinearGradient(
             colors: [
               Colors.transparent,
-              Colors.white.withOpacity(0.06),
+              ColorTokens.border(context, 0.12),
             ],
           ),
         ),

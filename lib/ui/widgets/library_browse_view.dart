@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../state/app_state.dart';
 import '../../state/browse_layout.dart';
 import '../../state/library_view.dart';
+import '../../core/color_tokens.dart';
 import 'section_header.dart';
 
 extension BrowseLayoutLabel on BrowseLayout {
@@ -109,7 +110,7 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                 style: Theme.of(context)
                     .textTheme
                     .bodySmall
-                    ?.copyWith(color: Colors.white60),
+                    ?.copyWith(color: ColorTokens.textSecondary(context)),
               ),
               const SizedBox(width: 16),
               SegmentedButton<BrowseLayout>(
@@ -250,9 +251,9 @@ class _AlphabetScroller extends StatelessWidget {
       width: 28,
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
+        color: ColorTokens.cardFill(context, 0.04),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: ColorTokens.border(context)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -267,7 +268,7 @@ class _AlphabetScroller extends StatelessWidget {
                 style: Theme.of(context)
                     .textTheme
                     .labelSmall
-                    ?.copyWith(color: Colors.white70),
+                    ?.copyWith(color: ColorTokens.textSecondary(context, 0.7)),
               ),
             ),
           );

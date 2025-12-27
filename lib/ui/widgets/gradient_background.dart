@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/color_tokens.dart';
+
 /// Branded gradient backdrop for immersive surfaces.
 class GradientBackground extends StatelessWidget {
   /// Creates a gradient wrapper.
@@ -11,15 +13,11 @@ class GradientBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF11131A),
-            Color(0xFF151C2D),
-            Color(0xFF0B0E14),
-          ],
+          colors: ColorTokens.backgroundGradient(context),
         ),
       ),
       child: child,

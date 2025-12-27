@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
+import '../../core/color_tokens.dart';
 import 'section_header.dart';
 import 'track_row.dart';
 
@@ -21,7 +22,7 @@ class PlayHistoryView extends StatelessWidget {
           style: Theme.of(context)
               .textTheme
               .titleMedium
-              ?.copyWith(color: Colors.white60),
+              ?.copyWith(color: ColorTokens.textSecondary(context)),
         ),
       );
     }
@@ -35,7 +36,7 @@ class PlayHistoryView extends StatelessWidget {
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
-                ?.copyWith(color: Colors.white60),
+                ?.copyWith(color: ColorTokens.textSecondary(context)),
           ),
         ),
         const SizedBox(height: 16),

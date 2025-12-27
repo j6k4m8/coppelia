@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/playlist.dart';
 import '../../state/app_state.dart';
+import '../../core/color_tokens.dart';
 import 'track_row.dart';
 
 /// Playlist detail view with track listing.
@@ -63,13 +64,10 @@ class _PlaylistHeader extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            const Color(0xFF1F2433),
-            Colors.white.withOpacity(0.03),
-          ],
+          colors: ColorTokens.heroGradient(context),
         ),
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: ColorTokens.border(context)),
       ),
       child: Row(
         children: [
@@ -79,7 +77,7 @@ class _PlaylistHeader extends StatelessWidget {
                 ? Container(
                     width: 140,
                     height: 140,
-                    color: Colors.white10,
+                    color: ColorTokens.cardFillStrong(context),
                     child: const Icon(Icons.queue_music, size: 36),
                   )
                 : CachedNetworkImage(
@@ -104,7 +102,7 @@ class _PlaylistHeader extends StatelessWidget {
                   style: Theme.of(context)
                       .textTheme
                       .bodyMedium
-                      ?.copyWith(color: Colors.white60),
+                      ?.copyWith(color: ColorTokens.textSecondary(context)),
                 ),
                 const SizedBox(height: 16),
                 Row(
