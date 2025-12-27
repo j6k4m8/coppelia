@@ -13,6 +13,7 @@ class LibraryListTile extends StatelessWidget {
     required this.onTap,
     this.imageUrl,
     this.icon = Icons.library_music,
+    this.onContextMenu,
   });
 
   /// Primary title.
@@ -30,11 +31,16 @@ class LibraryListTile extends StatelessWidget {
   /// Fallback icon.
   final IconData icon;
 
+  /// Optional context menu handler.
+  final ValueChanged<Offset>? onContextMenu;
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
+      onSecondaryTapDown: (details) =>
+          onContextMenu?.call(details.globalPosition),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(

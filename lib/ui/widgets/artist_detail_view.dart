@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/color_tokens.dart';
 import '../../models/album.dart';
 import '../../state/app_state.dart';
+import 'context_menu.dart';
 import 'library_card.dart';
 import 'section_header.dart';
 import 'track_row.dart';
@@ -75,6 +76,7 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
                 return _ArtistAlbumsSection(
                   albums: albums,
                   onSelect: state.selectAlbum,
+                  state: state,
                 );
               }
               final trackIndex = index - trackStartIndex;
@@ -90,6 +92,12 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
                     ? null
                     : () => state.selectAlbumById(track.albumId!),
                 onArtistTap: track.artistIds.isEmpty
+                    ? null
+                    : () => state.selectArtistById(track.artistIds.first),
+                onGoToAlbum: track.albumId == null
+                    ? null
+                    : () => state.selectAlbumById(track.albumId!),
+                onGoToArtist: track.artistIds.isEmpty
                     ? null
                     : () => state.selectArtistById(track.artistIds.first),
               );
@@ -111,6 +119,46 @@ List<Album> _albumsForArtist(List<Album> albums, String artistName) {
   filtered.sort((a, b) => a.name.compareTo(b.name));
   return filtered;
 }
+
+Future<void> _showAlbumMenu(
+  BuildContext context,
+  Offset position,
+  Album album,
+  AppState state,
+) async {
+  final canGoToArtist =
+      album.artistName.isNotEmpty && album.artistName != 'Unknown Artist';
+  final selection = await showContextMenu<_AlbumAction>(
+    context,
+    position,
+    [
+      const PopupMenuItem(
+        value: _AlbumAction.play,
+        child: Text('Play'),
+      ),
+      const PopupMenuItem(
+        value: _AlbumAction.open,
+        child: Text('Open'),
+      ),
+      if (canGoToArtist)
+        const PopupMenuItem(
+          value: _AlbumAction.goToArtist,
+          child: Text('Go to Artist'),
+        ),
+    ],
+  );
+  if (selection == _AlbumAction.play) {
+    await state.playAlbum(album);
+  }
+  if (selection == _AlbumAction.open) {
+    await state.selectAlbum(album);
+  }
+  if (selection == _AlbumAction.goToArtist) {
+    await state.selectArtistByName(album.artistName);
+  }
+}
+
+enum _AlbumAction { play, open, goToArtist }
 
 class _ArtistHeader extends StatelessWidget {
   const _ArtistHeader({
@@ -212,10 +260,12 @@ class _ArtistAlbumsSection extends StatelessWidget {
   const _ArtistAlbumsSection({
     required this.albums,
     required this.onSelect,
+    required this.state,
   });
 
   final List<Album> albums;
   final ValueChanged<Album> onSelect;
+  final AppState state;
 
   @override
   Widget build(BuildContext context) {
@@ -255,6 +305,12 @@ class _ArtistAlbumsSection extends StatelessWidget {
                   imageUrl: album.imageUrl,
                   icon: Icons.album,
                   onTap: () => onSelect(album),
+                  onContextMenu: (position) => _showAlbumMenu(
+                    context,
+                    position,
+                    album,
+                    state,
+                  ),
                 );
               },
             );

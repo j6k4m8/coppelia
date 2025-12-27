@@ -14,7 +14,7 @@
 -   [x] add ability to clear queue
 -   [x] add "Albums" to artist pages
 -   [x] add link to artist page(s) from album page
--   [ ] on tracks, add right click -> "Go to Album" and "Go to Artist". on albums, add right click -> "Go to Artist".
+-   [x] on tracks, add right click -> "Go to Album" and "Go to Artist". on albums, add right click -> "Go to Artist".
 
 ## Low Priority
 
@@ -38,3 +38,4 @@
 -   [ ] togleably (in settings page), the cards on hero header sections should either (on) show the album art at full size, filling the card's height, or (off) show the album art as a small square thumbnail on the left side with text to the right (what it is currently).
 -   [ ] also change the settings page to have different tabs, for "Appearance" (will hold theme stuff, font stuff later), "Layout", "Cache", "Account"
 -   [ ] left pane sidebar is too shy, hides on even relatively wide screens...
+-   [ ] get rid of the carets in the sidebar, they are unnecessary clutter. you can still click the titles to expand / collapse sections.

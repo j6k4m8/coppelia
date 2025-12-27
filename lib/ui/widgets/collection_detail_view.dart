@@ -89,6 +89,10 @@ class CollectionDetailView extends StatelessWidget {
               final trackIndex =
                   index - (headerFooter == null ? 1 : 2);
               final track = tracks[trackIndex];
+              final canGoToAlbum =
+                  onAlbumTap != null && track.albumId != null;
+              final canGoToArtist =
+                  onArtistTap != null && track.artistIds.isNotEmpty;
               return TrackRow(
                 track: track,
                 index: trackIndex,
@@ -100,12 +104,18 @@ class CollectionDetailView extends StatelessWidget {
                 onAddToQueue: onAddToQueue == null
                     ? null
                     : () => onAddToQueue!.call(track),
-                onAlbumTap: onAlbumTap == null
-                    ? null
-                    : () => onAlbumTap!.call(track),
-                onArtistTap: onArtistTap == null
-                    ? null
-                    : () => onArtistTap!.call(track),
+                onAlbumTap: canGoToAlbum
+                    ? () => onAlbumTap!.call(track)
+                    : null,
+                onArtistTap: canGoToArtist
+                    ? () => onArtistTap!.call(track)
+                    : null,
+                onGoToAlbum: canGoToAlbum
+                    ? () => onAlbumTap!.call(track)
+                    : null,
+                onGoToArtist: canGoToArtist
+                    ? () => onArtistTap!.call(track)
+                    : null,
               );
             },
           ),

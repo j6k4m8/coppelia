@@ -19,6 +19,8 @@ class TrackRow extends StatefulWidget {
     this.onAddToQueue,
     this.onAlbumTap,
     this.onArtistTap,
+    this.onGoToAlbum,
+    this.onGoToArtist,
   });
 
   /// Track metadata.
@@ -44,6 +46,12 @@ class TrackRow extends StatefulWidget {
 
   /// Optional handler to navigate to the artist.
   final VoidCallback? onArtistTap;
+
+  /// Optional handler for context menu navigation to album.
+  final VoidCallback? onGoToAlbum;
+
+  /// Optional handler for context menu navigation to artist.
+  final VoidCallback? onGoToArtist;
 
   @override
   State<TrackRow> createState() => _TrackRowState();
@@ -141,7 +149,10 @@ class _TrackRowState extends State<TrackRow> {
   }
 
   Future<void> _showMenu(BuildContext context, Offset position) async {
-    if (widget.onPlayNext == null && widget.onAddToQueue == null) {
+    if (widget.onPlayNext == null &&
+        widget.onAddToQueue == null &&
+        widget.onGoToAlbum == null &&
+        widget.onGoToArtist == null) {
       return;
     }
     final items = <PopupMenuEntry<_TrackMenuAction>>[
@@ -166,6 +177,22 @@ class _TrackRowState extends State<TrackRow> {
         ),
       );
     }
+    if (widget.onGoToAlbum != null) {
+      items.add(
+        const PopupMenuItem(
+          value: _TrackMenuAction.goToAlbum,
+          child: Text('Go to Album'),
+        ),
+      );
+    }
+    if (widget.onGoToArtist != null) {
+      items.add(
+        const PopupMenuItem(
+          value: _TrackMenuAction.goToArtist,
+          child: Text('Go to Artist'),
+        ),
+      );
+    }
     final action = await showContextMenu<_TrackMenuAction>(
       context,
       position,
@@ -177,11 +204,15 @@ class _TrackRowState extends State<TrackRow> {
       widget.onPlayNext?.call();
     } else if (action == _TrackMenuAction.addToQueue) {
       widget.onAddToQueue?.call();
+    } else if (action == _TrackMenuAction.goToAlbum) {
+      widget.onGoToAlbum?.call();
+    } else if (action == _TrackMenuAction.goToArtist) {
+      widget.onGoToArtist?.call();
     }
   }
 }
 
-enum _TrackMenuAction { play, playNext, addToQueue }
+enum _TrackMenuAction { play, playNext, addToQueue, goToAlbum, goToArtist }
 
 class _TrackMetaRow extends StatelessWidget {
   const _TrackMetaRow({

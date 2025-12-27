@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/album.dart';
 import '../../state/app_state.dart';
 import '../../core/color_tokens.dart';
+import 'context_menu.dart';
 import 'library_card.dart';
 import 'section_header.dart';
 import 'track_row.dart';
@@ -69,6 +71,12 @@ class SearchResultsView extends StatelessWidget {
                   onArtistTap: track.artistIds.isEmpty
                       ? null
                       : () => state.selectArtistById(track.artistIds.first),
+                  onGoToAlbum: track.albumId == null
+                      ? null
+                      : () => state.selectAlbumById(track.albumId!),
+                  onGoToArtist: track.artistIds.isEmpty
+                      ? null
+                      : () => state.selectArtistById(track.artistIds.first),
                 );
               },
             ),
@@ -87,6 +95,12 @@ class SearchResultsView extends StatelessWidget {
                   imageUrl: album.imageUrl,
                   icon: Icons.album,
                   onTap: () => state.selectAlbum(album),
+                  onContextMenu: (position) => _showAlbumMenu(
+                    context,
+                    position,
+                    album,
+                    state,
+                  ),
                 );
               },
             ),
@@ -131,7 +145,48 @@ class SearchResultsView extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _showAlbumMenu(
+    BuildContext context,
+    Offset position,
+    Album album,
+    AppState state,
+  ) async {
+    final albumArtist = album.artistName;
+    final canGoToArtist =
+        albumArtist.isNotEmpty && albumArtist != 'Unknown Artist';
+    final selection = await showContextMenu<_AlbumAction>(
+      context,
+      position,
+      [
+        const PopupMenuItem(
+          value: _AlbumAction.play,
+          child: Text('Play'),
+        ),
+        const PopupMenuItem(
+          value: _AlbumAction.open,
+          child: Text('Open'),
+        ),
+        if (canGoToArtist)
+          const PopupMenuItem(
+            value: _AlbumAction.goToArtist,
+            child: Text('Go to Artist'),
+          ),
+      ],
+    );
+    if (selection == _AlbumAction.play) {
+      await state.playAlbum(album);
+    }
+    if (selection == _AlbumAction.open) {
+      await state.selectAlbum(album);
+    }
+    if (selection == _AlbumAction.goToArtist) {
+      await state.selectArtistByName(albumArtist);
+    }
+  }
 }
+
+enum _AlbumAction { play, open, goToArtist }
 
 class _CardGrid extends StatelessWidget {
   const _CardGrid({required this.itemCount, required this.itemBuilder});

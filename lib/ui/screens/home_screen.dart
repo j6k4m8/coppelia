@@ -574,6 +574,14 @@ class _HomeFeaturedView extends StatelessWidget {
               : () => context
                   .read<AppState>()
                   .selectArtistById(track.artistIds.first),
+          onGoToAlbum: track.albumId == null
+              ? null
+              : () => context.read<AppState>().selectAlbumById(track.albumId!),
+          onGoToArtist: track.artistIds.isEmpty
+              ? null
+              : () => context
+                  .read<AppState>()
+                  .selectArtistById(track.artistIds.first),
         );
       },
     );
@@ -612,6 +620,14 @@ class _HomeRecentView extends StatelessWidget {
               ? null
               : () => context.read<AppState>().selectAlbumById(track.albumId!),
           onArtistTap: track.artistIds.isEmpty
+              ? null
+              : () => context
+                  .read<AppState>()
+                  .selectArtistById(track.artistIds.first),
+          onGoToAlbum: track.albumId == null
+              ? null
+              : () => context.read<AppState>().selectAlbumById(track.albumId!),
+          onGoToArtist: track.artistIds.isEmpty
               ? null
               : () => context
                   .read<AppState>()
