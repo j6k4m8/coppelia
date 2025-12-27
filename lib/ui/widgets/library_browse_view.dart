@@ -247,32 +247,93 @@ class _AlphabetScroller extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 28,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: ColorTokens.cardFill(context, 0.04),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: ColorTokens.border(context)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: letters.map((letter) {
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => onSelected(letter),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Text(
-                letter,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelSmall
-                    ?.copyWith(color: ColorTokens.textSecondary(context, 0.7)),
-              ),
-            ),
-          );
-        }).toList(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const slotHeight = 18.0;
+        final maxSlots = ((constraints.maxHeight - 16) / slotHeight)
+            .floor()
+            .clamp(1, letters.length);
+        final displayLetters = _subsampleLetters(letters, maxSlots);
+        return Container(
+          width: 28,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: ColorTokens.cardFill(context, 0.04),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: ColorTokens.border(context)),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: displayLetters.map((letter) {
+              return SizedBox(
+                height: slotHeight,
+                child: _AlphabetLetter(
+                  letter: letter,
+                  onTap: () => onSelected(letter),
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
+  List<String> _subsampleLetters(List<String> items, int maxSlots) {
+    if (items.length <= maxSlots) {
+      return items;
+    }
+    if (maxSlots <= 1) {
+      return [items.first];
+    }
+    final sampled = <String>[];
+    final step = (items.length - 1) / (maxSlots - 1);
+    for (var i = 0; i < maxSlots; i++) {
+      final index = (i * step).round().clamp(0, items.length - 1);
+      final letter = items[index];
+      if (sampled.isEmpty || sampled.last != letter) {
+        sampled.add(letter);
+      }
+    }
+    return sampled;
+  }
+}
+
+class _AlphabetLetter extends StatefulWidget {
+  const _AlphabetLetter({
+    required this.letter,
+    required this.onTap,
+  });
+
+  final String letter;
+  final VoidCallback onTap;
+
+  @override
+  State<_AlphabetLetter> createState() => _AlphabetLetterState();
+}
+
+class _AlphabetLetterState extends State<_AlphabetLetter> {
+  bool _isHovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _isHovering
+        ? ColorTokens.textPrimary(context)
+        : ColorTokens.textSecondary(context, 0.7);
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: Center(
+          child: Text(
+            widget.letter,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: color,
+                ),
+          ),
+        ),
       ),
     );
   }

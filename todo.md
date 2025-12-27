@@ -4,7 +4,7 @@
 
 -   [x] playback should require double-click (single click does not play).
 -   [x] bug: search is janky, typing immediately selects all and next key replaces. multi ms lag on this.
--   [ ] scroll alphabet should subsample uniformly based upon vertical space. So if your window is very vertically short, it doesn't show every letter.
+-   [x] scroll alphabet should subsample uniformly based upon vertical space. So if your window is very vertically short, it doesn't show every letter.
 -   [x] bug: light mode doesn't change backgrounds, it just changes text color and then it's invisible/ugly.
 -   [ ] show mini waveform in now playing if available for this track
     -   [ ] increase number of slices in waveform render.
@@ -41,6 +41,7 @@
 -   [x] make sidebar scrollable and resizable
 -   [x] move sign out button to settings page
 -   [x] on homepage, library stats should be for whole library, not just playlist-visible items
+-   [ ] allow resizing arbitrary shapes for responsiveness, don't limit sizes
 
 ## Low Priority
 
