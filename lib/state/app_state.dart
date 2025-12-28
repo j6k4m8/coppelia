@@ -16,6 +16,7 @@ import '../models/playlist.dart';
 import '../models/search_results.dart';
 import '../services/cache_store.dart';
 import '../services/jellyfin_client.dart';
+import '../services/now_playing_service.dart';
 import '../services/playback_controller.dart';
 import '../services/settings_store.dart';
 import '../services/session_store.dart';
@@ -40,11 +41,13 @@ class AppState extends ChangeNotifier {
         _sessionStore = sessionStore,
         _settingsStore = settingsStore {
     _bindPlayback();
+    _bindNowPlaying();
   }
 
   final CacheStore _cacheStore;
   final JellyfinClient _client;
   final PlaybackController _playback;
+  final NowPlayingService _nowPlayingService = NowPlayingService();
   final SessionStore _sessionStore;
   final SettingsStore _settingsStore;
 
@@ -122,6 +125,7 @@ class AppState extends ChangeNotifier {
   DateTime? _lastProgressReportAt;
   DateTime? _lastPlaybackPersistAt;
   bool _activeSessionHasPlayed = false;
+  DateTime? _lastNowPlayingUpdateAt;
 
   /// Current authenticated session.
   AuthSession? get session => _session;
@@ -427,8 +431,10 @@ class AppState extends ChangeNotifier {
     _reportedStopSessionId = null;
     _lastProgressReportAt = null;
     _lastPlaybackPersistAt = null;
+    _lastNowPlayingUpdateAt = null;
     _activeSessionHasPlayed = false;
     _isBuffering = false;
+    unawaited(_nowPlayingService.clear());
     await _sessionStore.saveSession(null);
     notifyListeners();
   }
@@ -949,6 +955,8 @@ class AppState extends ChangeNotifier {
       _isBuffering = false;
       _isPlayingNotifier.value = _isPlaying;
       _isBufferingNotifier.value = _isBuffering;
+      _lastNowPlayingUpdateAt = null;
+      unawaited(_nowPlayingService.clear());
       notifyListeners();
       return;
     }
@@ -1105,10 +1113,12 @@ class AppState extends ChangeNotifier {
       _positionNotifier.value = position;
       _maybeReportProgress();
       _persistPlaybackResumeState();
+      _updateNowPlayingInfo();
     });
     _durationSubscription = _playback.durationStream.listen((duration) {
       _duration = duration ?? Duration.zero;
       _durationNotifier.value = _duration;
+      _updateNowPlayingInfo(force: true);
     });
     _playerStateSubscription = _playback.playerStateStream.listen((state) {
       final nextPlaying = state.playing;
@@ -1126,6 +1136,7 @@ class AppState extends ChangeNotifier {
       _isBufferingNotifier.value = _isBuffering;
       if (playingChanged || bufferingChanged) {
         notifyListeners();
+        _updateNowPlayingInfo(force: true);
       }
       if (playingChanged) {
         _maybeReportPlaybackState(isPaused: !_isPlaying);
@@ -1142,6 +1153,17 @@ class AppState extends ChangeNotifier {
       }
       notifyListeners();
     });
+  }
+
+  void _bindNowPlaying() {
+    _nowPlayingService.bind(
+      onPlay: () => unawaited(_playback.play()),
+      onPause: () => unawaited(_playback.pause()),
+      onToggle: () => unawaited(togglePlayback()),
+      onNext: () => unawaited(nextTrack()),
+      onPrevious: () => unawaited(previousTrack()),
+      onSeek: (position) => unawaited(seek(position)),
+    );
   }
 
   void _recordPlayHistory(MediaItem track) {
@@ -1184,6 +1206,7 @@ class AppState extends ChangeNotifier {
     } catch (_) {
       // Ignore failures when restoring playback state.
     }
+    _updateNowPlayingInfo(force: true);
   }
 
   void _persistPlaybackResumeState({bool force = false}) {
@@ -1238,9 +1261,40 @@ class AppState extends ChangeNotifier {
     if (_isPlaying && _telemetryPlayback) {
       _reportPlaybackStart();
     }
+    _updateNowPlayingInfo(force: true);
     if (notify) {
       notifyListeners();
     }
+  }
+
+  void _updateNowPlayingInfo({bool force = false}) {
+    final track = _nowPlaying;
+    if (track == null) {
+      return;
+    }
+    final now = DateTime.now();
+    const interval = Duration(seconds: 1);
+    if (!force) {
+      final last = _lastNowPlayingUpdateAt;
+      if (last != null && now.difference(last) < interval) {
+        return;
+      }
+    }
+    _lastNowPlayingUpdateAt = now;
+    final duration =
+        _duration == Duration.zero ? track.duration : _duration;
+    final position =
+        duration.inMilliseconds > 0 && _position > duration
+            ? duration
+            : _position;
+    unawaited(
+      _nowPlayingService.update(
+        track: track,
+        position: position,
+        duration: duration,
+        isPlaying: _isPlaying,
+      ),
+    );
   }
 
   String _buildPlaySessionId(MediaItem track) {

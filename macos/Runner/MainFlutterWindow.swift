@@ -9,6 +9,11 @@ class MainFlutterWindow: NSWindow {
     self.setFrame(windowFrame, display: true)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+    NowPlayingPlugin.register(
+      with: flutterViewController.registrar(
+        forPlugin: "NowPlayingPlugin"
+      )
+    )
 
     super.awakeFromNib()
   }
