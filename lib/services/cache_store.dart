@@ -358,6 +358,11 @@ class CacheStore {
     await _audioCache.emptyCache();
   }
 
+  /// Returns the approximate size of cached media on disk.
+  Future<int> getMediaCacheBytes() async {
+    return _audioCache.store.getCacheSize();
+  }
+
   Future<void> _saveTrackMap(
     String key,
     String id,

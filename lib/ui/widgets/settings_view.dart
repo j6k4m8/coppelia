@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/formatters.dart';
 import '../../state/app_state.dart';
 import '../../state/home_section.dart';
 import '../../state/now_playing_layout.dart';
@@ -428,7 +429,7 @@ class _LayoutSettings extends StatelessWidget {
   }
 }
 
-class _CacheSettings extends StatelessWidget {
+class _CacheSettings extends StatefulWidget {
   const _CacheSettings({
     required this.state,
     required this.onSnack,
@@ -438,6 +439,25 @@ class _CacheSettings extends StatelessWidget {
   final ValueChanged<String> onSnack;
 
   @override
+  State<_CacheSettings> createState() => _CacheSettingsState();
+}
+
+class _CacheSettingsState extends State<_CacheSettings> {
+  late Future<int> _cacheFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _cacheFuture = widget.state.getMediaCacheBytes();
+  }
+
+  void _refreshCacheUsage() {
+    setState(() {
+      _cacheFuture = widget.state.getMediaCacheBytes();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -445,13 +465,37 @@ class _CacheSettings extends StatelessWidget {
         Text('Cache', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
         _SettingRow(
+          title: 'Media cache',
+          subtitle: 'Downloaded artwork and audio stored on disk.',
+          trailing: FutureBuilder<int>(
+            future: _cacheFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Text(
+                  'Calculating...',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: ColorTokens.textSecondary(context),
+                      ),
+                );
+              }
+              final bytes = snapshot.data ?? 0;
+              return Text(
+                formatBytes(bytes),
+                style: Theme.of(context).textTheme.bodyLarge,
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        _SettingRow(
           title: 'Cached metadata',
           subtitle: 'Refresh playlists, albums, and recent tracks.',
           trailing: OutlinedButton(
             onPressed: () async {
-              await state.clearMetadataCache();
+              await widget.state.clearMetadataCache();
+              _refreshCacheUsage();
               if (context.mounted) {
-                onSnack('Metadata cache cleared.');
+                widget.onSnack('Metadata cache cleared.');
               }
             },
             child: const Text('Clear'),
@@ -463,9 +507,10 @@ class _CacheSettings extends StatelessWidget {
           subtitle: 'Remove downloaded audio files.',
           trailing: OutlinedButton(
             onPressed: () async {
-              await state.clearAudioCache();
+              await widget.state.clearAudioCache();
+              _refreshCacheUsage();
               if (context.mounted) {
-                onSnack('Audio cache cleared.');
+                widget.onSnack('Audio cache cleared.');
               }
             },
             child: const Text('Clear'),

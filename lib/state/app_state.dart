@@ -975,6 +975,11 @@ class AppState extends ChangeNotifier {
     await _cacheStore.clearAudioCache();
   }
 
+  /// Returns the estimated cached media size in bytes.
+  Future<int> getMediaCacheBytes() async {
+    return _cacheStore.getMediaCacheBytes();
+  }
+
   /// Releases audio resources.
   @override
   void dispose() {
