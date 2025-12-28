@@ -73,6 +73,9 @@ class AppState extends ChangeNotifier {
   List<Album> _favoriteAlbums = [];
   List<Artist> _favoriteArtists = [];
   List<MediaItem> _favoriteTracks = [];
+  final Set<String> _favoriteAlbumUpdatesInFlight = {};
+  final Set<String> _favoriteArtistUpdatesInFlight = {};
+  final Set<String> _favoriteTrackUpdatesInFlight = {};
   List<MediaItem> _recentTracks = [];
   List<MediaItem> _playHistory = [];
 
@@ -174,6 +177,30 @@ class AppState extends ChangeNotifier {
 
   /// Favorite tracks.
   List<MediaItem> get favoriteTracks => List.unmodifiable(_favoriteTracks);
+
+  /// Returns true when the album is marked as a favorite.
+  bool isFavoriteAlbum(String albumId) =>
+      _favoriteAlbums.any((album) => album.id == albumId);
+
+  /// Returns true when the artist is marked as a favorite.
+  bool isFavoriteArtist(String artistId) =>
+      _favoriteArtists.any((artist) => artist.id == artistId);
+
+  /// Returns true when the track is marked as a favorite.
+  bool isFavoriteTrack(String trackId) =>
+      _favoriteTracks.any((track) => track.id == trackId);
+
+  /// Returns true when an album favorite update is in flight.
+  bool isFavoriteAlbumUpdating(String albumId) =>
+      _favoriteAlbumUpdatesInFlight.contains(albumId);
+
+  /// Returns true when an artist favorite update is in flight.
+  bool isFavoriteArtistUpdating(String artistId) =>
+      _favoriteArtistUpdatesInFlight.contains(artistId);
+
+  /// Returns true when a track favorite update is in flight.
+  bool isFavoriteTrackUpdating(String trackId) =>
+      _favoriteTrackUpdatesInFlight.contains(trackId);
 
   /// Recently played tracks.
   List<MediaItem> get recentTracks => List.unmodifiable(_recentTracks);
@@ -409,15 +436,9 @@ class AppState extends ChangeNotifier {
       if (_genres.isNotEmpty) {
         await _loadGenres();
       }
-      if (_favoriteAlbums.isNotEmpty) {
-        await _loadFavoriteAlbums();
-      }
-      if (_favoriteArtists.isNotEmpty) {
-        await _loadFavoriteArtists();
-      }
-      if (_favoriteTracks.isNotEmpty) {
-        await _loadFavoriteTracks();
-      }
+      await _loadFavoriteAlbums();
+      await _loadFavoriteArtists();
+      await _loadFavoriteTracks();
     } catch (_) {
       // Keep cached content if refresh fails.
     }
@@ -1176,6 +1197,114 @@ class AppState extends ChangeNotifier {
       // Use cached results when available.
     } finally {
       _isLoadingLibrary = false;
+      notifyListeners();
+    }
+  }
+
+  void _applyAlbumFavoriteLocal(Album album, bool isFavorite) {
+    if (isFavorite) {
+      if (!_favoriteAlbums.any((item) => item.id == album.id)) {
+        _favoriteAlbums = [..._favoriteAlbums, album];
+      }
+    } else {
+      _favoriteAlbums =
+          _favoriteAlbums.where((item) => item.id != album.id).toList();
+    }
+    _favoriteAlbums.sort((a, b) => a.name.compareTo(b.name));
+  }
+
+  void _applyArtistFavoriteLocal(Artist artist, bool isFavorite) {
+    if (isFavorite) {
+      if (!_favoriteArtists.any((item) => item.id == artist.id)) {
+        _favoriteArtists = [..._favoriteArtists, artist];
+      }
+    } else {
+      _favoriteArtists =
+          _favoriteArtists.where((item) => item.id != artist.id).toList();
+    }
+    _favoriteArtists.sort((a, b) => a.name.compareTo(b.name));
+  }
+
+  void _applyTrackFavoriteLocal(MediaItem track, bool isFavorite) {
+    if (isFavorite) {
+      if (!_favoriteTracks.any((item) => item.id == track.id)) {
+        _favoriteTracks = [..._favoriteTracks, track];
+      }
+    } else {
+      _favoriteTracks =
+          _favoriteTracks.where((item) => item.id != track.id).toList();
+    }
+    _favoriteTracks.sort((a, b) => a.title.compareTo(b.title));
+  }
+
+  /// Updates the favorite status for an album.
+  Future<void> setAlbumFavorite(Album album, bool isFavorite) async {
+    if (_favoriteAlbumUpdatesInFlight.contains(album.id)) {
+      return;
+    }
+    final wasFavorite = isFavoriteAlbum(album.id);
+    if (wasFavorite == isFavorite) {
+      return;
+    }
+    _favoriteAlbumUpdatesInFlight.add(album.id);
+    _applyAlbumFavoriteLocal(album, isFavorite);
+    notifyListeners();
+    try {
+      await _client.setFavorite(itemId: album.id, isFavorite: isFavorite);
+      await _cacheStore.saveFavoriteAlbums(_favoriteAlbums);
+    } catch (_) {
+      _applyAlbumFavoriteLocal(album, wasFavorite);
+      await _cacheStore.saveFavoriteAlbums(_favoriteAlbums);
+    } finally {
+      _favoriteAlbumUpdatesInFlight.remove(album.id);
+      notifyListeners();
+    }
+  }
+
+  /// Updates the favorite status for an artist.
+  Future<void> setArtistFavorite(Artist artist, bool isFavorite) async {
+    if (_favoriteArtistUpdatesInFlight.contains(artist.id)) {
+      return;
+    }
+    final wasFavorite = isFavoriteArtist(artist.id);
+    if (wasFavorite == isFavorite) {
+      return;
+    }
+    _favoriteArtistUpdatesInFlight.add(artist.id);
+    _applyArtistFavoriteLocal(artist, isFavorite);
+    notifyListeners();
+    try {
+      await _client.setFavorite(itemId: artist.id, isFavorite: isFavorite);
+      await _cacheStore.saveFavoriteArtists(_favoriteArtists);
+    } catch (_) {
+      _applyArtistFavoriteLocal(artist, wasFavorite);
+      await _cacheStore.saveFavoriteArtists(_favoriteArtists);
+    } finally {
+      _favoriteArtistUpdatesInFlight.remove(artist.id);
+      notifyListeners();
+    }
+  }
+
+  /// Updates the favorite status for a track.
+  Future<void> setTrackFavorite(MediaItem track, bool isFavorite) async {
+    if (_favoriteTrackUpdatesInFlight.contains(track.id)) {
+      return;
+    }
+    final wasFavorite = isFavoriteTrack(track.id);
+    if (wasFavorite == isFavorite) {
+      return;
+    }
+    _favoriteTrackUpdatesInFlight.add(track.id);
+    _applyTrackFavoriteLocal(track, isFavorite);
+    notifyListeners();
+    try {
+      await _client.setFavorite(itemId: track.id, isFavorite: isFavorite);
+      await _cacheStore.saveFavoriteTracks(_favoriteTracks);
+    } catch (_) {
+      _applyTrackFavoriteLocal(track, wasFavorite);
+      await _cacheStore.saveFavoriteTracks(_favoriteTracks);
+    } finally {
+      _favoriteTrackUpdatesInFlight.remove(track.id);
       notifyListeners();
     }
   }

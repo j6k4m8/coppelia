@@ -53,6 +53,12 @@ class ArtistsView extends StatelessWidget {
           imageUrl: artist.imageUrl,
           icon: Icons.people_alt,
           onTap: () => state.selectArtist(artist),
+          onContextMenu: (position) => _showArtistMenu(
+            context,
+            position,
+            artist,
+            state,
+          ),
         );
       },
     );
@@ -64,6 +70,7 @@ class ArtistsView extends StatelessWidget {
     Artist artist,
     AppState state,
   ) async {
+    final isFavorite = state.isFavoriteArtist(artist.id);
     final selection = await showContextMenu<_ArtistAction>(
       context,
       position,
@@ -76,6 +83,10 @@ class ArtistsView extends StatelessWidget {
           value: _ArtistAction.open,
           child: Text('Open'),
         ),
+        PopupMenuItem(
+          value: _ArtistAction.favorite,
+          child: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
+        ),
       ],
     );
     if (selection == _ArtistAction.play) {
@@ -84,7 +95,10 @@ class ArtistsView extends StatelessWidget {
     if (selection == _ArtistAction.open) {
       await state.selectArtist(artist);
     }
+    if (selection == _ArtistAction.favorite) {
+      await state.setArtistFavorite(artist, !isFavorite);
+    }
   }
 }
 
-enum _ArtistAction { play, open }
+enum _ArtistAction { play, open, favorite }

@@ -91,6 +91,12 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
                 onTap: () => state.playFromArtist(track),
                 onPlayNext: () => state.playNext(track),
                 onAddToQueue: () => state.enqueueTrack(track),
+                isFavorite: state.isFavoriteTrack(track.id),
+                isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
+                onToggleFavorite: () => state.setTrackFavorite(
+                  track,
+                  !state.isFavoriteTrack(track.id),
+                ),
                 onAlbumTap: track.albumId == null
                     ? null
                     : () => state.selectAlbumById(track.albumId!),
@@ -131,6 +137,7 @@ Future<void> _showAlbumMenu(
 ) async {
   final canGoToArtist =
       album.artistName.isNotEmpty && album.artistName != 'Unknown Artist';
+  final isFavorite = state.isFavoriteAlbum(album.id);
   final selection = await showContextMenu<_AlbumAction>(
     context,
     position,
@@ -142,6 +149,10 @@ Future<void> _showAlbumMenu(
       const PopupMenuItem(
         value: _AlbumAction.open,
         child: Text('Open'),
+      ),
+      PopupMenuItem(
+        value: _AlbumAction.favorite,
+        child: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
       ),
       if (canGoToArtist)
         const PopupMenuItem(
@@ -159,9 +170,12 @@ Future<void> _showAlbumMenu(
   if (selection == _AlbumAction.goToArtist) {
     await state.selectArtistByName(album.artistName);
   }
+    if (selection == _AlbumAction.favorite) {
+      await state.setAlbumFavorite(album, !isFavorite);
+    }
 }
 
-enum _AlbumAction { play, open, goToArtist }
+enum _AlbumAction { play, open, favorite, goToArtist }
 
 class _ArtistHeader extends StatelessWidget {
   const _ArtistHeader({

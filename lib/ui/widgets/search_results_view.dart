@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../models/album.dart';
-import '../../state/app_state.dart';
 import '../../core/color_tokens.dart';
+import '../../models/album.dart';
+import '../../models/artist.dart';
+import '../../state/app_state.dart';
 import 'context_menu.dart';
 import 'library_card.dart';
 import 'section_header.dart';
@@ -65,6 +66,12 @@ class SearchResultsView extends StatelessWidget {
                   onTap: () => state.playFromSearch(track),
                   onPlayNext: () => state.playNext(track),
                   onAddToQueue: () => state.enqueueTrack(track),
+                  isFavorite: state.isFavoriteTrack(track.id),
+                  isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
+                  onToggleFavorite: () => state.setTrackFavorite(
+                    track,
+                    !state.isFavoriteTrack(track.id),
+                  ),
                   onAlbumTap: track.albumId == null
                       ? null
                       : () => state.selectAlbumById(track.albumId!),
@@ -119,6 +126,12 @@ class SearchResultsView extends StatelessWidget {
                   imageUrl: artist.imageUrl,
                   icon: Icons.people_alt,
                   onTap: () => state.selectArtist(artist),
+                  onContextMenu: (position) => _showArtistMenu(
+                    context,
+                    position,
+                    artist,
+                    state,
+                  ),
                 );
               },
             ),
@@ -155,6 +168,7 @@ class SearchResultsView extends StatelessWidget {
     final albumArtist = album.artistName;
     final canGoToArtist =
         albumArtist.isNotEmpty && albumArtist != 'Unknown Artist';
+    final isFavorite = state.isFavoriteAlbum(album.id);
     final selection = await showContextMenu<_AlbumAction>(
       context,
       position,
@@ -166,6 +180,10 @@ class SearchResultsView extends StatelessWidget {
         const PopupMenuItem(
           value: _AlbumAction.open,
           child: Text('Open'),
+        ),
+        PopupMenuItem(
+          value: _AlbumAction.favorite,
+          child: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
         ),
         if (canGoToArtist)
           const PopupMenuItem(
@@ -183,10 +201,51 @@ class SearchResultsView extends StatelessWidget {
     if (selection == _AlbumAction.goToArtist) {
       await state.selectArtistByName(albumArtist);
     }
+    if (selection == _AlbumAction.favorite) {
+      await state.setAlbumFavorite(album, !isFavorite);
+    }
+  }
+
+  Future<void> _showArtistMenu(
+    BuildContext context,
+    Offset position,
+    Artist artist,
+    AppState state,
+  ) async {
+    final isFavorite = state.isFavoriteArtist(artist.id);
+    final selection = await showContextMenu<_ArtistAction>(
+      context,
+      position,
+      [
+        const PopupMenuItem(
+          value: _ArtistAction.play,
+          child: Text('Play'),
+        ),
+        const PopupMenuItem(
+          value: _ArtistAction.open,
+          child: Text('Open'),
+        ),
+        PopupMenuItem(
+          value: _ArtistAction.favorite,
+          child: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
+        ),
+      ],
+    );
+    if (selection == _ArtistAction.play) {
+      await state.playArtist(artist);
+    }
+    if (selection == _ArtistAction.open) {
+      await state.selectArtist(artist);
+    }
+    if (selection == _ArtistAction.favorite) {
+      await state.setArtistFavorite(artist, !isFavorite);
+    }
   }
 }
 
-enum _AlbumAction { play, open, goToArtist }
+enum _AlbumAction { play, open, favorite, goToArtist }
+
+enum _ArtistAction { play, open, favorite }
 
 class _CardGrid extends StatelessWidget {
   const _CardGrid({required this.itemCount, required this.itemBuilder});

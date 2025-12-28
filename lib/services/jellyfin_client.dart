@@ -407,6 +407,27 @@ class JellyfinClient {
         .toList();
   }
 
+  /// Updates the favorite state for a Jellyfin item.
+  Future<void> setFavorite({
+    required String itemId,
+    required bool isFavorite,
+  }) async {
+    final session = _requireSession();
+    final uri = Uri.parse(
+      '${session.serverUrl}/Users/${session.userId}/FavoriteItems/$itemId',
+    ).replace(
+      queryParameters: {
+        'api_key': session.accessToken,
+      },
+    );
+    final response = isFavorite
+        ? await _httpClient.post(uri)
+        : await _httpClient.delete(uri);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Unable to update favorite (${response.statusCode}).');
+    }
+  }
+
   /// Searches the library for matching items.
   Future<SearchResults> searchLibrary(String query) async {
     final session = _requireSession();

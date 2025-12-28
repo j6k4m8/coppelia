@@ -60,6 +60,7 @@ class FavoriteAlbumsView extends StatelessWidget {
   ) async {
     final canGoToArtist =
         album.artistName.isNotEmpty && album.artistName != 'Unknown Artist';
+    final isFavorite = state.isFavoriteAlbum(album.id);
     final selection = await showContextMenu<_AlbumAction>(
       context,
       position,
@@ -71,6 +72,10 @@ class FavoriteAlbumsView extends StatelessWidget {
         const PopupMenuItem(
           value: _AlbumAction.open,
           child: Text('Open'),
+        ),
+        PopupMenuItem(
+          value: _AlbumAction.favorite,
+          child: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
         ),
         if (canGoToArtist)
           const PopupMenuItem(
@@ -88,7 +93,10 @@ class FavoriteAlbumsView extends StatelessWidget {
     if (selection == _AlbumAction.goToArtist) {
       await state.selectArtistByName(album.artistName);
     }
+    if (selection == _AlbumAction.favorite) {
+      await state.setAlbumFavorite(album, !isFavorite);
+    }
   }
 }
 
-enum _AlbumAction { play, open, goToArtist }
+enum _AlbumAction { play, open, favorite, goToArtist }

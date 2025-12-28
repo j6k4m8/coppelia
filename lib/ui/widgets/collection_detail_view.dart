@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../../models/media_item.dart';
 import '../../core/color_tokens.dart';
+import '../../models/media_item.dart';
+import '../../state/app_state.dart';
 import 'artwork_image.dart';
 import 'track_row.dart';
 
@@ -62,6 +64,7 @@ class CollectionDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final state = context.read<AppState>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -104,6 +107,12 @@ class CollectionDetailView extends StatelessWidget {
                 onAddToQueue: onAddToQueue == null
                     ? null
                     : () => onAddToQueue!.call(track),
+                isFavorite: state.isFavoriteTrack(track.id),
+                isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
+                onToggleFavorite: () => state.setTrackFavorite(
+                  track,
+                  !state.isFavoriteTrack(track.id),
+                ),
                 onAlbumTap: canGoToAlbum
                     ? () => onAlbumTap!.call(track)
                     : null,

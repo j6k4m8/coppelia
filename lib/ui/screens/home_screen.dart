@@ -548,6 +548,7 @@ class _HomeFeaturedView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final state = context.read<AppState>();
     if (tracks.isEmpty) {
       return const LibraryPlaceholderView(view: LibraryView.homeFeatured);
     }
@@ -560,28 +561,27 @@ class _HomeFeaturedView extends StatelessWidget {
           track: track,
           index: index,
           isActive: false,
-          onTap: () =>
-              context.read<AppState>().playFromList(tracks, track),
-          onPlayNext: () =>
-              context.read<AppState>().playNext(track),
-          onAddToQueue: () =>
-              context.read<AppState>().enqueueTrack(track),
+          onTap: () => state.playFromList(tracks, track),
+          onPlayNext: () => state.playNext(track),
+          onAddToQueue: () => state.enqueueTrack(track),
+          isFavorite: state.isFavoriteTrack(track.id),
+          isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
+          onToggleFavorite: () => state.setTrackFavorite(
+            track,
+            !state.isFavoriteTrack(track.id),
+          ),
           onAlbumTap: track.albumId == null
               ? null
-              : () => context.read<AppState>().selectAlbumById(track.albumId!),
+              : () => state.selectAlbumById(track.albumId!),
           onArtistTap: track.artistIds.isEmpty
               ? null
-              : () => context
-                  .read<AppState>()
-                  .selectArtistById(track.artistIds.first),
+              : () => state.selectArtistById(track.artistIds.first),
           onGoToAlbum: track.albumId == null
               ? null
-              : () => context.read<AppState>().selectAlbumById(track.albumId!),
+              : () => state.selectAlbumById(track.albumId!),
           onGoToArtist: track.artistIds.isEmpty
               ? null
-              : () => context
-                  .read<AppState>()
-                  .selectArtistById(track.artistIds.first),
+              : () => state.selectArtistById(track.artistIds.first),
         );
       },
     );
@@ -596,6 +596,7 @@ class _HomeRecentView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final state = context.read<AppState>();
     final effectiveTracks = tracks.isNotEmpty ? tracks : fallback;
     if (effectiveTracks.isEmpty) {
       return const LibraryPlaceholderView(view: LibraryView.homeRecent);
@@ -609,29 +610,27 @@ class _HomeRecentView extends StatelessWidget {
           track: track,
           index: index,
           isActive: false,
-          onTap: () => context
-              .read<AppState>()
-              .playFromList(effectiveTracks, track),
-          onPlayNext: () =>
-              context.read<AppState>().playNext(track),
-          onAddToQueue: () =>
-              context.read<AppState>().enqueueTrack(track),
+          onTap: () => state.playFromList(effectiveTracks, track),
+          onPlayNext: () => state.playNext(track),
+          onAddToQueue: () => state.enqueueTrack(track),
+          isFavorite: state.isFavoriteTrack(track.id),
+          isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
+          onToggleFavorite: () => state.setTrackFavorite(
+            track,
+            !state.isFavoriteTrack(track.id),
+          ),
           onAlbumTap: track.albumId == null
               ? null
-              : () => context.read<AppState>().selectAlbumById(track.albumId!),
+              : () => state.selectAlbumById(track.albumId!),
           onArtistTap: track.artistIds.isEmpty
               ? null
-              : () => context
-                  .read<AppState>()
-                  .selectArtistById(track.artistIds.first),
+              : () => state.selectArtistById(track.artistIds.first),
           onGoToAlbum: track.albumId == null
               ? null
-              : () => context.read<AppState>().selectAlbumById(track.albumId!),
+              : () => state.selectAlbumById(track.albumId!),
           onGoToArtist: track.artistIds.isEmpty
               ? null
-              : () => context
-                  .read<AppState>()
-                  .selectArtistById(track.artistIds.first),
+              : () => state.selectArtistById(track.artistIds.first),
         );
       },
     );

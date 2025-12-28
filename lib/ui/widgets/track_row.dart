@@ -17,6 +17,9 @@ class TrackRow extends StatelessWidget {
     this.isActive = false,
     this.onPlayNext,
     this.onAddToQueue,
+    this.onToggleFavorite,
+    this.isFavorite = false,
+    this.isFavoriteUpdating = false,
     this.onAlbumTap,
     this.onArtistTap,
     this.onGoToAlbum,
@@ -40,6 +43,15 @@ class TrackRow extends StatelessWidget {
 
   /// Optional handler to add the track to the queue.
   final VoidCallback? onAddToQueue;
+
+  /// Optional handler to toggle favorite state.
+  final Future<void> Function()? onToggleFavorite;
+
+  /// Indicates if this track is favorited.
+  final bool isFavorite;
+
+  /// Indicates if the favorite state is updating.
+  final bool isFavoriteUpdating;
 
   /// Optional handler to navigate to the album.
   final VoidCallback? onAlbumTap;
@@ -125,6 +137,24 @@ class TrackRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
+              if (isFavoriteUpdating) ...[
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ] else if (isFavorite) ...[
+                Icon(
+                  Icons.favorite,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+              ],
               Text(
                 formatDuration(track.duration),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -141,6 +171,7 @@ class TrackRow extends StatelessWidget {
   Future<void> _showMenu(BuildContext context, Offset position) async {
     if (onPlayNext == null &&
         onAddToQueue == null &&
+        onToggleFavorite == null &&
         onGoToAlbum == null &&
         onGoToArtist == null) {
       return;
@@ -164,6 +195,14 @@ class TrackRow extends StatelessWidget {
         const PopupMenuItem(
           value: _TrackMenuAction.addToQueue,
           child: Text('Add to Queue'),
+        ),
+      );
+    }
+    if (onToggleFavorite != null) {
+      items.add(
+        PopupMenuItem(
+          value: _TrackMenuAction.favorite,
+          child: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
         ),
       );
     }
@@ -194,6 +233,8 @@ class TrackRow extends StatelessWidget {
       onPlayNext?.call();
     } else if (action == _TrackMenuAction.addToQueue) {
       onAddToQueue?.call();
+    } else if (action == _TrackMenuAction.favorite) {
+      await onToggleFavorite?.call();
     } else if (action == _TrackMenuAction.goToAlbum) {
       onGoToAlbum?.call();
     } else if (action == _TrackMenuAction.goToArtist) {
@@ -202,7 +243,14 @@ class TrackRow extends StatelessWidget {
   }
 }
 
-enum _TrackMenuAction { play, playNext, addToQueue, goToAlbum, goToArtist }
+enum _TrackMenuAction {
+  play,
+  playNext,
+  addToQueue,
+  favorite,
+  goToAlbum,
+  goToArtist,
+}
 
 class _TrackMetaRow extends StatelessWidget {
   const _TrackMetaRow({

@@ -1,7 +1,8 @@
 # TODO
 
-## Low Priority
-
 -   [ ] add auto build and release pipeline to github actions workflows
--   [ ] right click "Favorite" / "Unfavorite" on albums, artists, tracks. should hit jelly API and update UI accordingly. spinner while waiting for response.
--   [ ] [Appearance] togleably (in settings page), the cards on hero header sections should either (on) show the album art at full size, filling the card's height, or (off) show the album art as a small square thumbnail on the left side with text to the right (what it is currently).
+-   [x] right click "Favorite" / "Unfavorite" on albums, artists, tracks. should hit jelly API and update UI accordingly. spinner while waiting for response.
+-   [ ] search should search entire library, not just tracks. artists, albums, playlists, etc. different headers for each type of result.
+-   [ ] on account page, toggleably add switches for different telemetry to send back to the jellyfin server (i.e., plays reporting)
+-   [ ] artist names should be clickable links that take you to the artist page, everywhere they appear
+-   [ ] visual tweak: the alphabet scroll helper on the right needs the body to be padded further away so it doesn't feel cramped

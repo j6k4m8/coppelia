@@ -62,6 +62,12 @@ class QueueView extends StatelessWidget {
                 onTap: () => state.playQueueIndex(index),
                 onPlayNext: () => state.playNext(track),
                 onAddToQueue: () => state.enqueueTrack(track),
+                isFavorite: state.isFavoriteTrack(track.id),
+                isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
+                onToggleFavorite: () => state.setTrackFavorite(
+                  track,
+                  !state.isFavoriteTrack(track.id),
+                ),
                 onAlbumTap: track.albumId == null
                     ? null
                     : () => state.selectAlbumById(track.albumId!),
