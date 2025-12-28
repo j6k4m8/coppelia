@@ -427,6 +427,83 @@ class _LayoutSettings extends StatelessWidget {
             SizedBox(height: space(16)),
             const Padding(
               padding: EdgeInsets.only(left: 12),
+              child: _SettingsSubheader(title: 'Available Offline'),
+            ),
+            SizedBox(height: space(8)),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.offlineAlbums.label,
+                subtitle: 'Show offline albums.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.offlineAlbums,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.offlineAlbums,
+                    value,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: space(12)),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.offlineArtists.label,
+                subtitle: 'Show offline artists.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.offlineArtists,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.offlineArtists,
+                    value,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: space(12)),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.offlinePlaylists.label,
+                subtitle: 'Show offline playlists.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.offlinePlaylists,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.offlinePlaylists,
+                    value,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: space(12)),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.offlineTracks.label,
+                subtitle: 'Show offline tracks.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.offlineTracks,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.offlineTracks,
+                    value,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: space(16)),
+            const Padding(
+              padding: EdgeInsets.only(left: 12),
               child: _SettingsSubheader(title: 'Browse'),
             ),
             SizedBox(height: space(8)),

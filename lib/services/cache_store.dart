@@ -551,7 +551,7 @@ class CacheStore {
 
   /// Removes a cached audio entry and evicts the file.
   Future<void> evictCachedAudio(String streamUrl) async {
-    await _audioCache.removeFile(streamUrl);
+    await _deleteAudioFile(streamUrl);
     await _forgetCachedAudio(streamUrl);
   }
 
@@ -586,11 +586,31 @@ class CacheStore {
       return;
     }
     for (final entry in toRemove) {
-      await _audioCache.removeFile(entry.streamUrl);
+      await _deleteAudioFile(entry.streamUrl);
     }
     await _forgetCachedAudioEntries(
       toRemove.map((entry) => entry.streamUrl).toSet(),
     );
+  }
+
+  Future<void> _deleteAudioFile(String streamUrl) async {
+    File? cachedFile;
+    try {
+      final cacheInfo = await _audioCache.getFileFromCache(streamUrl);
+      cachedFile = cacheInfo?.file;
+    } catch (_) {}
+    try {
+      await _audioCache.removeFile(streamUrl);
+    } catch (_) {}
+    if (cachedFile != null) {
+      try {
+        if (await cachedFile.exists()) {
+          await cachedFile.delete();
+        }
+      } catch (_) {
+        // Ignore file deletion failures.
+      }
+    }
   }
 
   /// Returns the directory used by the media cache.

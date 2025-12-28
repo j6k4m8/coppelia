@@ -1419,11 +1419,13 @@ class AppState extends ChangeNotifier {
   Future<void> makeTrackAvailableOffline(MediaItem track) async {
     await _cacheStore.setPinnedAudio(track.streamUrl, true);
     await _cacheStore.prefetchAudio(track);
+    notifyListeners();
   }
 
   /// Removes a track from offline pinning.
   Future<void> unpinTrackOffline(MediaItem track) async {
     await _cacheStore.setPinnedAudio(track.streamUrl, false);
+    notifyListeners();
   }
 
   Future<List<MediaItem>> _loadAlbumTracksForOffline(Album album) async {
@@ -1461,6 +1463,7 @@ class AppState extends ChangeNotifier {
       await _cacheStore.setPinnedAudio(track.streamUrl, true);
       await _cacheStore.prefetchAudio(track);
     }
+    notifyListeners();
   }
 
   /// Removes an album from offline pinning.
@@ -1469,6 +1472,7 @@ class AppState extends ChangeNotifier {
     for (final track in tracks) {
       await _cacheStore.setPinnedAudio(track.streamUrl, false);
     }
+    notifyListeners();
   }
 
   /// Pins all tracks for an artist for offline playback.
@@ -1478,6 +1482,7 @@ class AppState extends ChangeNotifier {
       await _cacheStore.setPinnedAudio(track.streamUrl, true);
       await _cacheStore.prefetchAudio(track);
     }
+    notifyListeners();
   }
 
   /// Removes an artist from offline pinning.
@@ -1486,6 +1491,7 @@ class AppState extends ChangeNotifier {
     for (final track in tracks) {
       await _cacheStore.setPinnedAudio(track.streamUrl, false);
     }
+    notifyListeners();
   }
 
   /// Returns whether a track is pinned for offline playback.
@@ -1511,6 +1517,114 @@ class AppState extends ChangeNotifier {
     }
     final pinned = await _cacheStore.loadPinnedAudio();
     return tracks.every((track) => pinned.contains(track.streamUrl));
+  }
+
+  /// Returns offline-ready albums based on pinned tracks.
+  Future<List<Album>> loadOfflineAlbums() async {
+    final pinned = await _cacheStore.loadPinnedAudio();
+    if (pinned.isEmpty) {
+      return [];
+    }
+    final albums = await _cacheStore.loadAlbums();
+    final offline = <Album>[];
+    for (final album in albums) {
+      final tracks = await _cacheStore.loadAlbumTracks(album.id);
+      if (tracks.isEmpty) {
+        continue;
+      }
+      if (tracks.every((track) => pinned.contains(track.streamUrl))) {
+        offline.add(album);
+      }
+    }
+    offline.sort((a, b) => a.name.compareTo(b.name));
+    return offline;
+  }
+
+  /// Returns offline-ready artists based on pinned tracks.
+  Future<List<Artist>> loadOfflineArtists() async {
+    final pinned = await _cacheStore.loadPinnedAudio();
+    if (pinned.isEmpty) {
+      return [];
+    }
+    final artists = await _cacheStore.loadArtists();
+    final offline = <Artist>[];
+    for (final artist in artists) {
+      final tracks = await _cacheStore.loadArtistTracks(artist.id);
+      if (tracks.isEmpty) {
+        continue;
+      }
+      if (tracks.every((track) => pinned.contains(track.streamUrl))) {
+        offline.add(artist);
+      }
+    }
+    offline.sort((a, b) => a.name.compareTo(b.name));
+    return offline;
+  }
+
+  /// Returns offline-ready playlists based on pinned tracks.
+  Future<List<Playlist>> loadOfflinePlaylists() async {
+    final pinned = await _cacheStore.loadPinnedAudio();
+    if (pinned.isEmpty) {
+      return [];
+    }
+    final playlists = await _cacheStore.loadPlaylists();
+    final offline = <Playlist>[];
+    for (final playlist in playlists) {
+      final tracks = await _cacheStore.loadPlaylistTracks(playlist.id);
+      if (tracks.isEmpty) {
+        continue;
+      }
+      if (tracks.every((track) => pinned.contains(track.streamUrl))) {
+        offline.add(playlist);
+      }
+    }
+    offline.sort((a, b) => a.name.compareTo(b.name));
+    return offline;
+  }
+
+  /// Returns offline-ready tracks based on pinned audio.
+  Future<List<MediaItem>> loadOfflineTracks() async {
+    final pinned = await _cacheStore.loadPinnedAudio();
+    if (pinned.isEmpty) {
+      return [];
+    }
+    final cached = await _cacheStore.loadCachedAudioEntries();
+    final offline = cached
+        .where((entry) => pinned.contains(entry.streamUrl))
+        .map(_mediaItemFromCachedEntry)
+        .toList();
+    return offline;
+  }
+
+  String _extractStreamItemId(String streamUrl) {
+    final uri = Uri.tryParse(streamUrl);
+    if (uri == null) {
+      return streamUrl;
+    }
+    final segments = uri.pathSegments;
+    final index = segments.indexOf('Audio');
+    if (index == -1 || segments.length <= index + 1) {
+      return streamUrl;
+    }
+    return segments[index + 1];
+  }
+
+  MediaItem _mediaItemFromCachedEntry(CachedAudioEntry entry) {
+    final uri = Uri.tryParse(entry.streamUrl);
+    final itemId = _extractStreamItemId(entry.streamUrl);
+    final origin = uri?.origin ?? '';
+    final imageUrl = origin.isNotEmpty
+        ? '$origin/Items/$itemId/Images/Primary?fillWidth=500&quality=90'
+        : null;
+    return MediaItem(
+      id: itemId,
+      title: entry.title,
+      album: entry.album,
+      artists: entry.artists,
+      duration: Duration.zero,
+      imageUrl: imageUrl,
+      streamUrl: entry.streamUrl,
+    );
   }
 
   /// Releases audio resources.

@@ -22,6 +22,10 @@ import '../widgets/library_overview.dart';
 import '../widgets/library_placeholder_view.dart';
 import '../widgets/genres_view.dart';
 import '../widgets/now_playing_panel.dart';
+import '../widgets/offline_albums_view.dart';
+import '../widgets/offline_artists_view.dart';
+import '../widgets/offline_playlists_view.dart';
+import '../widgets/offline_tracks_view.dart';
 import '../widgets/playlist_detail_view.dart';
 import '../widgets/playlist_card.dart';
 import '../widgets/track_row.dart';
@@ -708,6 +712,18 @@ class _LibraryContent extends StatelessWidget {
     }
     if (state.selectedView == LibraryView.favoritesSongs) {
       return const FavoriteTracksView();
+    }
+    if (state.selectedView == LibraryView.offlineAlbums) {
+      return const OfflineAlbumsView();
+    }
+    if (state.selectedView == LibraryView.offlineArtists) {
+      return const OfflineArtistsView();
+    }
+    if (state.selectedView == LibraryView.offlinePlaylists) {
+      return const OfflinePlaylistsView();
+    }
+    if (state.selectedView == LibraryView.offlineTracks) {
+      return const OfflineTracksView();
     }
     if (state.selectedView == LibraryView.history) {
       return const PlayHistoryView();

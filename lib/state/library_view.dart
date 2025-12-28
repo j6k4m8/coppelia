@@ -24,6 +24,18 @@ enum LibraryView {
   /// Favorite artists section.
   favoritesArtists,
 
+  /// Offline albums section.
+  offlineAlbums,
+
+  /// Offline artists section.
+  offlineArtists,
+
+  /// Offline playlists section.
+  offlinePlaylists,
+
+  /// Offline tracks section.
+  offlineTracks,
+
   /// Playback history section.
   history,
 
@@ -64,6 +76,14 @@ extension LibraryViewLabels on LibraryView {
         return 'Favorite Songs';
       case LibraryView.favoritesArtists:
         return 'Favorite Artists';
+      case LibraryView.offlineAlbums:
+        return 'Offline Albums';
+      case LibraryView.offlineArtists:
+        return 'Offline Artists';
+      case LibraryView.offlinePlaylists:
+        return 'Offline Playlists';
+      case LibraryView.offlineTracks:
+        return 'Offline Tracks';
       case LibraryView.settings:
         return 'Settings';
       case LibraryView.history:
@@ -98,6 +118,14 @@ extension LibraryViewLabels on LibraryView {
         return 'Tracks you have starred in Jellyfin.';
       case LibraryView.favoritesArtists:
         return 'Artists you keep on repeat.';
+      case LibraryView.offlineAlbums:
+        return 'Albums fully downloaded for offline playback.';
+      case LibraryView.offlineArtists:
+        return 'Artists with every track available offline.';
+      case LibraryView.offlinePlaylists:
+        return 'Playlists ready for offline playback.';
+      case LibraryView.offlineTracks:
+        return 'Tracks you have pinned for offline listening.';
       case LibraryView.settings:
         return 'Tune the player to your liking.';
       case LibraryView.history:

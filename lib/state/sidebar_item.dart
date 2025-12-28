@@ -15,6 +15,18 @@ enum SidebarItem {
   /// Favorite artists.
   favoritesArtists,
 
+  /// Offline albums.
+  offlineAlbums,
+
+  /// Offline artists.
+  offlineArtists,
+
+  /// Offline playlists.
+  offlinePlaylists,
+
+  /// Offline tracks.
+  offlineTracks,
+
   /// Browse albums.
   browseAlbums,
 
@@ -51,6 +63,14 @@ extension SidebarItemMetadata on SidebarItem {
         return 'favorites_songs';
       case SidebarItem.favoritesArtists:
         return 'favorites_artists';
+      case SidebarItem.offlineAlbums:
+        return 'offline_albums';
+      case SidebarItem.offlineArtists:
+        return 'offline_artists';
+      case SidebarItem.offlinePlaylists:
+        return 'offline_playlists';
+      case SidebarItem.offlineTracks:
+        return 'offline_tracks';
       case SidebarItem.browseAlbums:
         return 'browse_albums';
       case SidebarItem.browseArtists:
@@ -81,6 +101,14 @@ extension SidebarItemMetadata on SidebarItem {
         return 'Songs';
       case SidebarItem.favoritesArtists:
         return 'Artists';
+      case SidebarItem.offlineAlbums:
+        return 'Albums';
+      case SidebarItem.offlineArtists:
+        return 'Artists';
+      case SidebarItem.offlinePlaylists:
+        return 'Playlists';
+      case SidebarItem.offlineTracks:
+        return 'Tracks';
       case SidebarItem.browseAlbums:
         return 'Albums';
       case SidebarItem.browseArtists:

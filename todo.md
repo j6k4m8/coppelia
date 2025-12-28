@@ -7,7 +7,7 @@
     -   [x] "clear cache" should delete files off disk.
     -   [x] default is LRU cache eviction
         -   [x] add right-click context menu on track/album/artist to "Make available offline" (pin to cache)
-    -   [ ] add "Available offline" section to sidebar (Albums, Artists, Playlists, Tracks)
+    -   [x] add "Available offline" section to sidebar (Albums, Artists, Playlists, Tracks)
 -   [x] appearance: add "compact" mode with less padding; three-way switch "Sardinemode" | "Comfortable" | "Spacious"
 -   [ ] UI thrash: scroll gets janky again during updates (investigate repaint storms)
 -   [x] Tracks browse should load alphabetically so pagination doesn't fetch items above the viewport (? need to repro)
@@ -23,3 +23,6 @@
 -   [x] add to the homepage a "Jump in" section that has cards for (independently) randomly selected album, artist, and track
 -   [ ] on album / artist pages, add Favorite / Unfavorite button if applicable (on the detail header)
 -   [ ] on album / artist pages, add Make Available Offline / Remove from Offline button if applicable (on the detail header)
+-   [ ] optional setting subsection in Cache for "Automatically download favorited items for offline playback"
+    -   [ ] with sub-settings for "Albums", "Artists", "Tracks"
+    -   [ ] with "only on Wi-Fi" toggle

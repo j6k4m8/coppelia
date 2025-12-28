@@ -26,6 +26,7 @@ class SidebarNavigation extends StatefulWidget {
 
 class _SidebarNavigationState extends State<SidebarNavigation> {
   bool _favoritesExpanded = true;
+  bool _offlineExpanded = true;
   bool _browseExpanded = true;
   bool _playbackExpanded = true;
   bool _playlistsExpanded = true;
@@ -43,6 +44,12 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
         ) ||
         state.isSidebarItemVisible(SidebarItem.favoritesSongs) ||
         state.isSidebarItemVisible(SidebarItem.favoritesArtists);
+    final showOfflineSection = state.isSidebarItemVisible(
+          SidebarItem.offlineAlbums,
+        ) ||
+        state.isSidebarItemVisible(SidebarItem.offlineArtists) ||
+        state.isSidebarItemVisible(SidebarItem.offlinePlaylists) ||
+        state.isSidebarItemVisible(SidebarItem.offlineTracks);
     final showBrowseSection = state.isSidebarItemVisible(
           SidebarItem.browseAlbums,
         ) ||
@@ -191,7 +198,6 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                   : const SizedBox.shrink(),
             ),
           ],
-          SizedBox(height: space(20)),
           if (showBrowseSection) ...[
             _SectionHeader(
               title: 'Browse',
@@ -335,6 +341,86 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                             ),
                           ),
                         ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
+          SizedBox(height: space(20)),
+          if (showOfflineSection) ...[
+            _SectionHeader(
+              title: 'Available Offline',
+              onTap: () => setState(() {
+                _offlineExpanded = !_offlineExpanded;
+              }),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              child: _offlineExpanded
+                  ? Column(
+                      children: [
+                        SizedBox(height: space(8)),
+                        if (state.isSidebarItemVisible(
+                          SidebarItem.offlineAlbums,
+                        ))
+                          _NavTile(
+                            icon: Icons.album,
+                            label: 'Albums',
+                            selected: state.selectedPlaylist == null &&
+                                state.selectedView ==
+                                    LibraryView.offlineAlbums,
+                            onTap: () => _handleNavigate(
+                              () => state.selectLibraryView(
+                                LibraryView.offlineAlbums,
+                              ),
+                            ),
+                          ),
+                        if (state.isSidebarItemVisible(
+                          SidebarItem.offlineArtists,
+                        ))
+                          _NavTile(
+                            icon: Icons.people_alt,
+                            label: 'Artists',
+                            selected: state.selectedPlaylist == null &&
+                                state.selectedView ==
+                                    LibraryView.offlineArtists,
+                            onTap: () => _handleNavigate(
+                              () => state.selectLibraryView(
+                                LibraryView.offlineArtists,
+                              ),
+                            ),
+                          ),
+                        if (state.isSidebarItemVisible(
+                          SidebarItem.offlinePlaylists,
+                        ))
+                          _NavTile(
+                            icon: Icons.playlist_play,
+                            label: 'Playlists',
+                            selected: state.selectedPlaylist == null &&
+                                state.selectedView ==
+                                    LibraryView.offlinePlaylists,
+                            onTap: () => _handleNavigate(
+                              () => state.selectLibraryView(
+                                LibraryView.offlinePlaylists,
+                              ),
+                            ),
+                          ),
+                        if (state.isSidebarItemVisible(
+                          SidebarItem.offlineTracks,
+                        ))
+                          _NavTile(
+                            icon: Icons.music_note,
+                            label: 'Tracks',
+                            selected: state.selectedPlaylist == null &&
+                                state.selectedView ==
+                                    LibraryView.offlineTracks,
+                            onTap: () => _handleNavigate(
+                              () => state.selectLibraryView(
+                                LibraryView.offlineTracks,
+                              ),
+                            ),
+                          ),
                       ],
                     )
                   : const SizedBox.shrink(),
