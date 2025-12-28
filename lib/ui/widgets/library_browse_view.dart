@@ -97,6 +97,7 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
     final itemCount = widget.items.length;
     final letterIndex = _buildLetterIndex(widget.items);
     final letters = letterIndex.keys.toList(growable: false);
+    final contentRightPadding = letters.isNotEmpty ? 48.0 : 0.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,6 +145,7 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                   layout == BrowseLayout.grid
                       ? GridView.builder(
                           controller: _controller,
+                          padding: EdgeInsets.only(right: contentRightPadding),
                           itemCount: widget.items.length,
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
@@ -159,6 +161,7 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                         )
                       : ListView.separated(
                           controller: _controller,
+                          padding: EdgeInsets.only(right: contentRightPadding),
                           itemCount: widget.items.length,
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: 6),
