@@ -1,9 +1,9 @@
 <h1 align=center>Coppelia</h1>
 <p align="center">
-  A native macOS app for Jellyfin music libraries.
+  A native macOS app for Jellyfin music libraries (Windows/Linux/iOS/Android coming soon).
 </p>
 
-Coppelia is a cross-platform app designed for Jellyfin music libraries. I built it because I couldn't find an app that was:
+Coppelia is a cross-platform app designed for Jellyfin music libraries. macOS is the only supported platform right now, with other platforms coming soon. I built it because I couldn't find an app that was:
 
 -   native / low-resource
 -   beautiful
