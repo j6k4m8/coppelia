@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/playlist.dart';
@@ -58,14 +59,14 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
         children: [
           Row(
             children: [
-              Container(
+              SizedBox(
                 width: 36,
                 height: 36,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6F7BFF),
-                  borderRadius: BorderRadius.circular(12),
+                child: SvgPicture.asset(
+                  'assets/logo.svg',
+                  width: 36,
+                  height: 36,
                 ),
-                child: const Icon(Icons.queue_music, size: 20),
               ),
               const SizedBox(width: 12),
               Text(
