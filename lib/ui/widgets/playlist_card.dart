@@ -22,6 +22,12 @@ class PlaylistCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    Widget buildArtworkFallback() => Container(
+          color: ColorTokens.cardFillStrong(context),
+          child: const Center(
+            child: Icon(Icons.queue_music, size: 32),
+          ),
+        );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -40,15 +46,12 @@ class PlaylistCard extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: playlist.imageUrl == null
-                    ? Container(
-                        color: ColorTokens.cardFillStrong(context),
-                        child: const Center(
-                          child: Icon(Icons.queue_music, size: 32),
-                        ),
-                      )
+                    ? buildArtworkFallback()
                     : CachedNetworkImage(
                         imageUrl: playlist.imageUrl!,
                         fit: BoxFit.cover,
+                        placeholder: (_, __) => buildArtworkFallback(),
+                        errorWidget: (_, __, ___) => buildArtworkFallback(),
                       ),
               ),
             ),

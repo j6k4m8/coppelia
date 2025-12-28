@@ -36,6 +36,12 @@ class LibraryListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Widget buildArtworkFallback() => Container(
+          width: 48,
+          height: 48,
+          color: ColorTokens.cardFillStrong(context),
+          child: Icon(icon, size: 20),
+        );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -53,17 +59,14 @@ class LibraryListTile extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: imageUrl == null
-                  ? Container(
-                      width: 48,
-                      height: 48,
-                      color: ColorTokens.cardFillStrong(context),
-                      child: Icon(icon, size: 20),
-                    )
+                  ? buildArtworkFallback()
                   : CachedNetworkImage(
                       imageUrl: imageUrl!,
                       width: 48,
                       height: 48,
                       fit: BoxFit.cover,
+                      placeholder: (_, __) => buildArtworkFallback(),
+                      errorWidget: (_, __, ___) => buildArtworkFallback(),
                     ),
             ),
             const SizedBox(width: 14),

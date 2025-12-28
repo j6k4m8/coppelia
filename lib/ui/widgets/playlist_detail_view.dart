@@ -70,6 +70,12 @@ class _PlaylistHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.read<AppState>();
+    Widget buildArtworkFallback(bool isNarrow) => Container(
+          width: isNarrow ? 160 : 140,
+          height: isNarrow ? 160 : 140,
+          color: ColorTokens.cardFillStrong(context),
+          child: const Icon(Icons.queue_music, size: 36),
+        );
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -86,17 +92,14 @@ class _PlaylistHeader extends StatelessWidget {
           final artwork = ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: playlist.imageUrl == null
-                ? Container(
-                    width: isNarrow ? 160 : 140,
-                    height: isNarrow ? 160 : 140,
-                    color: ColorTokens.cardFillStrong(context),
-                    child: const Icon(Icons.queue_music, size: 36),
-                  )
+                ? buildArtworkFallback(isNarrow)
                 : CachedNetworkImage(
                     imageUrl: playlist.imageUrl!,
                     width: isNarrow ? 160 : 140,
                     height: isNarrow ? 160 : 140,
                     fit: BoxFit.cover,
+                    placeholder: (_, __) => buildArtworkFallback(isNarrow),
+                    errorWidget: (_, __, ___) => buildArtworkFallback(isNarrow),
                   ),
           );
           final details = Column(

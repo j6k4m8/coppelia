@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/color_tokens.dart';
+
 /// Card for album, artist, or genre tiles.
 class LibraryCard extends StatelessWidget {
   /// Creates a library card.
@@ -35,6 +36,10 @@ class LibraryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Widget buildArtworkFallback() => Container(
+          color: ColorTokens.cardFillStrong(context),
+          child: Center(child: Icon(icon, size: 32)),
+        );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -54,13 +59,12 @@ class LibraryCard extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: imageUrl == null
-                      ? Container(
-                          color: ColorTokens.cardFillStrong(context),
-                          child: Center(child: Icon(icon, size: 32)),
-                        )
+                    ? buildArtworkFallback()
                     : CachedNetworkImage(
                         imageUrl: imageUrl!,
                         fit: BoxFit.cover,
+                        placeholder: (_, __) => buildArtworkFallback(),
+                        errorWidget: (_, __, ___) => buildArtworkFallback(),
                       ),
               ),
             ),
@@ -72,15 +76,15 @@ class LibraryCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: ColorTokens.textSecondary(context)),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+            Text(
+              subtitle,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: ColorTokens.textSecondary(context)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),

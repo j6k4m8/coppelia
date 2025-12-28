@@ -68,6 +68,12 @@ class _TrackRowState extends State<TrackRow> {
         : _isHovering
             ? ColorTokens.hoverRow(context)
             : null;
+    Widget buildArtworkFallback() => Container(
+          width: 44,
+          height: 44,
+          color: ColorTokens.cardFillStrong(context),
+          child: const Icon(Icons.music_note, size: 18),
+        );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onDoubleTap: widget.onTap,
@@ -83,66 +89,63 @@ class _TrackRowState extends State<TrackRow> {
             color: highlight,
             borderRadius: BorderRadius.circular(14),
           ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 32,
-              child: Text(
-                '${widget.index + 1}'.padLeft(2, '0'),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 32,
+                child: Text(
+                  '${widget.index + 1}'.padLeft(2, '0'),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: ColorTokens.textSecondary(context),
+                      ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: widget.track.imageUrl == null
+                    ? buildArtworkFallback()
+                    : CachedNetworkImage(
+                        imageUrl: widget.track.imageUrl!,
+                        width: 44,
+                        height: 44,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => buildArtworkFallback(),
+                        errorWidget: (_, __, ___) => buildArtworkFallback(),
+                      ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.track.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 2),
+                    _TrackMetaRow(
+                      artistLabel: widget.track.artists.isNotEmpty
+                          ? widget.track.artists.join(', ')
+                          : 'Unknown Artist',
+                      albumLabel: widget.track.album,
+                      onArtistTap: widget.onArtistTap,
+                      onAlbumTap: widget.onAlbumTap,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                formatDuration(widget.track.duration),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: ColorTokens.textSecondary(context),
                     ),
               ),
-            ),
-            const SizedBox(width: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-                child: widget.track.imageUrl == null
-                    ? Container(
-                      width: 44,
-                      height: 44,
-                      color: ColorTokens.cardFillStrong(context),
-                      child: const Icon(Icons.music_note, size: 18),
-                    )
-                  : CachedNetworkImage(
-                      imageUrl: widget.track.imageUrl!,
-                      width: 44,
-                      height: 44,
-                      fit: BoxFit.cover,
-                    ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.track.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 2),
-                  _TrackMetaRow(
-                    artistLabel: widget.track.artists.isNotEmpty
-                        ? widget.track.artists.join(', ')
-                        : 'Unknown Artist',
-                    albumLabel: widget.track.album,
-                    onArtistTap: widget.onArtistTap,
-                    onAlbumTap: widget.onAlbumTap,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              formatDuration(widget.track.duration),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: ColorTokens.textSecondary(context),
-                  ),
-            ),
-          ],
-        ),
+            ],
+          ),
         ),
       ),
     );

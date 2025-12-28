@@ -505,18 +505,21 @@ class _Artwork extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = track?.imageUrl;
+    Widget buildArtworkFallback() => Container(
+          color: ColorTokens.cardFillStrong(context),
+          child: const Icon(Icons.music_note, size: 48),
+        );
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: AspectRatio(
         aspectRatio: 1,
         child: imageUrl == null
-            ? Container(
-                color: ColorTokens.cardFillStrong(context),
-                child: const Icon(Icons.music_note, size: 48),
-              )
+            ? buildArtworkFallback()
             : CachedNetworkImage(
                 imageUrl: imageUrl,
                 fit: BoxFit.cover,
+                placeholder: (_, __) => buildArtworkFallback(),
+                errorWidget: (_, __, ___) => buildArtworkFallback(),
               ),
       ),
     );
@@ -531,19 +534,24 @@ class _MiniArtwork extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = track?.imageUrl;
+    Widget buildArtworkFallback() => Container(
+          width: 56,
+          height: 56,
+          color: ColorTokens.cardFillStrong(context),
+          child: const Icon(Icons.music_note, size: 24),
+        );
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
       child: SizedBox(
         width: 56,
         height: 56,
         child: imageUrl == null
-            ? Container(
-                color: ColorTokens.cardFillStrong(context),
-                child: const Icon(Icons.music_note, size: 24),
-              )
+            ? buildArtworkFallback()
             : CachedNetworkImage(
                 imageUrl: imageUrl,
                 fit: BoxFit.cover,
+                placeholder: (_, __) => buildArtworkFallback(),
+                errorWidget: (_, __, ___) => buildArtworkFallback(),
               ),
       ),
     );

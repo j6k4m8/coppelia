@@ -25,6 +25,12 @@ class FeaturedTrackCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Widget buildArtworkFallback() => Container(
+          width: 72,
+          height: 72,
+          color: ColorTokens.cardFillStrong(context),
+          child: const Icon(Icons.music_note),
+        );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onDoubleTap: onTap,
@@ -45,18 +51,15 @@ class FeaturedTrackCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-                child: track.imageUrl == null
-                    ? Container(
-                      width: 72,
-                      height: 72,
-                      color: ColorTokens.cardFillStrong(context),
-                      child: const Icon(Icons.music_note),
-                    )
+              child: track.imageUrl == null
+                  ? buildArtworkFallback()
                   : CachedNetworkImage(
                       imageUrl: track.imageUrl!,
                       width: 72,
                       height: 72,
                       fit: BoxFit.cover,
+                      placeholder: (_, __) => buildArtworkFallback(),
+                      errorWidget: (_, __, ___) => buildArtworkFallback(),
                     ),
             ),
             const SizedBox(width: 16),

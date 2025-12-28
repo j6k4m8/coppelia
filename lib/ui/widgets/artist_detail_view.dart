@@ -188,20 +188,23 @@ class _ArtistHeader extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isNarrow = constraints.maxWidth < 720;
+          Widget buildArtworkFallback() => Container(
+                width: isNarrow ? 160 : 140,
+                height: isNarrow ? 160 : 140,
+                color: ColorTokens.cardFillStrong(context),
+                child: const Icon(Icons.person, size: 36),
+              );
           final artwork = ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: imageUrl == null
-                ? Container(
-                    width: isNarrow ? 160 : 140,
-                    height: isNarrow ? 160 : 140,
-                    color: ColorTokens.cardFillStrong(context),
-                    child: const Icon(Icons.person, size: 36),
-                  )
+                ? buildArtworkFallback()
                 : CachedNetworkImage(
                     imageUrl: imageUrl!,
                     width: isNarrow ? 160 : 140,
                     height: isNarrow ? 160 : 140,
                     fit: BoxFit.cover,
+                    placeholder: (_, __) => buildArtworkFallback(),
+                    errorWidget: (_, __, ___) => buildArtworkFallback(),
                   ),
           );
           final details = Column(
