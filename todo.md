@@ -12,7 +12,7 @@
 -   [ ] UI thrash: scroll gets janky again during updates (investigate repaint storms)
 -   [x] Tracks browse should load alphabetically so pagination doesn't fetch items above the viewport (? need to repro)
 -   [x] Tracks browse should include the alphabet scroller widget.
--   [ ] sidebar settings for inclusion should be indented the same as the sidebar itself
+-   [x] sidebar settings for inclusion should be indented the same as the sidebar itself
 -   [ ] Android: generate app icons from `assets/logo_app_icon.svg`.
 -   [ ] Android: media session + notification controls (play/pause/next).
 -   [ ] play controls

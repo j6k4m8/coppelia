@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -74,7 +76,12 @@ class _SidePanel extends StatelessWidget {
             ],
           ),
           SizedBox(height: space(20)),
-          _Artwork(track: track),
+          _Artwork(
+            track: track,
+            onTap: track == null
+                ? null
+                : () => _openExpandedNowPlaying(context),
+          ),
           SizedBox(height: space(20)),
           Text(
             track?.title ?? 'Nothing queued',
@@ -178,7 +185,12 @@ class _BottomBar extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    _MiniArtwork(track: track),
+                    _MiniArtwork(
+                      track: track,
+                      onTap: track == null
+                          ? null
+                          : () => _openExpandedNowPlaying(context),
+                    ),
                     SizedBox(width: space(12).clamp(8.0, 16.0)),
                     Expanded(child: titleBlock),
                   ],
@@ -234,7 +246,12 @@ class _BottomBar extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  _MiniArtwork(track: track),
+                  _MiniArtwork(
+                    track: track,
+                    onTap: track == null
+                        ? null
+                        : () => _openExpandedNowPlaying(context),
+                  ),
                   SizedBox(width: space(16).clamp(10.0, 20.0)),
                   Expanded(child: titleBlock),
                   if (track != null)
@@ -612,9 +629,10 @@ class _ProgressScrubberState extends State<_ProgressScrubber>
 }
 
 class _Artwork extends StatelessWidget {
-  const _Artwork({this.track});
+  const _Artwork({this.track, this.onTap});
 
   final MediaItem? track;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -630,7 +648,7 @@ class _Artwork extends StatelessWidget {
             size: clamped(48, min: 34, max: 60),
           ),
         );
-    return ClipRRect(
+    final artwork = ClipRRect(
       borderRadius: BorderRadius.circular(
         clamped(24, min: 14, max: 30),
       ),
@@ -643,13 +661,25 @@ class _Artwork extends StatelessWidget {
         ),
       ),
     );
+    if (onTap == null) {
+      return artwork;
+    }
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: artwork,
+      ),
+    );
   }
 }
 
 class _MiniArtwork extends StatelessWidget {
-  const _MiniArtwork({this.track});
+  const _MiniArtwork({this.track, this.onTap});
 
   final MediaItem? track;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -668,7 +698,7 @@ class _MiniArtwork extends StatelessWidget {
             size: clamped(24, min: 16, max: 28),
           ),
         );
-    return ClipRRect(
+    final artwork = ClipRRect(
       borderRadius: BorderRadius.circular(
         clamped(14, min: 10, max: 18),
       ),
@@ -680,6 +710,17 @@ class _MiniArtwork extends StatelessWidget {
           fit: BoxFit.cover,
           placeholder: buildArtworkFallback(),
         ),
+      ),
+    );
+    if (onTap == null) {
+      return artwork;
+    }
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: artwork,
       ),
     );
   }
@@ -733,6 +774,238 @@ class _Controls extends StatelessWidget {
           onPressed: onNext,
         ),
       ],
+    );
+  }
+}
+
+void _openExpandedNowPlaying(BuildContext context) {
+  showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Dismiss',
+    barrierColor: Colors.black.withOpacity(0.55),
+    transitionDuration: const Duration(milliseconds: 220),
+    pageBuilder: (context, _, __) => const _NowPlayingExpandedView(),
+    transitionBuilder: (context, animation, _, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.98, end: 1.0).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+class _NowPlayingExpandedView extends StatelessWidget {
+  const _NowPlayingExpandedView();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final track = state.nowPlaying;
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    final padding = EdgeInsets.all(space(24).clamp(16.0, 32.0));
+    final theme = Theme.of(context);
+    final isFavorite =
+        track == null ? false : state.isFavoriteTrack(track.id);
+    final isUpdating =
+        track == null ? false : state.isFavoriteTrackUpdating(track.id);
+    final topBar = Row(
+      children: [
+        const Spacer(),
+        IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+      ],
+    );
+
+    Widget buildPlayerColumn(double artworkSize) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Center(
+            child: _ExpandedArtwork(
+              track: track,
+              size: artworkSize,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: SafeArea(
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: ColorTokens.backgroundGradient(context),
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Column(
+            children: [
+              topBar,
+              SizedBox(height: space(18)),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final maxArt = math.min(
+                      constraints.maxHeight * 0.72,
+                      constraints.maxWidth * 0.86,
+                    );
+                    final artworkSize =
+                        maxArt.clamp(240.0, 620.0).toDouble();
+                    return buildPlayerColumn(artworkSize);
+                  },
+                ),
+              ),
+              Text(
+                track?.title ?? 'Nothing queued',
+                style: theme.textTheme.headlineMedium,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              SizedBox(height: space(8)),
+              _NowPlayingMeta(track: track),
+              SizedBox(height: space(20)),
+              AnimatedBuilder(
+                animation: Listenable.merge([
+                  state.positionListenable,
+                  state.durationListenable,
+                  state.isBufferingListenable,
+                ]),
+                builder: (context, _) {
+                  final shouldPulse = track != null &&
+                      !state.isNowPlayingCached &&
+                      (state.isBuffering || state.isPreparingPlayback);
+                  return _ProgressScrubber(
+                    position: state.position,
+                    duration: state.duration,
+                    onSeek: state.seek,
+                    isBuffering: shouldPulse,
+                  );
+                },
+              ),
+              SizedBox(height: space(18)),
+              Row(
+                children: [
+                  if (track != null)
+                    _FavoriteButton(
+                      track: track,
+                      isFavorite: isFavorite,
+                      isUpdating: isUpdating,
+                    ),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: _Controls(
+                        isPlaying: state.isPlaying,
+                        onPlayPause: state.togglePlayback,
+                        onNext: state.nextTrack,
+                        onPrevious: state.previousTrack,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.queue_music),
+                    onPressed: () {
+                      Navigator.of(context).maybePop();
+                      state.selectLibraryView(LibraryView.queue);
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExpandedLink extends StatelessWidget {
+  const _ExpandedLink({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExpandedArtwork extends StatelessWidget {
+  const _ExpandedArtwork({required this.track, required this.size});
+
+  final MediaItem? track;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
+    final imageUrl = track?.imageUrl;
+    Widget buildArtworkFallback() => Container(
+          color: ColorTokens.cardFillStrong(context),
+          child: Icon(
+            Icons.music_note,
+            size: clamped(60, min: 40, max: 84),
+          ),
+        );
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(
+          clamped(28, min: 18, max: 34),
+        ),
+        border: Border.all(color: ColorTokens.border(context, 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.18),
+            blurRadius: 30,
+            offset: const Offset(0, 18),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(
+          clamped(28, min: 18, max: 34),
+        ),
+        child: ArtworkImage(
+          imageUrl: imageUrl,
+          fit: BoxFit.cover,
+          placeholder: buildArtworkFallback(),
+        ),
+      ),
     );
   }
 }
