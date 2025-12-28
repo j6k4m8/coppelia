@@ -38,6 +38,10 @@ class _SidePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final track = state.nowPlaying;
+    final isFavorite =
+        track == null ? false : state.isFavoriteTrack(track.id);
+    final isUpdating =
+        track == null ? false : state.isFavoriteTrackUpdating(track.id);
     return Container(
       width: 320,
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
@@ -50,9 +54,20 @@ class _SidePanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Now playing',
-            style: Theme.of(context).textTheme.titleMedium,
+          Row(
+            children: [
+              Text(
+                'Now playing',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const Spacer(),
+              if (track != null)
+                _FavoriteButton(
+                  track: track,
+                  isFavorite: isFavorite,
+                  isUpdating: isUpdating,
+                ),
+            ],
           ),
           const SizedBox(height: 20),
           _Artwork(track: track),
@@ -117,6 +132,10 @@ class _BottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final track = state.nowPlaying;
+    final isFavorite =
+        track == null ? false : state.isFavoriteTrack(track.id);
+    final isUpdating =
+        track == null ? false : state.isFavoriteTrackUpdating(track.id);
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
       decoration: BoxDecoration(
@@ -156,6 +175,12 @@ class _BottomBar extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    if (track != null)
+                      _FavoriteButton(
+                        track: track,
+                        isFavorite: isFavorite,
+                        isUpdating: isUpdating,
+                      ),
                     IconButton(
                       icon: const Icon(Icons.queue_music),
                       onPressed: () =>
@@ -197,6 +222,12 @@ class _BottomBar extends StatelessWidget {
                   _MiniArtwork(track: track),
                   const SizedBox(width: 16),
                   Expanded(child: titleBlock),
+                  if (track != null)
+                    _FavoriteButton(
+                      track: track,
+                      isFavorite: isFavorite,
+                      isUpdating: isUpdating,
+                    ),
                   IconButton(
                     icon: const Icon(Icons.queue_music),
                     onPressed: () =>
@@ -325,8 +356,7 @@ class _NowPlayingMeta extends StatelessWidget {
                 artistLabel,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style:
-                    track!.artistIds.isEmpty ? baseStyle : linkStyle,
+                style: track!.artistIds.isEmpty ? baseStyle : linkStyle,
               ),
             ),
           ),
@@ -359,6 +389,54 @@ class _NowPlayingMeta extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _FavoriteButton extends StatelessWidget {
+  const _FavoriteButton({
+    required this.track,
+    required this.isFavorite,
+    required this.isUpdating,
+  });
+
+  final MediaItem track;
+  final bool isFavorite;
+  final bool isUpdating;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.read<AppState>();
+    final theme = Theme.of(context);
+    if (isUpdating) {
+      return SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: theme.colorScheme.primary,
+        ),
+      );
+    }
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => state.setTrackFavorite(track, !isFavorite),
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: Center(
+            child: Icon(
+              isFavorite ? Icons.favorite : Icons.favorite_border,
+              size: 16,
+              color: isFavorite
+                  ? theme.colorScheme.primary
+                  : ColorTokens.textSecondary(context),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
