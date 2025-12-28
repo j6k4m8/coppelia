@@ -93,12 +93,10 @@ class SettingsStore {
   Future<NowPlayingLayout> loadNowPlayingLayout() async {
     final preferences = await SharedPreferences.getInstance();
     final raw = preferences.getString(_layoutKey);
-    if (raw == null && defaultTargetPlatform == TargetPlatform.iOS) {
+    if (raw == null) {
       return NowPlayingLayout.bottom;
     }
-    return raw == 'bottom'
-        ? NowPlayingLayout.bottom
-        : NowPlayingLayout.side;
+    return raw == 'side' ? NowPlayingLayout.side : NowPlayingLayout.bottom;
   }
 
   /// Saves the preferred now playing layout.

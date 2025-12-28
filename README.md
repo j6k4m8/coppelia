@@ -3,8 +3,9 @@
   A native macOS + iOS app for Jellyfin music libraries (Windows/Linux/Android coming soon).
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/iPhone+iPad-000000?style=for-the-badge&logo=ios&logoColor=white" alt="iOS Supported"/>&nbsp;
-    <img src="https://img.shields.io/badge/Platform-macOS-333333?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Platform"/> &nbsp;
+  <img src="https://img.shields.io/badge/Platform-macOS-333333?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Platform"/> &nbsp;
+  <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android Platform"/> &nbsp;
+  <img src="https://img.shields.io/badge/Platform-iOS-000000?style=for-the-badge&logo=ios&logoColor=white" alt="iOS Platform"/> &nbsp;
   <img src="https://img.shields.io/badge/Framework-Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter Framework"/>
 </p>
 
@@ -18,13 +19,18 @@ If you hold in your heart other bulletpoints than these, please share and help m
 
 ## Screenshots
 
+### macOS
+
 | ![](./docs/Screenshot-Artist.jpg)   | ![](./docs/Screenshot-Queue.jpg)    |
 | ----------------------------------- | ----------------------------------- |
 | ![](./docs/Screenshot-Settings.jpg) | ![](./docs/Screenshot-Homepage.jpg) |
 
-|                           |                            |                           |                             |
-| ------------------------- | -------------------------- | ------------------------- | --------------------------- |
-| ![](docs/iPhone-Auth.png) | ![](docs/iPhone-Cache.png) | ![](docs/iPhone-Home.png) | ![](docs/iPhone-Tracks.png) |
+### Mobile (iOS + Android)
+
+|                             |                            |                              |
+| --------------------------- | -------------------------- | ---------------------------- |
+| ![](docs/iPhone-Auth.png)   | ![](docs/iPhone-Cache.png) | ![](docs/iPhone-Home.png)    |
+| ![](docs/iPhone-Tracks.png) | ![](docs/Android-Home.png) | ![](docs/Android-Tracks.png) |
 
 ## Features
 
@@ -55,6 +61,7 @@ If you hold in your heart other bulletpoints than these, please share and help m
 
 -   macOS: `docs/Developing-macOS.md`
 -   iOS (Simulator): `docs/Developing-iOS.md`
+-   Android (Emulator/Device): `docs/Developing-Android.md`
 
 ## Notes
 
