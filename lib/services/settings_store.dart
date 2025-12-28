@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,7 @@ class SettingsStore {
   static const _telemetryPlaybackKey = 'settings_telemetry_playback';
   static const _telemetryProgressKey = 'settings_telemetry_progress';
   static const _telemetryHistoryKey = 'settings_telemetry_history';
+  static const _deviceIdKey = 'settings_device_id';
 
   /// Loads the preferred theme mode.
   Future<ThemeMode> loadThemeMode() async {
@@ -50,6 +52,41 @@ class SettingsStore {
       ThemeMode.dark => 'dark',
     };
     await preferences.setString(_themeKey, value);
+  }
+
+  /// Loads or generates a unique device identifier.
+  Future<String> loadDeviceId() async {
+    final preferences = await SharedPreferences.getInstance();
+    final existing = preferences.getString(_deviceIdKey);
+    if (existing != null && existing.isNotEmpty) {
+      return existing;
+    }
+    final now = DateTime.now().microsecondsSinceEpoch;
+    final random = Random().nextInt(1 << 32).toRadixString(16);
+    final platform = _platformLabel();
+    final deviceId = 'coppelia-$platform-$now-$random';
+    await preferences.setString(_deviceIdKey, deviceId);
+    return deviceId;
+  }
+
+  String _platformLabel() {
+    if (kIsWeb) {
+      return 'web';
+    }
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.iOS:
+        return 'ios';
+      case TargetPlatform.android:
+        return 'android';
+      case TargetPlatform.macOS:
+        return 'macos';
+      case TargetPlatform.windows:
+        return 'windows';
+      case TargetPlatform.linux:
+        return 'linux';
+      case TargetPlatform.fuchsia:
+        return 'fuchsia';
+    }
   }
 
   /// Loads the preferred now playing layout.

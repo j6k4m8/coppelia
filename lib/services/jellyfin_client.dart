@@ -12,11 +12,11 @@ import '../models/playlist.dart';
 import '../models/search_results.dart';
 /// Client wrapper for Jellyfin REST APIs.
 class JellyfinClient {
-  /// Identifier used for Jellyfin device tracking.
-  static const String deviceId = 'coppelia-desktop';
+  /// Default identifier used for Jellyfin device tracking.
+  static const String defaultDeviceId = 'coppelia';
 
-  /// Displayed device name in Jellyfin.
-  static const String deviceName = 'macOS';
+  /// Default displayed device name in Jellyfin.
+  static const String defaultDeviceName = 'Coppelia';
 
   /// Client name for Jellyfin analytics.
   static const String clientName = 'Coppelia';
@@ -32,6 +32,8 @@ class JellyfinClient {
   final http.Client _httpClient;
 
   AuthSession? _session;
+  String _deviceId = defaultDeviceId;
+  String _deviceName = defaultDeviceName;
 
   /// Currently authenticated session.
   AuthSession? get session => _session;
@@ -47,6 +49,40 @@ class JellyfinClient {
   /// Clears the current session.
   void clearSession() {
     _session = null;
+  }
+
+  /// Updates the device information used in requests.
+  void updateDeviceInfo({
+    required String deviceId,
+    required String deviceName,
+  }) {
+    _deviceId = deviceId;
+    _deviceName = deviceName;
+  }
+
+  /// Builds a stream URL for a track using current device info.
+  String buildStreamUrl({
+    required String itemId,
+    required String userId,
+    required String token,
+  }) {
+    final session = _session;
+    final serverUrl = session?.serverUrl;
+    if (serverUrl == null) {
+      return '';
+    }
+    final streamUri = Uri.parse('$serverUrl/Audio/$itemId/universal').replace(
+      queryParameters: {
+        'UserId': userId,
+        'DeviceId': _deviceId,
+        'Container': 'mp3',
+        'AudioCodec': 'mp3',
+        'TranscodingContainer': 'mp3',
+        'TranscodingProtocol': 'http',
+        'api_key': token,
+      },
+    );
+    return streamUri.toString();
   }
 
   /// Signs in to Jellyfin using username and password.
@@ -216,7 +252,7 @@ class JellyfinClient {
               serverUrl: session.serverUrl,
               token: session.accessToken,
               userId: session.userId,
-              deviceId: deviceId,
+              deviceId: _deviceId,
             ))
         .toList();
   }
@@ -247,7 +283,7 @@ class JellyfinClient {
               serverUrl: session.serverUrl,
               token: session.accessToken,
               userId: session.userId,
-              deviceId: deviceId,
+              deviceId: _deviceId,
             ))
         .toList();
   }
@@ -279,7 +315,7 @@ class JellyfinClient {
               serverUrl: session.serverUrl,
               token: session.accessToken,
               userId: session.userId,
-              deviceId: deviceId,
+              deviceId: _deviceId,
             ))
         .toList();
   }
@@ -311,7 +347,7 @@ class JellyfinClient {
               serverUrl: session.serverUrl,
               token: session.accessToken,
               userId: session.userId,
-              deviceId: deviceId,
+              deviceId: _deviceId,
             ))
         .toList();
   }
@@ -402,7 +438,7 @@ class JellyfinClient {
               serverUrl: session.serverUrl,
               token: session.accessToken,
               userId: session.userId,
-              deviceId: deviceId,
+              deviceId: _deviceId,
             ))
         .toList();
   }
@@ -521,7 +557,7 @@ class JellyfinClient {
             serverUrl: session.serverUrl,
             token: session.accessToken,
             userId: session.userId,
-            deviceId: deviceId,
+            deviceId: _deviceId,
           ),
         );
       } else if (type == 'MusicAlbum') {
@@ -575,7 +611,7 @@ class JellyfinClient {
               serverUrl: session.serverUrl,
               token: session.accessToken,
               userId: session.userId,
-              deviceId: deviceId,
+              deviceId: _deviceId,
             ))
         .toList();
   }
@@ -609,7 +645,7 @@ class JellyfinClient {
               serverUrl: session.serverUrl,
               token: session.accessToken,
               userId: session.userId,
-              deviceId: deviceId,
+              deviceId: _deviceId,
             ))
         .toList();
   }
@@ -654,8 +690,8 @@ class JellyfinClient {
   }
 
   String _authorizationHeader() {
-    return 'MediaBrowser Client="$clientName", Device="$deviceName", '
-        'DeviceId="$deviceId", Version="$clientVersion"';
+    return 'MediaBrowser Client="$clientName", Device="$_deviceName", '
+        'DeviceId="$_deviceId", Version="$clientVersion"';
   }
 
   Future<int> _fetchItemCount({
@@ -740,7 +776,8 @@ class JellyfinClient {
       body: jsonEncode(payload),
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Unable to report playback (${response.statusCode}).');
+      // Telemetry failures should not interrupt playback.
+      return;
     }
   }
 }

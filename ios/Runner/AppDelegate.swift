@@ -8,7 +8,9 @@ import UIKit
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
-    NowPlayingPlugin.register(with: self.registrar(forPlugin: "NowPlayingPlugin"))
+    if let registrar = self.registrar(forPlugin: "NowPlayingPlugin") {
+      NowPlayingPlugin.register(with: registrar)
+    }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }

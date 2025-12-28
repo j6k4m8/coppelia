@@ -345,6 +345,11 @@ class AppState extends ChangeNotifier {
 
   /// Initializes cached state and refreshes library.
   Future<void> bootstrap() async {
+    final deviceId = await _settingsStore.loadDeviceId();
+    _client.updateDeviceInfo(
+      deviceId: deviceId,
+      deviceName: _platformDeviceName(),
+    );
     _session = await _sessionStore.loadSession();
     if (_session != null) {
       _client.updateSession(_session!);
@@ -798,19 +803,7 @@ class AppState extends ChangeNotifier {
 
   /// Starts playback from a selected track.
   Future<void> playFromPlaylist(MediaItem track) async {
-    final index = _playlistTracks.indexWhere((item) => item.id == track.id);
-    if (index < 0) {
-      return;
-    }
-    _queue = _playlistTracks;
-    await _playback.setQueue(
-      _queue,
-      startIndex: index,
-      cacheStore: _cacheStore,
-      headers: _playbackHeaders(),
-    );
-    _setNowPlaying(track);
-    await _playback.play();
+    await _playFromList(_playlistTracks, track);
   }
 
   /// Plays tracks from the selected album.
@@ -846,43 +839,46 @@ class AppState extends ChangeNotifier {
 
   /// Plays featured tracks from the home shelf.
   Future<void> playFeatured(MediaItem track) async {
-    final index = _featuredTracks.indexWhere((item) => item.id == track.id);
-    if (index < 0) {
-      return;
-    }
-    _queue = _featuredTracks;
-    await _playback.setQueue(
-      _queue,
-      startIndex: index,
-      cacheStore: _cacheStore,
-      headers: _playbackHeaders(),
-    );
-    _setNowPlaying(track);
-    await _playback.play();
+    await _playFromList(_featuredTracks, track);
   }
 
   /// Toggles between play and pause states.
   Future<void> togglePlayback() async {
     if (_playback.isPlaying) {
-      await _playback.pause();
+      await _performPlaybackAction(
+        () => _playback.pause(),
+        'pause',
+      );
     } else {
-      await _playback.play();
+      await _performPlaybackAction(
+        () => _playback.play(),
+        'play',
+      );
     }
   }
 
   /// Skips to the next track.
   Future<void> nextTrack() async {
-    await _playback.skipNext();
+    await _performPlaybackAction(
+      () => _playback.skipNext(),
+      'skip next',
+    );
   }
 
   /// Skips to the previous track.
   Future<void> previousTrack() async {
     const restartThreshold = Duration(seconds: 5);
     if (_position > restartThreshold) {
-      await _playback.seek(Duration.zero);
+      await _performPlaybackAction(
+        () => _playback.seek(Duration.zero),
+        'restart',
+      );
       return;
     }
-    await _playback.skipPrevious();
+    await _performPlaybackAction(
+      () => _playback.skipPrevious(),
+      'skip previous',
+    );
   }
 
   /// Jumps to a specific position in the queue.
@@ -890,27 +886,29 @@ class AppState extends ChangeNotifier {
     if (index < 0 || index >= _queue.length) {
       return;
     }
-    await _playback.seekToIndex(index);
-    await _playback.play();
+    final didSeek = await _performPlaybackAction(
+      () => _playback.seekToIndex(index),
+      'seek to index',
+    );
+    if (!didSeek) {
+      return;
+    }
+    await _performPlaybackAction(
+      () => _playback.play(),
+      'play',
+    );
   }
 
   /// Adds a track to the end of the queue.
   Future<void> enqueueTrack(MediaItem track) async {
     if (_queue.isEmpty) {
-      _queue = [track];
-      await _playback.setQueue(
-        _queue,
-        startIndex: 0,
-        cacheStore: _cacheStore,
-        headers: _playbackHeaders(),
-      );
-      await _playback.play();
-      notifyListeners();
+      await _playFromList([track], track);
       return;
     }
-    _queue.add(track);
+    final normalized = _normalizeTrackForPlayback(track);
+    _queue.add(normalized);
     await _playback.appendToQueue(
-      track,
+      normalized,
       cacheStore: _cacheStore,
       headers: _playbackHeaders(),
     );
@@ -925,9 +923,10 @@ class AppState extends ChangeNotifier {
     }
     final currentIndex = _playback.currentIndex ?? -1;
     final insertIndex = (currentIndex + 1).clamp(0, _queue.length);
-    _queue.insert(insertIndex, track);
+    final normalized = _normalizeTrackForPlayback(track);
+    _queue.insert(insertIndex, normalized);
     await _playback.insertNext(
-      track,
+      normalized,
       cacheStore: _cacheStore,
       headers: _playbackHeaders(),
     );
@@ -969,7 +968,10 @@ class AppState extends ChangeNotifier {
 
   /// Seeks to a specific playback position.
   Future<void> seek(Duration position) async {
-    await _playback.seek(position);
+    await _performPlaybackAction(
+      () => _playback.seek(position),
+      'seek',
+    );
   }
 
   /// Updates the theme preference.
@@ -1300,6 +1302,26 @@ class AppState extends ChangeNotifier {
   String _buildPlaySessionId(MediaItem track) {
     final timestamp = DateTime.now().microsecondsSinceEpoch;
     return '${track.id}-$timestamp';
+  }
+
+  String _platformDeviceName() {
+    if (kIsWeb) {
+      return 'Coppelia Web';
+    }
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.iOS:
+        return 'Coppelia iOS';
+      case TargetPlatform.android:
+        return 'Coppelia Android';
+      case TargetPlatform.macOS:
+        return 'Coppelia macOS';
+      case TargetPlatform.windows:
+        return 'Coppelia Windows';
+      case TargetPlatform.linux:
+        return 'Coppelia Linux';
+      case TargetPlatform.fuchsia:
+        return 'Coppelia Fuchsia';
+    }
   }
 
   void _maybeReportPlaybackState({required bool isPaused}) {
@@ -1665,17 +1687,31 @@ class AppState extends ChangeNotifier {
     if (index < 0) {
       return;
     }
-    _queue = tracks;
-    await _playback.setQueue(
-      _queue,
-      startIndex: index,
-      cacheStore: _cacheStore,
-      headers: _playbackHeaders(),
+    final normalized = _normalizeTracksForPlayback(tracks);
+    final playbackTrack = normalized[index];
+    final previousQueue = List<MediaItem>.from(_queue);
+    _queue = normalized;
+    final didSetQueue = await _performPlaybackAction(
+      () => _playback.setQueue(
+        _queue,
+        startIndex: index,
+        cacheStore: _cacheStore,
+        headers: _playbackHeaders(),
+      ),
+      'set queue',
     );
-    if (_nowPlaying?.id != track.id) {
-      _setNowPlaying(track);
+    if (!didSetQueue) {
+      _queue = previousQueue;
+      notifyListeners();
+      return;
     }
-    await _playback.play();
+    if (_nowPlaying?.id != playbackTrack.id) {
+      _setNowPlaying(playbackTrack);
+    }
+    await _performPlaybackAction(
+      () => _playback.play(),
+      'play',
+    );
   }
 
   Map<String, String>? _playbackHeaders() {
@@ -1688,5 +1724,48 @@ class AppState extends ChangeNotifier {
       'X-Emby-Authorization': _client.authorizationHeader,
       'User-Agent': JellyfinClient.clientName,
     };
+  }
+
+  List<MediaItem> _normalizeTracksForPlayback(List<MediaItem> tracks) {
+    return tracks.map(_normalizeTrackForPlayback).toList();
+  }
+
+  MediaItem _normalizeTrackForPlayback(MediaItem track) {
+    final session = _session;
+    if (session == null) {
+      return track;
+    }
+    final streamUrl = _client.buildStreamUrl(
+      itemId: track.id,
+      userId: session.userId,
+      token: session.accessToken,
+    );
+    if (streamUrl.isEmpty || streamUrl == track.streamUrl) {
+      return track;
+    }
+    return MediaItem(
+      id: track.id,
+      title: track.title,
+      album: track.album,
+      artists: track.artists,
+      duration: track.duration,
+      imageUrl: track.imageUrl,
+      streamUrl: streamUrl,
+      albumId: track.albumId,
+      artistIds: track.artistIds,
+    );
+  }
+
+  Future<bool> _performPlaybackAction(
+    Future<void> Function() action,
+    String label,
+  ) async {
+    try {
+      await action();
+      return true;
+    } catch (error) {
+      debugPrint('Playback $label failed: $error');
+      return false;
+    }
   }
 }
