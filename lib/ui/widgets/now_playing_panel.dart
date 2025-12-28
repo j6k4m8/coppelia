@@ -97,11 +97,13 @@ class _SidePanel extends StatelessWidget {
             },
           ),
           const SizedBox(height: 12),
-          _Controls(
-            isPlaying: state.isPlaying,
-            onPlayPause: state.togglePlayback,
-            onNext: state.nextTrack,
-            onPrevious: state.previousTrack,
+          Center(
+            child: _Controls(
+              isPlaying: state.isPlaying,
+              onPlayPause: state.togglePlayback,
+              onNext: state.nextTrack,
+              onPrevious: state.previousTrack,
+            ),
           ),
           const SizedBox(height: 20),
           Divider(color: ColorTokens.border(context, 0.12)),
