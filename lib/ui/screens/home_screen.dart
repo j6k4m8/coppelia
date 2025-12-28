@@ -441,20 +441,18 @@ class _HeaderState extends State<_Header> {
     }
 
     final VoidCallback? backAction = state.selectedPlaylist != null
-        ? state.clearPlaylistSelection
+        ? (state.canGoBack ? state.goBack : state.clearPlaylistSelection)
         : state.selectedAlbum != null ||
                 state.selectedArtist != null ||
                 state.selectedGenre != null
             ? state.clearBrowseSelection
-            : state.selectedView == LibraryView.homeFeatured ||
-                    state.selectedView == LibraryView.homeRecent ||
-                    state.selectedView == LibraryView.homePlaylists
-                ? () => state.selectLibraryView(LibraryView.home)
+            : state.canGoBack && state.selectedView != LibraryView.home
+                ? state.goBack
                 : null;
     final titleRow = backAction == null
         ? Text(title, style: titleStyle)
         : Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _BackButton(onPressed: backAction),
               const SizedBox(width: 12),

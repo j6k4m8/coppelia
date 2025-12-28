@@ -129,6 +129,7 @@ class AppState extends ChangeNotifier {
   };
   double _sidebarWidth = 240;
   bool _sidebarCollapsed = false;
+  final List<LibraryView> _viewHistory = [];
   final Map<LibraryView, BrowseLayout> _browseLayouts = {};
   final Map<String, double> _scrollOffsets = {};
 
@@ -380,6 +381,9 @@ class AppState extends ChangeNotifier {
   /// True when the sidebar is collapsed.
   bool get isSidebarCollapsed => _sidebarCollapsed;
 
+  /// True when there is a previous view in history.
+  bool get canGoBack => _viewHistory.isNotEmpty;
+
   /// Preferred browse layout for a library view.
   BrowseLayout browseLayoutFor(LibraryView view) =>
       _browseLayouts[view] ?? BrowseLayout.grid;
@@ -500,6 +504,7 @@ class AppState extends ChangeNotifier {
     _client.clearSession();
     _selectedPlaylist = null;
     _selectedView = LibraryView.home;
+    _viewHistory.clear();
     _selectedAlbum = null;
     _selectedArtist = null;
     _selectedGenre = null;
@@ -598,6 +603,9 @@ class AppState extends ChangeNotifier {
 
   /// Selects a playlist and loads its tracks.
   Future<void> selectPlaylist(Playlist playlist) async {
+    if (_selectedView != LibraryView.home) {
+      _recordViewHistory(_selectedView);
+    }
     _selectedPlaylist = playlist;
     _selectedView = LibraryView.home;
     clearBrowseSelection(notify: false);
@@ -643,7 +651,10 @@ class AppState extends ChangeNotifier {
   }
 
   /// Navigates to a library view.
-  void selectLibraryView(LibraryView view) {
+  void selectLibraryView(LibraryView view, {bool recordHistory = true}) {
+    if (recordHistory && view != _selectedView) {
+      _recordViewHistory(_selectedView);
+    }
     _selectedView = view;
     _selectedPlaylist = null;
     _playlistTracks = [];
@@ -672,6 +683,25 @@ class AppState extends ChangeNotifier {
     }
     if (view == LibraryView.favoritesSongs) {
       unawaited(loadFavoriteTracks());
+    }
+  }
+
+  /// Navigates back to the previous library view.
+  void goBack() {
+    if (_viewHistory.isEmpty) {
+      return;
+    }
+    final previous = _viewHistory.removeLast();
+    selectLibraryView(previous, recordHistory: false);
+  }
+
+  void _recordViewHistory(LibraryView view) {
+    if (_viewHistory.isNotEmpty && _viewHistory.last == view) {
+      return;
+    }
+    _viewHistory.add(view);
+    if (_viewHistory.length > 20) {
+      _viewHistory.removeAt(0);
     }
   }
 
