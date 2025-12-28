@@ -1,13 +1,13 @@
 # TODO
 
 -   [ ] when you start loading a track (for playback), if it's not cached, do the "spinner" loading progress indicator on the track scrub bar. until it's ready to play. (still not working)
--   [ ] cache eviction does not actually delete off disk, and we accumulate stuff on disk over time.
-    -   [ ] cache max size (default to 500MB?)
-    -   [ ] cache size reporting in settings should reflect on disk
-    -   [ ] "clear cache" should delete files off disk.
-    -   [ ] default is LRU cache eviction
-        -   [ ] add right-click context menu on track/album/artist to "Make available offline" (pin to cache)
-    -   [ ] add "Available offline" section to sidebar (Albums, Artists, Playlists, Tracks)
+-   [x] cache eviction does not actually delete off disk, and we accumulate stuff on disk over time.
+    -   [x] cache max size (default to 500MB?)
+    -   [x] cache size reporting in settings should reflect on disk
+    -   [x] "clear cache" should delete files off disk.
+    -   [x] default is LRU cache eviction
+        -   [x] add right-click context menu on track/album/artist to "Make available offline" (pin to cache)
+    -   [x] add "Available offline" section to sidebar (Albums, Artists, Playlists, Tracks)
 -   [x] appearance: add "compact" mode with less padding; three-way switch "Sardinemode" | "Comfortable" | "Spacious"
 -   [ ] UI thrash: scroll gets janky again during updates (investigate repaint storms)
 -   [x] Tracks browse should load alphabetically so pagination doesn't fetch items above the viewport (? need to repro)
@@ -21,3 +21,9 @@
     -   [ ] repeat track
 -   [x] "now playing" full-screen expanded view that showcases the album art if you click the album art in the mini player.
 -   [x] add to the homepage a "Jump in" section that has cards for (independently) randomly selected album, artist, and track
+-   [x] on album / artist pages, add Favorite / Unfavorite button if applicable (on the detail header)
+-   [x] on album / artist pages, add Make Available Offline / Remove from Offline button if applicable (on the detail header)
+-   [x] optional setting subsection in Cache for "Automatically download favorited items for offline playback"
+    -   [x] with sub-settings for "Albums", "Artists", "Tracks"
+    -   [x] with "only on Wi-Fi" toggle
+-   [ ] offline tracks should include ALL cached tracks, not just pinned

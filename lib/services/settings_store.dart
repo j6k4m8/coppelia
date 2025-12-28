@@ -27,6 +27,16 @@ class SettingsStore {
   static const _telemetryPlaybackKey = 'settings_telemetry_playback';
   static const _telemetryProgressKey = 'settings_telemetry_progress';
   static const _telemetryHistoryKey = 'settings_telemetry_history';
+  static const _autoDownloadFavoritesKey =
+      'settings_auto_download_favorites';
+  static const _autoDownloadFavoriteAlbumsKey =
+      'settings_auto_download_favorites_albums';
+  static const _autoDownloadFavoriteArtistsKey =
+      'settings_auto_download_favorites_artists';
+  static const _autoDownloadFavoriteTracksKey =
+      'settings_auto_download_favorites_tracks';
+  static const _autoDownloadFavoritesWifiOnlyKey =
+      'settings_auto_download_favorites_wifi_only';
   static const _settingsShortcutEnabledKey =
       'settings_shortcut_settings_enabled';
   static const _settingsShortcutKey = 'settings_shortcut_settings';
@@ -350,5 +360,65 @@ class SettingsStore {
   Future<void> saveHistoryTelemetry(bool enabled) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_telemetryHistoryKey, enabled);
+  }
+
+  /// Loads whether favorites should be auto-downloaded for offline playback.
+  Future<bool> loadAutoDownloadFavoritesEnabled() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_autoDownloadFavoritesKey) ?? false;
+  }
+
+  /// Saves whether favorites should be auto-downloaded for offline playback.
+  Future<void> saveAutoDownloadFavoritesEnabled(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_autoDownloadFavoritesKey, enabled);
+  }
+
+  /// Loads whether favorited albums should be auto-downloaded.
+  Future<bool> loadAutoDownloadFavoriteAlbums() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_autoDownloadFavoriteAlbumsKey) ?? true;
+  }
+
+  /// Saves whether favorited albums should be auto-downloaded.
+  Future<void> saveAutoDownloadFavoriteAlbums(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_autoDownloadFavoriteAlbumsKey, enabled);
+  }
+
+  /// Loads whether favorited artists should be auto-downloaded.
+  Future<bool> loadAutoDownloadFavoriteArtists() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_autoDownloadFavoriteArtistsKey) ?? true;
+  }
+
+  /// Saves whether favorited artists should be auto-downloaded.
+  Future<void> saveAutoDownloadFavoriteArtists(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_autoDownloadFavoriteArtistsKey, enabled);
+  }
+
+  /// Loads whether favorited tracks should be auto-downloaded.
+  Future<bool> loadAutoDownloadFavoriteTracks() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_autoDownloadFavoriteTracksKey) ?? true;
+  }
+
+  /// Saves whether favorited tracks should be auto-downloaded.
+  Future<void> saveAutoDownloadFavoriteTracks(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_autoDownloadFavoriteTracksKey, enabled);
+  }
+
+  /// Loads whether auto-downloads are Wi-Fi only.
+  Future<bool> loadAutoDownloadFavoritesWifiOnly() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_autoDownloadFavoritesWifiOnlyKey) ?? false;
+  }
+
+  /// Saves whether auto-downloads are Wi-Fi only.
+  Future<void> saveAutoDownloadFavoritesWifiOnly(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_autoDownloadFavoritesWifiOnlyKey, enabled);
   }
 }

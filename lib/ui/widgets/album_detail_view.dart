@@ -34,20 +34,31 @@ class AlbumDetailView extends StatelessWidget {
         album.imageUrl ?? (state.albumTracks.isNotEmpty
             ? state.albumTracks.first.imageUrl
             : null);
+    final isFavorite = state.isFavoriteAlbum(album.id);
+    final isFavoriteUpdating = state.isFavoriteAlbumUpdating(album.id);
+    final canDownload = state.albumTracks.isNotEmpty;
+    final pinnedFuture = state.isAlbumPinned(album);
+    final pinned = state.pinnedAudio;
+    final offlineTracks = state.albumTracks
+        .where((track) => pinned.contains(track.streamUrl))
+        .toList();
+    final showOfflineFilter = offlineTracks.isNotEmpty;
+    final displayTracks =
+        state.offlineOnlyFilter ? offlineTracks : state.albumTracks;
     return CollectionDetailView(
       title: album.name,
       subtitle: subtitle,
       subtitleWidget: subtitleWidget,
       imageUrl: headerImageUrl,
-      tracks: state.albumTracks,
+      tracks: displayTracks,
       nowPlaying: state.nowPlaying,
-      onPlayAll: state.albumTracks.isEmpty
+      onPlayAll: displayTracks.isEmpty
           ? null
-          : () => state.playFromAlbum(state.albumTracks.first),
-      onShuffle: state.albumTracks.isEmpty
+          : () => state.playFromList(displayTracks, displayTracks.first),
+      onShuffle: displayTracks.isEmpty
           ? null
-          : () => state.playShuffledList(state.albumTracks),
-      onTrackTap: state.playFromAlbum,
+          : () => state.playShuffledList(displayTracks),
+      onTrackTap: (track) => state.playFromList(displayTracks, track),
       onPlayNext: state.playNext,
       onAddToQueue: state.enqueueTrack,
       onAlbumTap: (track) {
@@ -66,6 +77,62 @@ class AlbumDetailView extends StatelessWidget {
               onTap: () => state.selectArtistByName(artistName),
             )
           : null,
+      headerActions: [
+        OutlinedButton.icon(
+          onPressed: isFavoriteUpdating
+              ? null
+              : () => state.setAlbumFavorite(album, !isFavorite),
+          icon: isFavoriteUpdating
+              ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                )
+              : Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+          label: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
+        ),
+        FutureBuilder<bool>(
+          future: pinnedFuture,
+          builder: (context, snapshot) {
+            final isPinned = snapshot.data ?? false;
+            final isLoading =
+                snapshot.connectionState == ConnectionState.waiting;
+            return OutlinedButton.icon(
+              onPressed: canDownload && !isLoading
+                  ? () => isPinned
+                      ? state.unpinAlbumOffline(album)
+                      : state.makeAlbumAvailableOffline(album)
+                  : null,
+              icon: isLoading
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    )
+                  : Icon(
+                      isPinned
+                          ? Icons.download_done_rounded
+                          : Icons.download_rounded,
+                    ),
+              label: Text(
+                isPinned ? 'Remove from Offline' : 'Make Available Offline',
+              ),
+            );
+          },
+        ),
+        if (showOfflineFilter)
+          FilterChip(
+            label: const Text('Offline only'),
+            selected: state.offlineOnlyFilter,
+            onSelected: state.setOfflineOnlyFilter,
+          ),
+      ],
     );
   }
 }

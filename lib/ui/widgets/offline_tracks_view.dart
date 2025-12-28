@@ -1,0 +1,59 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../models/media_item.dart';
+import '../../state/app_state.dart';
+import '../../state/library_view.dart';
+import 'offline_empty_view.dart';
+import 'track_row.dart';
+
+/// Displays offline-ready tracks.
+class OfflineTracksView extends StatelessWidget {
+  /// Creates the offline tracks view.
+  const OfflineTracksView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    return FutureBuilder<List<MediaItem>>(
+      future: state.loadOfflineTracks(),
+      builder: (context, snapshot) {
+        final tracks = snapshot.data ?? const <MediaItem>[];
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            tracks.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (tracks.isEmpty) {
+          return OfflineEmptyView(
+            title: LibraryView.offlineTracks.title,
+            subtitle: LibraryView.offlineTracks.subtitle,
+          );
+        }
+        return ListView.separated(
+          itemCount: tracks.length,
+          padding: const EdgeInsets.only(bottom: 32),
+          separatorBuilder: (_, __) => const SizedBox(height: 6),
+          itemBuilder: (context, index) {
+            final track = tracks[index];
+            final isFavorite = state.isFavoriteTrack(track.id);
+            final isActive = state.nowPlaying?.id == track.id;
+            return TrackRow(
+              track: track,
+              index: index,
+              isActive: isActive,
+              onTap: () => state.playFromList(tracks, track),
+              onPlayNext: () => state.playNext(track),
+              onAddToQueue: () => state.enqueueTrack(track),
+              isFavorite: isFavorite,
+              isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
+              onToggleFavorite: () => state.setTrackFavorite(
+                track,
+                !isFavorite,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}

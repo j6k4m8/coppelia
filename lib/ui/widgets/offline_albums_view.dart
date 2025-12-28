@@ -8,53 +8,70 @@ import 'context_menu.dart';
 import 'library_browse_view.dart';
 import 'library_card.dart';
 import 'library_list_tile.dart';
+import 'offline_empty_view.dart';
 
-/// Displays favorited albums.
-class FavoriteAlbumsView extends StatelessWidget {
-  /// Creates the favorite albums view.
-  const FavoriteAlbumsView({super.key});
+/// Displays offline-ready albums.
+class OfflineAlbumsView extends StatelessWidget {
+  /// Creates the offline albums view.
+  const OfflineAlbumsView({super.key});
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    return LibraryBrowseView<Album>(
-      view: LibraryView.favoritesAlbums,
-      title: 'Favorite Albums',
-      items: state.favoriteAlbums,
-      titleBuilder: (album) => album.name,
-      subtitleBuilder: (album) => album.artistName,
-      gridItemBuilder: (context, album) => LibraryCard(
-        title: album.name,
-        subtitle: album.artistName,
-        imageUrl: album.imageUrl,
-        icon: Icons.album,
-        onTap: () => state.selectAlbum(album),
-        onSubtitleTap: _canLinkArtist(album)
-            ? () => state.selectArtistByName(album.artistName)
-            : null,
-        onContextMenu: (position) => _showAlbumMenu(
-          context,
-          position,
-          album,
-          state,
-        ),
-      ),
-      listItemBuilder: (context, album) => LibraryListTile(
-        title: album.name,
-        subtitle: album.artistName,
-        imageUrl: album.imageUrl,
-        icon: Icons.album,
-        onTap: () => state.selectAlbum(album),
-        onSubtitleTap: _canLinkArtist(album)
-            ? () => state.selectArtistByName(album.artistName)
-            : null,
-        onContextMenu: (position) => _showAlbumMenu(
-          context,
-          position,
-          album,
-          state,
-        ),
-      ),
+    return FutureBuilder<List<Album>>(
+      future: state.loadOfflineAlbums(),
+      builder: (context, snapshot) {
+        final albums = snapshot.data ?? const <Album>[];
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            albums.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (albums.isEmpty) {
+          return OfflineEmptyView(
+            title: LibraryView.offlineAlbums.title,
+            subtitle: LibraryView.offlineAlbums.subtitle,
+          );
+        }
+        return LibraryBrowseView<Album>(
+          view: LibraryView.offlineAlbums,
+          title: LibraryView.offlineAlbums.title,
+          items: albums,
+          titleBuilder: (album) => album.name,
+          subtitleBuilder: (album) => album.artistName,
+          gridItemBuilder: (context, album) => LibraryCard(
+            title: album.name,
+            subtitle: album.artistName,
+            imageUrl: album.imageUrl,
+            icon: Icons.album,
+            onTap: () => state.selectAlbum(album, offlineOnly: true),
+            onSubtitleTap: _canLinkArtist(album)
+                ? () => state.selectArtistByName(album.artistName)
+                : null,
+            onContextMenu: (position) => _showAlbumMenu(
+              context,
+              position,
+              album,
+              state,
+            ),
+          ),
+          listItemBuilder: (context, album) => LibraryListTile(
+            title: album.name,
+            subtitle: album.artistName,
+            imageUrl: album.imageUrl,
+            icon: Icons.album,
+            onTap: () => state.selectAlbum(album, offlineOnly: true),
+            onSubtitleTap: _canLinkArtist(album)
+                ? () => state.selectArtistByName(album.artistName)
+                : null,
+            onContextMenu: (position) => _showAlbumMenu(
+              context,
+              position,
+              album,
+              state,
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -142,7 +159,7 @@ enum _AlbumAction {
   favorite,
   makeAvailableOffline,
   unpinOffline,
-  goToArtist
+  goToArtist,
 }
 
 bool _canLinkArtist(Album album) {

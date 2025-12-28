@@ -71,6 +71,10 @@ class FavoriteArtistsView extends StatelessWidget {
     AppState state,
   ) async {
     final isFavorite = state.isFavoriteArtist(artist.id);
+    final isPinned = await state.isArtistPinned(artist);
+    if (!context.mounted) {
+      return;
+    }
     final selection = await showContextMenu<_ArtistAction>(
       context,
       position,
@@ -85,7 +89,29 @@ class FavoriteArtistsView extends StatelessWidget {
         ),
         PopupMenuItem(
           value: _ArtistAction.favorite,
-          child: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
+          child: isFavorite
+              ? const Row(
+                  children: [
+                    Icon(Icons.favorite, size: 16),
+                    SizedBox(width: 8),
+                    Text('Unfavorite'),
+                  ],
+                )
+              : const Text('Favorite'),
+        ),
+        PopupMenuItem(
+          value: isPinned
+              ? _ArtistAction.unpinOffline
+              : _ArtistAction.makeAvailableOffline,
+          child: isPinned
+              ? const Row(
+                  children: [
+                    Icon(Icons.download_done_rounded, size: 16),
+                    SizedBox(width: 8),
+                    Text('Unpin from Offline'),
+                  ],
+                )
+              : const Text('Make Available Offline'),
         ),
       ],
     );
@@ -98,7 +124,19 @@ class FavoriteArtistsView extends StatelessWidget {
     if (selection == _ArtistAction.favorite) {
       await state.setArtistFavorite(artist, !isFavorite);
     }
+    if (selection == _ArtistAction.makeAvailableOffline) {
+      await state.makeArtistAvailableOffline(artist);
+    }
+    if (selection == _ArtistAction.unpinOffline) {
+      await state.unpinArtistOffline(artist);
+    }
   }
 }
 
-enum _ArtistAction { play, open, favorite }
+enum _ArtistAction {
+  play,
+  open,
+  favorite,
+  makeAvailableOffline,
+  unpinOffline
+}

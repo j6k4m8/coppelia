@@ -51,6 +51,13 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
     final albums = _albumsForArtist(state.albums, artist.name);
     final hasAlbums = albums.isNotEmpty;
     final tracks = state.artistTracks;
+    final pinned = state.pinnedAudio;
+    final offlineTracks = tracks
+        .where((track) => pinned.contains(track.streamUrl))
+        .toList();
+    final showOfflineFilter = offlineTracks.isNotEmpty;
+    final displayTracks =
+        state.offlineOnlyFilter ? offlineTracks : tracks;
     final trackStartIndex = hasAlbums ? 2 : 1;
     final headerImageUrl = artist.imageUrl ??
         (albums.isNotEmpty ? albums.first.imageUrl : null) ??
@@ -60,7 +67,7 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
       children: [
         Expanded(
           child: ListView.separated(
-            itemCount: trackStartIndex + tracks.length,
+            itemCount: trackStartIndex + displayTracks.length,
             separatorBuilder: (_, index) {
               if (index == 0 || (hasAlbums && index == 1)) {
                 return SizedBox(height: space(24));
@@ -73,12 +80,88 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
                   title: artist.name,
                   subtitle: subtitle,
                   imageUrl: headerImageUrl,
-                  onPlayAll: tracks.isEmpty
+                  onPlayAll: displayTracks.isEmpty
                       ? null
-                      : () => state.playFromArtist(tracks.first),
-                  onShuffle: tracks.isEmpty
+                      : () => state.playFromList(
+                            displayTracks,
+                            displayTracks.first,
+                          ),
+                  onShuffle: displayTracks.isEmpty
                       ? null
-                      : () => state.playShuffledList(tracks),
+                      : () => state.playShuffledList(displayTracks),
+                  actions: [
+                    OutlinedButton.icon(
+                      onPressed: state.isFavoriteArtistUpdating(artist.id)
+                          ? null
+                          : () => state.setArtistFavorite(
+                                artist,
+                                !state.isFavoriteArtist(artist.id),
+                              ),
+                      icon: state.isFavoriteArtistUpdating(artist.id)
+                          ? SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color:
+                                    Theme.of(context).colorScheme.primary,
+                              ),
+                            )
+                          : Icon(
+                              state.isFavoriteArtist(artist.id)
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                            ),
+                      label: Text(
+                        state.isFavoriteArtist(artist.id)
+                            ? 'Unfavorite'
+                            : 'Favorite',
+                      ),
+                    ),
+                    FutureBuilder<bool>(
+                      future: state.isArtistPinned(artist),
+                      builder: (context, snapshot) {
+                        final isPinned = snapshot.data ?? false;
+                        final isLoading =
+                            snapshot.connectionState ==
+                                ConnectionState.waiting;
+                        return OutlinedButton.icon(
+                          onPressed: tracks.isNotEmpty && !isLoading
+                              ? () => isPinned
+                                  ? state.unpinArtistOffline(artist)
+                                  : state.makeArtistAvailableOffline(artist)
+                              : null,
+                          icon: isLoading
+                              ? SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary,
+                                  ),
+                                )
+                              : Icon(
+                                  isPinned
+                                      ? Icons.download_done_rounded
+                                      : Icons.download_rounded,
+                                ),
+                          label: Text(
+                            isPinned
+                                ? 'Remove from Offline'
+                                : 'Make Available Offline',
+                          ),
+                        );
+                      },
+                    ),
+                    if (showOfflineFilter)
+                      FilterChip(
+                        label: const Text('Offline only'),
+                        selected: state.offlineOnlyFilter,
+                        onSelected: state.setOfflineOnlyFilter,
+                      ),
+                  ],
                 );
               }
               if (hasAlbums && index == 1) {
@@ -89,12 +172,12 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
                 );
               }
               final trackIndex = index - trackStartIndex;
-              final track = tracks[trackIndex];
+              final track = displayTracks[trackIndex];
               return TrackRow(
                 track: track,
                 index: trackIndex,
                 isActive: state.nowPlaying?.id == track.id,
-                onTap: () => state.playFromArtist(track),
+                onTap: () => state.playFromList(displayTracks, track),
                 onPlayNext: () => state.playNext(track),
                 onAddToQueue: () => state.enqueueTrack(track),
                 isFavorite: state.isFavoriteTrack(track.id),
@@ -144,6 +227,10 @@ Future<void> _showAlbumMenu(
   final canGoToArtist =
       album.artistName.isNotEmpty && album.artistName != 'Unknown Artist';
   final isFavorite = state.isFavoriteAlbum(album.id);
+  final isPinned = await state.isAlbumPinned(album);
+  if (!context.mounted) {
+    return;
+  }
   final selection = await showContextMenu<_AlbumAction>(
     context,
     position,
@@ -158,7 +245,29 @@ Future<void> _showAlbumMenu(
       ),
       PopupMenuItem(
         value: _AlbumAction.favorite,
-        child: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
+        child: isFavorite
+            ? const Row(
+                children: [
+                  Icon(Icons.favorite, size: 16),
+                  SizedBox(width: 8),
+                  Text('Unfavorite'),
+                ],
+              )
+            : const Text('Favorite'),
+      ),
+      PopupMenuItem(
+        value: isPinned
+            ? _AlbumAction.unpinOffline
+            : _AlbumAction.makeAvailableOffline,
+        child: isPinned
+            ? const Row(
+                children: [
+                  Icon(Icons.download_done_rounded, size: 16),
+                  SizedBox(width: 8),
+                  Text('Unpin from Offline'),
+                ],
+              )
+            : const Text('Make Available Offline'),
       ),
       if (canGoToArtist)
         const PopupMenuItem(
@@ -176,12 +285,25 @@ Future<void> _showAlbumMenu(
   if (selection == _AlbumAction.goToArtist) {
     await state.selectArtistByName(album.artistName);
   }
-    if (selection == _AlbumAction.favorite) {
-      await state.setAlbumFavorite(album, !isFavorite);
-    }
+  if (selection == _AlbumAction.favorite) {
+    await state.setAlbumFavorite(album, !isFavorite);
+  }
+  if (selection == _AlbumAction.makeAvailableOffline) {
+    await state.makeAlbumAvailableOffline(album);
+  }
+  if (selection == _AlbumAction.unpinOffline) {
+    await state.unpinAlbumOffline(album);
+  }
 }
 
-enum _AlbumAction { play, open, favorite, goToArtist }
+enum _AlbumAction {
+  play,
+  open,
+  favorite,
+  makeAvailableOffline,
+  unpinOffline,
+  goToArtist
+}
 
 class _ArtistHeader extends StatelessWidget {
   const _ArtistHeader({
@@ -190,6 +312,7 @@ class _ArtistHeader extends StatelessWidget {
     required this.imageUrl,
     required this.onPlayAll,
     this.onShuffle,
+    this.actions = const [],
   });
 
   final String title;
@@ -197,6 +320,7 @@ class _ArtistHeader extends StatelessWidget {
   final String? imageUrl;
   final VoidCallback? onPlayAll;
   final VoidCallback? onShuffle;
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -267,6 +391,7 @@ class _ArtistHeader extends StatelessWidget {
                       icon: const Icon(Icons.shuffle),
                       label: const Text('Shuffle'),
                     ),
+                  ...actions,
                 ],
               ),
             ],

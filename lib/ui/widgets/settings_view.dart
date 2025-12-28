@@ -427,6 +427,83 @@ class _LayoutSettings extends StatelessWidget {
             SizedBox(height: space(16)),
             const Padding(
               padding: EdgeInsets.only(left: 12),
+              child: _SettingsSubheader(title: 'Available Offline'),
+            ),
+            SizedBox(height: space(8)),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.offlineAlbums.label,
+                subtitle: 'Show offline albums.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.offlineAlbums,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.offlineAlbums,
+                    value,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: space(12)),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.offlineArtists.label,
+                subtitle: 'Show offline artists.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.offlineArtists,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.offlineArtists,
+                    value,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: space(12)),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.offlinePlaylists.label,
+                subtitle: 'Show offline playlists.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.offlinePlaylists,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.offlinePlaylists,
+                    value,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: space(12)),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.offlineTracks.label,
+                subtitle: 'Show offline tracks.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.offlineTracks,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.offlineTracks,
+                    value,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: space(16)),
+            const Padding(
+              padding: EdgeInsets.only(left: 12),
               child: _SettingsSubheader(title: 'Browse'),
             ),
             SizedBox(height: space(8)),
@@ -661,6 +738,17 @@ class _CacheSettings extends StatefulWidget {
 
 class _CacheSettingsState extends State<_CacheSettings> {
   late Future<int> _cacheFuture;
+  static const List<int> _cacheLimitOptions = [
+    50 * 1024 * 1024,
+    500 * 1024 * 1024,
+    1024 * 1024 * 1024,
+    2 * 1024 * 1024 * 1024,
+    4 * 1024 * 1024 * 1024,
+    32 * 1024 * 1024 * 1024,
+    64 * 1024 * 1024 * 1024,
+    100 * 1024 * 1024 * 1024,
+    0,
+  ];
 
   @override
   void initState() {
@@ -672,6 +760,38 @@ class _CacheSettingsState extends State<_CacheSettings> {
     setState(() {
       _cacheFuture = widget.state.getMediaCacheBytes();
     });
+  }
+
+  Future<bool> _confirmCacheTrim({
+    required int currentBytes,
+    required int targetBytes,
+  }) async {
+    if (targetBytes == 0 || currentBytes <= targetBytes) {
+      return true;
+    }
+    final formattedCurrent = formatBytes(currentBytes);
+    final formattedTarget = formatBytes(targetBytes);
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Trim cache?'),
+        content: Text(
+          'Your cache uses $formattedCurrent. Reducing the limit to '
+          '$formattedTarget will evict older downloads.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Trim cache'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   String _fileManagerLabel() {
@@ -720,6 +840,94 @@ class _CacheSettingsState extends State<_CacheSettings> {
         ),
         SizedBox(height: space(12)),
         _SettingRow(
+          title: 'Cache limit',
+          subtitle: 'Maximum disk space for cached audio.',
+          trailing: _CacheLimitPicker(
+            currentBytes: widget.state.cacheMaxBytes,
+            options: _cacheLimitOptions,
+            onChanged: (bytes) async {
+              final currentBytes = await widget.state.getMediaCacheBytes();
+              final shouldTrim = await _confirmCacheTrim(
+                currentBytes: currentBytes,
+                targetBytes: bytes,
+              );
+              if (!shouldTrim) {
+                return;
+              }
+              await widget.state.setCacheMaxBytes(bytes);
+              _refreshCacheUsage();
+              if (context.mounted) {
+                widget.onSnack('Cache limit updated.');
+              }
+            },
+          ),
+        ),
+        SizedBox(height: space(20)),
+        const _SettingsSubheader(title: 'Offline favorites'),
+        SizedBox(height: space(12)),
+        _SettingRow(
+          title: 'Automatically download favorites',
+          subtitle: 'Keep favorited items available offline.',
+          forceInline: true,
+          trailing: Switch(
+            value: widget.state.autoDownloadFavoritesEnabled,
+            onChanged: widget.state.setAutoDownloadFavoritesEnabled,
+          ),
+        ),
+        SizedBox(height: space(12)),
+        _AutoDownloadOption(
+          enabled: widget.state.autoDownloadFavoritesEnabled,
+          child: _SettingRow(
+            title: 'Albums',
+            subtitle: 'Download favorited albums.',
+            forceInline: true,
+            trailing: Switch(
+              value: widget.state.autoDownloadFavoriteAlbums,
+              onChanged: widget.state.setAutoDownloadFavoriteAlbums,
+            ),
+          ),
+        ),
+        SizedBox(height: space(12)),
+        _AutoDownloadOption(
+          enabled: widget.state.autoDownloadFavoritesEnabled,
+          child: _SettingRow(
+            title: 'Artists',
+            subtitle: 'Download favorited artists.',
+            forceInline: true,
+            trailing: Switch(
+              value: widget.state.autoDownloadFavoriteArtists,
+              onChanged: widget.state.setAutoDownloadFavoriteArtists,
+            ),
+          ),
+        ),
+        SizedBox(height: space(12)),
+        _AutoDownloadOption(
+          enabled: widget.state.autoDownloadFavoritesEnabled,
+          child: _SettingRow(
+            title: 'Tracks',
+            subtitle: 'Download favorited tracks.',
+            forceInline: true,
+            trailing: Switch(
+              value: widget.state.autoDownloadFavoriteTracks,
+              onChanged: widget.state.setAutoDownloadFavoriteTracks,
+            ),
+          ),
+        ),
+        SizedBox(height: space(12)),
+        _AutoDownloadOption(
+          enabled: widget.state.autoDownloadFavoritesEnabled,
+          child: _SettingRow(
+            title: 'Only on Wi-Fi',
+            subtitle: 'Avoid cellular downloads for favorites.',
+            forceInline: true,
+            trailing: Switch(
+              value: widget.state.autoDownloadFavoritesWifiOnly,
+              onChanged: widget.state.setAutoDownloadFavoritesWifiOnly,
+            ),
+          ),
+        ),
+        SizedBox(height: space(12)),
+        _SettingRow(
           title: 'Cache location',
           subtitle: 'Open cached media in your file manager.',
           trailing: OutlinedButton(
@@ -758,6 +966,83 @@ class _CacheSettingsState extends State<_CacheSettings> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _CacheLimitPicker extends StatelessWidget {
+  const _CacheLimitPicker({
+    required this.currentBytes,
+    required this.options,
+    required this.onChanged,
+  });
+
+  final int currentBytes;
+  final List<int> options;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final resolvedOptions = options.contains(currentBytes)
+        ? List<int>.from(options)
+        : [...options, currentBytes];
+    resolvedOptions.sort((a, b) {
+      if (a == 0 && b == 0) {
+        return 0;
+      }
+      if (a == 0) {
+        return 1;
+      }
+      if (b == 0) {
+        return -1;
+      }
+      return a.compareTo(b);
+    });
+    return DropdownButtonHideUnderline(
+      child: DropdownButton<int>(
+        value: currentBytes,
+        onChanged: (value) {
+          if (value == null) {
+            return;
+          }
+          onChanged(value);
+        },
+        items: resolvedOptions
+            .map(
+              (bytes) => DropdownMenuItem(
+                value: bytes,
+                child: Text(bytes == 0 ? 'Unlimited' : formatBytes(bytes)),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+}
+
+class _AutoDownloadOption extends StatelessWidget {
+  const _AutoDownloadOption({
+    required this.enabled,
+    required this.child,
+  });
+
+  final bool enabled;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    return Opacity(
+      opacity: enabled ? 1 : 0.45,
+      child: IgnorePointer(
+        ignoring: !enabled,
+        child: Padding(
+          padding: EdgeInsets.only(left: space(16).clamp(12.0, 24.0)),
+          child: child,
+        ),
+      ),
     );
   }
 }
