@@ -1,4 +1,4 @@
-package com.example.coppelia
+package com.coppelia.app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,4 +1,4 @@
-name: Release macOS + iOS
+name: Release macOS + iOS + Android
 
 on:
   push:
@@ -81,3 +81,42 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: Coppelia-ios-simulator.zip
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Android APK
+        run: flutter build apk --release
+
+      - name: Package APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk Coppelia-android.apk
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Coppelia-android
+          path: Coppelia-android.apk
+
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Coppelia-android.apk
