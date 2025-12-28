@@ -862,6 +862,70 @@ class _CacheSettingsState extends State<_CacheSettings> {
             },
           ),
         ),
+        SizedBox(height: space(20)),
+        const _SettingsSubheader(title: 'Offline favorites'),
+        SizedBox(height: space(12)),
+        _SettingRow(
+          title: 'Automatically download favorites',
+          subtitle: 'Keep favorited items available offline.',
+          forceInline: true,
+          trailing: Switch(
+            value: widget.state.autoDownloadFavoritesEnabled,
+            onChanged: widget.state.setAutoDownloadFavoritesEnabled,
+          ),
+        ),
+        SizedBox(height: space(12)),
+        _AutoDownloadOption(
+          enabled: widget.state.autoDownloadFavoritesEnabled,
+          child: _SettingRow(
+            title: 'Albums',
+            subtitle: 'Download favorited albums.',
+            forceInline: true,
+            trailing: Switch(
+              value: widget.state.autoDownloadFavoriteAlbums,
+              onChanged: widget.state.setAutoDownloadFavoriteAlbums,
+            ),
+          ),
+        ),
+        SizedBox(height: space(12)),
+        _AutoDownloadOption(
+          enabled: widget.state.autoDownloadFavoritesEnabled,
+          child: _SettingRow(
+            title: 'Artists',
+            subtitle: 'Download favorited artists.',
+            forceInline: true,
+            trailing: Switch(
+              value: widget.state.autoDownloadFavoriteArtists,
+              onChanged: widget.state.setAutoDownloadFavoriteArtists,
+            ),
+          ),
+        ),
+        SizedBox(height: space(12)),
+        _AutoDownloadOption(
+          enabled: widget.state.autoDownloadFavoritesEnabled,
+          child: _SettingRow(
+            title: 'Tracks',
+            subtitle: 'Download favorited tracks.',
+            forceInline: true,
+            trailing: Switch(
+              value: widget.state.autoDownloadFavoriteTracks,
+              onChanged: widget.state.setAutoDownloadFavoriteTracks,
+            ),
+          ),
+        ),
+        SizedBox(height: space(12)),
+        _AutoDownloadOption(
+          enabled: widget.state.autoDownloadFavoritesEnabled,
+          child: _SettingRow(
+            title: 'Only on Wi-Fi',
+            subtitle: 'Avoid cellular downloads for favorites.',
+            forceInline: true,
+            trailing: Switch(
+              value: widget.state.autoDownloadFavoritesWifiOnly,
+              onChanged: widget.state.setAutoDownloadFavoritesWifiOnly,
+            ),
+          ),
+        ),
         SizedBox(height: space(12)),
         _SettingRow(
           title: 'Cache location',
@@ -951,6 +1015,33 @@ class _CacheLimitPicker extends StatelessWidget {
               ),
             )
             .toList(),
+      ),
+    );
+  }
+}
+
+class _AutoDownloadOption extends StatelessWidget {
+  const _AutoDownloadOption({
+    required this.enabled,
+    required this.child,
+  });
+
+  final bool enabled;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    return Opacity(
+      opacity: enabled ? 1 : 0.45,
+      child: IgnorePointer(
+        ignoring: !enabled,
+        child: Padding(
+          padding: EdgeInsets.only(left: space(16).clamp(12.0, 24.0)),
+          child: child,
+        ),
       ),
     );
   }

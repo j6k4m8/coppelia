@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:just_audio/just_audio.dart';
@@ -115,6 +116,11 @@ class AppState extends ChangeNotifier {
   bool _telemetryPlayback = true;
   bool _telemetryProgress = true;
   bool _telemetryHistory = true;
+  bool _autoDownloadFavoritesEnabled = false;
+  bool _autoDownloadFavoriteAlbums = true;
+  bool _autoDownloadFavoriteArtists = true;
+  bool _autoDownloadFavoriteTracks = true;
+  bool _autoDownloadFavoritesWifiOnly = false;
   bool _settingsShortcutEnabled = true;
   KeyboardShortcut _settingsShortcut = KeyboardShortcut.defaultForPlatform();
   bool _searchShortcutEnabled = true;
@@ -344,6 +350,21 @@ class AppState extends ChangeNotifier {
   /// True when play history telemetry is enabled.
   bool get telemetryHistoryEnabled => _telemetryHistory;
 
+  /// True when favorites should be auto-downloaded for offline playback.
+  bool get autoDownloadFavoritesEnabled => _autoDownloadFavoritesEnabled;
+
+  /// True when favorited albums should be auto-downloaded.
+  bool get autoDownloadFavoriteAlbums => _autoDownloadFavoriteAlbums;
+
+  /// True when favorited artists should be auto-downloaded.
+  bool get autoDownloadFavoriteArtists => _autoDownloadFavoriteArtists;
+
+  /// True when favorited tracks should be auto-downloaded.
+  bool get autoDownloadFavoriteTracks => _autoDownloadFavoriteTracks;
+
+  /// True when auto-downloads are restricted to Wi-Fi.
+  bool get autoDownloadFavoritesWifiOnly => _autoDownloadFavoritesWifiOnly;
+
   /// Preferred layout for now playing.
   NowPlayingLayout get nowPlayingLayout => _nowPlayingLayout;
 
@@ -454,6 +475,16 @@ class AppState extends ChangeNotifier {
     _telemetryPlayback = await _settingsStore.loadPlaybackTelemetry();
     _telemetryProgress = await _settingsStore.loadProgressTelemetry();
     _telemetryHistory = await _settingsStore.loadHistoryTelemetry();
+    _autoDownloadFavoritesEnabled =
+        await _settingsStore.loadAutoDownloadFavoritesEnabled();
+    _autoDownloadFavoriteAlbums =
+        await _settingsStore.loadAutoDownloadFavoriteAlbums();
+    _autoDownloadFavoriteArtists =
+        await _settingsStore.loadAutoDownloadFavoriteArtists();
+    _autoDownloadFavoriteTracks =
+        await _settingsStore.loadAutoDownloadFavoriteTracks();
+    _autoDownloadFavoritesWifiOnly =
+        await _settingsStore.loadAutoDownloadFavoritesWifiOnly();
     _settingsShortcutEnabled =
         await _settingsStore.loadSettingsShortcutEnabled();
     _settingsShortcut = await _settingsStore.loadSettingsShortcut();
@@ -1296,6 +1327,56 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Updates auto-download preference for favorites.
+  Future<void> setAutoDownloadFavoritesEnabled(bool enabled) async {
+    _autoDownloadFavoritesEnabled = enabled;
+    await _settingsStore.saveAutoDownloadFavoritesEnabled(enabled);
+    notifyListeners();
+    if (enabled) {
+      unawaited(_prefetchFavoriteDownloads());
+    }
+  }
+
+  /// Updates auto-download preference for favorited albums.
+  Future<void> setAutoDownloadFavoriteAlbums(bool enabled) async {
+    _autoDownloadFavoriteAlbums = enabled;
+    await _settingsStore.saveAutoDownloadFavoriteAlbums(enabled);
+    notifyListeners();
+    if (enabled && _autoDownloadFavoritesEnabled) {
+      unawaited(_prefetchFavoriteDownloads(albumsOnly: true));
+    }
+  }
+
+  /// Updates auto-download preference for favorited artists.
+  Future<void> setAutoDownloadFavoriteArtists(bool enabled) async {
+    _autoDownloadFavoriteArtists = enabled;
+    await _settingsStore.saveAutoDownloadFavoriteArtists(enabled);
+    notifyListeners();
+    if (enabled && _autoDownloadFavoritesEnabled) {
+      unawaited(_prefetchFavoriteDownloads(artistsOnly: true));
+    }
+  }
+
+  /// Updates auto-download preference for favorited tracks.
+  Future<void> setAutoDownloadFavoriteTracks(bool enabled) async {
+    _autoDownloadFavoriteTracks = enabled;
+    await _settingsStore.saveAutoDownloadFavoriteTracks(enabled);
+    notifyListeners();
+    if (enabled && _autoDownloadFavoritesEnabled) {
+      unawaited(_prefetchFavoriteDownloads(tracksOnly: true));
+    }
+  }
+
+  /// Updates Wi-Fi only auto-download preference.
+  Future<void> setAutoDownloadFavoritesWifiOnly(bool enabled) async {
+    _autoDownloadFavoritesWifiOnly = enabled;
+    await _settingsStore.saveAutoDownloadFavoritesWifiOnly(enabled);
+    notifyListeners();
+    if (enabled && _autoDownloadFavoritesEnabled) {
+      unawaited(_prefetchFavoriteDownloads());
+    }
+  }
+
   /// Updates the font family preference.
   Future<void> setFontFamily(String? family) async {
     _fontFamily = family;
@@ -1413,6 +1494,66 @@ class AppState extends ChangeNotifier {
   /// Removes a cached audio entry and its file.
   Future<void> evictCachedAudio(String streamUrl) async {
     await _cacheStore.evictCachedAudio(streamUrl);
+  }
+
+  Future<bool> _canAutoDownloadFavorites() async {
+    if (!_autoDownloadFavoritesEnabled) {
+      return false;
+    }
+    if (!_autoDownloadFavoritesWifiOnly) {
+      return true;
+    }
+    if (kIsWeb) {
+      return true;
+    }
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+        return true;
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+        try {
+          final result = await Connectivity().checkConnectivity();
+          return result == ConnectivityResult.wifi ||
+              result == ConnectivityResult.ethernet;
+        } catch (_) {
+          return false;
+        }
+      case TargetPlatform.fuchsia:
+        return true;
+    }
+  }
+
+  Future<void> _prefetchFavoriteDownloads({
+    bool albumsOnly = false,
+    bool artistsOnly = false,
+    bool tracksOnly = false,
+  }) async {
+    if (!await _canAutoDownloadFavorites()) {
+      return;
+    }
+    final shouldAlbums =
+        _autoDownloadFavoriteAlbums && !artistsOnly && !tracksOnly;
+    final shouldArtists =
+        _autoDownloadFavoriteArtists && !albumsOnly && !tracksOnly;
+    final shouldTracks =
+        _autoDownloadFavoriteTracks && !albumsOnly && !artistsOnly;
+    if (shouldAlbums) {
+      for (final album in _favoriteAlbums) {
+        await makeAlbumAvailableOffline(album);
+      }
+    }
+    if (shouldArtists) {
+      for (final artist in _favoriteArtists) {
+        await makeArtistAvailableOffline(artist);
+      }
+    }
+    if (shouldTracks) {
+      for (final track in _favoriteTracks) {
+        await makeTrackAvailableOffline(track);
+      }
+    }
   }
 
   /// Pins a track for offline playback.
@@ -2075,6 +2216,9 @@ class AppState extends ChangeNotifier {
     } finally {
       _isLoadingLibrary = false;
       notifyListeners();
+      if (_autoDownloadFavoritesEnabled && _autoDownloadFavoriteAlbums) {
+        unawaited(_prefetchFavoriteDownloads(albumsOnly: true));
+      }
     }
   }
 
@@ -2093,6 +2237,9 @@ class AppState extends ChangeNotifier {
     } finally {
       _isLoadingLibrary = false;
       notifyListeners();
+      if (_autoDownloadFavoritesEnabled && _autoDownloadFavoriteArtists) {
+        unawaited(_prefetchFavoriteDownloads(artistsOnly: true));
+      }
     }
   }
 
@@ -2111,6 +2258,9 @@ class AppState extends ChangeNotifier {
     } finally {
       _isLoadingLibrary = false;
       notifyListeners();
+      if (_autoDownloadFavoritesEnabled && _autoDownloadFavoriteTracks) {
+        unawaited(_prefetchFavoriteDownloads(tracksOnly: true));
+      }
     }
   }
 
@@ -2150,6 +2300,54 @@ class AppState extends ChangeNotifier {
     _favoriteTracks.sort((a, b) => a.title.compareTo(b.title));
   }
 
+  Future<void> _syncAlbumFavoriteOffline(
+    Album album,
+    bool isFavorite,
+  ) async {
+    if (!_autoDownloadFavoritesEnabled || !_autoDownloadFavoriteAlbums) {
+      return;
+    }
+    if (isFavorite) {
+      if (await _canAutoDownloadFavorites()) {
+        await makeAlbumAvailableOffline(album);
+      }
+      return;
+    }
+    await unpinAlbumOffline(album);
+  }
+
+  Future<void> _syncArtistFavoriteOffline(
+    Artist artist,
+    bool isFavorite,
+  ) async {
+    if (!_autoDownloadFavoritesEnabled || !_autoDownloadFavoriteArtists) {
+      return;
+    }
+    if (isFavorite) {
+      if (await _canAutoDownloadFavorites()) {
+        await makeArtistAvailableOffline(artist);
+      }
+      return;
+    }
+    await unpinArtistOffline(artist);
+  }
+
+  Future<void> _syncTrackFavoriteOffline(
+    MediaItem track,
+    bool isFavorite,
+  ) async {
+    if (!_autoDownloadFavoritesEnabled || !_autoDownloadFavoriteTracks) {
+      return;
+    }
+    if (isFavorite) {
+      if (await _canAutoDownloadFavorites()) {
+        await makeTrackAvailableOffline(track);
+      }
+      return;
+    }
+    await unpinTrackOffline(track);
+  }
+
   /// Updates the favorite status for an album.
   Future<void> setAlbumFavorite(Album album, bool isFavorite) async {
     if (_favoriteAlbumUpdatesInFlight.contains(album.id)) {
@@ -2165,6 +2363,7 @@ class AppState extends ChangeNotifier {
     try {
       await _client.setFavorite(itemId: album.id, isFavorite: isFavorite);
       await _cacheStore.saveFavoriteAlbums(_favoriteAlbums);
+      unawaited(_syncAlbumFavoriteOffline(album, isFavorite));
     } catch (_) {
       _applyAlbumFavoriteLocal(album, wasFavorite);
       await _cacheStore.saveFavoriteAlbums(_favoriteAlbums);
@@ -2189,6 +2388,7 @@ class AppState extends ChangeNotifier {
     try {
       await _client.setFavorite(itemId: artist.id, isFavorite: isFavorite);
       await _cacheStore.saveFavoriteArtists(_favoriteArtists);
+      unawaited(_syncArtistFavoriteOffline(artist, isFavorite));
     } catch (_) {
       _applyArtistFavoriteLocal(artist, wasFavorite);
       await _cacheStore.saveFavoriteArtists(_favoriteArtists);
@@ -2213,6 +2413,7 @@ class AppState extends ChangeNotifier {
     try {
       await _client.setFavorite(itemId: track.id, isFavorite: isFavorite);
       await _cacheStore.saveFavoriteTracks(_favoriteTracks);
+      unawaited(_syncTrackFavoriteOffline(track, isFavorite));
     } catch (_) {
       _applyTrackFavoriteLocal(track, wasFavorite);
       await _cacheStore.saveFavoriteTracks(_favoriteTracks);

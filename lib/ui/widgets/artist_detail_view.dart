@@ -79,6 +79,73 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
                   onShuffle: tracks.isEmpty
                       ? null
                       : () => state.playShuffledList(tracks),
+                  actions: [
+                    OutlinedButton.icon(
+                      onPressed: state.isFavoriteArtistUpdating(artist.id)
+                          ? null
+                          : () => state.setArtistFavorite(
+                                artist,
+                                !state.isFavoriteArtist(artist.id),
+                              ),
+                      icon: state.isFavoriteArtistUpdating(artist.id)
+                          ? SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color:
+                                    Theme.of(context).colorScheme.primary,
+                              ),
+                            )
+                          : Icon(
+                              state.isFavoriteArtist(artist.id)
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                            ),
+                      label: Text(
+                        state.isFavoriteArtist(artist.id)
+                            ? 'Unfavorite'
+                            : 'Favorite',
+                      ),
+                    ),
+                    FutureBuilder<bool>(
+                      future: state.isArtistPinned(artist),
+                      builder: (context, snapshot) {
+                        final isPinned = snapshot.data ?? false;
+                        final isLoading =
+                            snapshot.connectionState ==
+                                ConnectionState.waiting;
+                        return OutlinedButton.icon(
+                          onPressed: tracks.isNotEmpty && !isLoading
+                              ? () => isPinned
+                                  ? state.unpinArtistOffline(artist)
+                                  : state.makeArtistAvailableOffline(artist)
+                              : null,
+                          icon: isLoading
+                              ? SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary,
+                                  ),
+                                )
+                              : Icon(
+                                  isPinned
+                                      ? Icons.download_done_rounded
+                                      : Icons.download_rounded,
+                                ),
+                          label: Text(
+                            isPinned
+                                ? 'Remove from Offline'
+                                : 'Make Available Offline',
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 );
               }
               if (hasAlbums && index == 1) {
@@ -229,6 +296,7 @@ class _ArtistHeader extends StatelessWidget {
     required this.imageUrl,
     required this.onPlayAll,
     this.onShuffle,
+    this.actions = const [],
   });
 
   final String title;
@@ -236,6 +304,7 @@ class _ArtistHeader extends StatelessWidget {
   final String? imageUrl;
   final VoidCallback? onPlayAll;
   final VoidCallback? onShuffle;
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -306,6 +375,7 @@ class _ArtistHeader extends StatelessWidget {
                       icon: const Icon(Icons.shuffle),
                       label: const Text('Shuffle'),
                     ),
+                  ...actions,
                 ],
               ),
             ],

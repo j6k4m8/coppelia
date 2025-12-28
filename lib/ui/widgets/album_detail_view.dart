@@ -34,6 +34,10 @@ class AlbumDetailView extends StatelessWidget {
         album.imageUrl ?? (state.albumTracks.isNotEmpty
             ? state.albumTracks.first.imageUrl
             : null);
+    final isFavorite = state.isFavoriteAlbum(album.id);
+    final isFavoriteUpdating = state.isFavoriteAlbumUpdating(album.id);
+    final canDownload = state.albumTracks.isNotEmpty;
+    final pinnedFuture = state.isAlbumPinned(album);
     return CollectionDetailView(
       title: album.name,
       subtitle: subtitle,
@@ -66,6 +70,56 @@ class AlbumDetailView extends StatelessWidget {
               onTap: () => state.selectArtistByName(artistName),
             )
           : null,
+      headerActions: [
+        OutlinedButton.icon(
+          onPressed: isFavoriteUpdating
+              ? null
+              : () => state.setAlbumFavorite(album, !isFavorite),
+          icon: isFavoriteUpdating
+              ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                )
+              : Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+          label: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
+        ),
+        FutureBuilder<bool>(
+          future: pinnedFuture,
+          builder: (context, snapshot) {
+            final isPinned = snapshot.data ?? false;
+            final isLoading =
+                snapshot.connectionState == ConnectionState.waiting;
+            return OutlinedButton.icon(
+              onPressed: canDownload && !isLoading
+                  ? () => isPinned
+                      ? state.unpinAlbumOffline(album)
+                      : state.makeAlbumAvailableOffline(album)
+                  : null,
+              icon: isLoading
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    )
+                  : Icon(
+                      isPinned
+                          ? Icons.download_done_rounded
+                          : Icons.download_rounded,
+                    ),
+              label: Text(
+                isPinned ? 'Remove from Offline' : 'Make Available Offline',
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

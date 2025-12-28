@@ -27,6 +27,7 @@ class CollectionDetailView extends StatelessWidget {
     this.onAlbumTap,
     this.onArtistTap,
     this.headerFooter,
+    this.headerActions = const [],
   });
 
   /// Title for the collection.
@@ -71,6 +72,9 @@ class CollectionDetailView extends StatelessWidget {
   /// Optional widget to render below the header.
   final Widget? headerFooter;
 
+  /// Optional extra actions for the header.
+  final List<Widget> headerActions;
+
   @override
   Widget build(BuildContext context) {
     final state = context.read<AppState>();
@@ -97,6 +101,7 @@ class CollectionDetailView extends StatelessWidget {
                   imageUrl: imageUrl,
                   onPlayAll: onPlayAll,
                   onShuffle: onShuffle,
+                  actions: headerActions,
                 );
               }
               if (headerFooter != null && index == 1) {
@@ -155,6 +160,7 @@ class _Header extends StatelessWidget {
     this.imageUrl,
     this.onPlayAll,
     this.onShuffle,
+    this.actions = const [],
   });
 
   final String title;
@@ -163,6 +169,7 @@ class _Header extends StatelessWidget {
   final String? imageUrl;
   final VoidCallback? onPlayAll;
   final VoidCallback? onShuffle;
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -234,6 +241,7 @@ class _Header extends StatelessWidget {
                       icon: const Icon(Icons.shuffle),
                       label: const Text('Shuffle'),
                     ),
+                  ...actions,
                 ],
               ),
             ],
