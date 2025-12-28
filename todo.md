@@ -10,8 +10,8 @@
     -   [ ] add "Available offline" section to sidebar (Albums, Artists, Playlists, Tracks)
 -   [x] appearance: add "compact" mode with less padding; three-way switch "Sardinemode" | "Comfortable" | "Spacious"
 -   [ ] UI thrash: scroll gets janky again during updates (investigate repaint storms)
--   [ ] Tracks browse should load alphabetically so pagination doesn't fetch items above the viewport (? need to repro)
--   [ ] Tracks browse should include the alphabet scroller widget.
+-   [x] Tracks browse should load alphabetically so pagination doesn't fetch items above the viewport (? need to repro)
+-   [x] Tracks browse should include the alphabet scroller widget.
 -   [ ] sidebar settings for inclusion should be indented the same as the sidebar itself
 -   [ ] Android: generate app icons from `assets/logo_app_icon.svg`.
 -   [ ] Android: media session + notification controls (play/pause/next).

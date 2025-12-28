@@ -662,20 +662,19 @@ class JellyfinClient {
     required int limit,
   }) async {
     final session = _requireSession();
+    final query = <String, String>{
+      'IncludeItemTypes': 'Audio',
+      'Recursive': 'true',
+      'SortBy': 'SortName',
+      'SortOrder': 'Ascending',
+      'StartIndex': '$startIndex',
+      'Limit': '$limit',
+      'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems',
+      'api_key': session.accessToken,
+    };
     final uri = Uri.parse(
       '${session.serverUrl}/Users/${session.userId}/Items',
-    ).replace(
-      queryParameters: {
-        'IncludeItemTypes': 'Audio',
-        'Recursive': 'true',
-        'SortBy': 'SortName',
-        'StartIndex': '$startIndex',
-        'Limit': '$limit',
-        'Fields':
-            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems',
-        'api_key': session.accessToken,
-      },
-    );
+    ).replace(queryParameters: query);
     final response = await _httpClient.get(uri);
     if (response.statusCode != 200) {
       throw Exception('Unable to load tracks.');

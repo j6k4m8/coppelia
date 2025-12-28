@@ -43,10 +43,17 @@ class LibraryListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    final density = context.watch<AppState>().layoutDensity;
+    final densityScale = density.scaleDouble;
     double space(double value) => value * densityScale;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
+    final verticalPadding = density == LayoutDensity.sardine
+        ? space(6).clamp(2.0, 8.0)
+        : space(10).clamp(4.0, 12.0);
+    final subtitleGap = density == LayoutDensity.sardine
+        ? space(2).clamp(0.0, 3.0)
+        : space(4).clamp(2.0, 6.0);
     final artSize = clamped(48, min: 24, max: 56);
     Widget buildArtworkFallback() => Container(
           width: artSize,
@@ -54,6 +61,9 @@ class LibraryListTile extends StatelessWidget {
           color: ColorTokens.cardFillStrong(context),
           child: Icon(icon, size: clamped(20, min: 14, max: 24)),
         );
+    final titleStyle = density == LayoutDensity.sardine
+        ? Theme.of(context).textTheme.titleSmall
+        : Theme.of(context).textTheme.titleMedium;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -62,7 +72,7 @@ class LibraryListTile extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: space(12).clamp(6.0, 16.0),
-          vertical: space(10).clamp(4.0, 12.0),
+          vertical: verticalPadding,
         ),
         decoration: BoxDecoration(
           color: ColorTokens.cardFill(context, 0.04),
@@ -94,9 +104,9 @@ class LibraryListTile extends StatelessWidget {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: titleStyle,
                   ),
-                  SizedBox(height: space(4).clamp(2.0, 6.0)),
+                  SizedBox(height: subtitleGap),
                   _Subtitle(
                     subtitle: subtitle,
                     onTap: onSubtitleTap,

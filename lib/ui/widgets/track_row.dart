@@ -74,10 +74,17 @@ class TrackRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isActive = this.isActive;
-    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    final density = context.watch<AppState>().layoutDensity;
+    final densityScale = density.scaleDouble;
     double space(double value) => value * densityScale;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
+    final verticalPadding = density == LayoutDensity.sardine
+        ? space(6).clamp(2.0, 8.0)
+        : space(10).clamp(4.0, 14.0);
+    final metaGap = density == LayoutDensity.sardine
+        ? space(1).clamp(0.0, 2.0)
+        : space(2).clamp(1.0, 4.0);
     final useSingleTap = !kIsWeb &&
         (Platform.isIOS || Platform.isAndroid || Platform.isFuchsia);
     final baseColor =
@@ -106,7 +113,7 @@ class TrackRow extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.symmetric(
             horizontal: space(16),
-            vertical: space(10).clamp(4.0, 14.0),
+            vertical: verticalPadding,
           ),
           child: Row(
             children: [
@@ -143,7 +150,7 @@ class TrackRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyLarge,
                     ),
-                    SizedBox(height: space(2).clamp(1.0, 4.0)),
+                    SizedBox(height: metaGap),
                     _TrackMetaRow(
                       artistLabel: track.artists.isNotEmpty
                           ? track.artists.join(', ')

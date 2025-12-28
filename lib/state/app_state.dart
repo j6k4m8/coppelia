@@ -75,6 +75,8 @@ class AppState extends ChangeNotifier {
   List<Artist> _artists = [];
   List<Genre> _genres = [];
   List<MediaItem> _libraryTracks = [];
+  String? _trackBrowseLetter;
+  Completer<void>? _tracksLoadCompleter;
   bool _isLoadingTracks = false;
   bool _hasMoreTracks = true;
   int _tracksOffset = 0;
@@ -247,6 +249,9 @@ class AppState extends ChangeNotifier {
 
   /// Current search query.
   String get searchQuery => _searchQuery;
+
+  /// Active track browse letter filter.
+  String? get trackBrowseLetter => _trackBrowseLetter;
 
   /// True while search results are loading.
   bool get isSearching => _isSearching;
@@ -476,6 +481,8 @@ class AppState extends ChangeNotifier {
     _artists = [];
     _genres = [];
     _libraryTracks = [];
+    _trackBrowseLetter = null;
+    _tracksLoadCompleter = null;
     _isLoadingTracks = false;
     _hasMoreTracks = true;
     _tracksOffset = 0;
@@ -715,6 +722,15 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Updates the track browse letter highlight.
+  void setTrackBrowseLetter(String? letter) {
+    if (_trackBrowseLetter == letter) {
+      return;
+    }
+    _trackBrowseLetter = letter;
+    notifyListeners();
+  }
+
   /// Requests focus for the search field.
   void requestSearchFocus() {
     _searchFocusRequest += 1;
@@ -757,6 +773,7 @@ class AppState extends ChangeNotifier {
       return;
     }
     if (_isLoadingTracks) {
+      await _tracksLoadCompleter?.future;
       return;
     }
     if (!reset && !_hasMoreTracks) {
@@ -769,6 +786,7 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
     _isLoadingTracks = true;
+    _tracksLoadCompleter = Completer<void>();
     notifyListeners();
     try {
       final tracks = await _client.fetchLibraryTracks(
@@ -788,6 +806,8 @@ class AppState extends ChangeNotifier {
       // Ignore load failures; keep whatever tracks we already have.
     } finally {
       _isLoadingTracks = false;
+      _tracksLoadCompleter?.complete();
+      _tracksLoadCompleter = null;
       notifyListeners();
     }
   }

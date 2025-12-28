@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -91,9 +93,16 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
     }
   }
 
+  double _textHeight(TextStyle? style) {
+    final fontSize = style?.fontSize ?? 14;
+    final height = style?.height ?? 1.2;
+    return fontSize * height;
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final density = state.layoutDensity;
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final layout = state.browseLayoutFor(widget.view);
@@ -102,8 +111,23 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
     final letters = letterIndex.keys.toList(growable: false);
     final contentRightPadding =
         letters.isNotEmpty ? space(48).clamp(32.0, 64.0) : 0.0;
+    final titleStyle = density == LayoutDensity.sardine
+        ? Theme.of(context).textTheme.titleSmall
+        : Theme.of(context).textTheme.titleMedium;
+    final subtitleStyle = Theme.of(context).textTheme.bodySmall;
+    final titleHeight = _textHeight(titleStyle);
+    final subtitleHeight = _textHeight(subtitleStyle);
+    final subtitleGap = density == LayoutDensity.sardine
+        ? space(2).clamp(0.0, 3.0)
+        : space(4).clamp(2.0, 6.0);
+    final verticalPadding = density == LayoutDensity.sardine
+        ? space(6).clamp(2.0, 8.0)
+        : space(10).clamp(4.0, 12.0);
+    final artSize = (48 * densityScale).clamp(24.0, 56.0);
+    final textBlock = titleHeight + subtitleHeight + subtitleGap;
+    final contentHeight = math.max(artSize, textBlock);
     final listItemExtent =
-        (_listItemExtent * densityScale).clamp(42.0, 96.0);
+        math.max(contentHeight + verticalPadding * 2, 28).toDouble();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -195,7 +219,7 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                           }
                           final offset = layout == BrowseLayout.grid
                               ? gridMetrics.offsetForIndex(targetIndex)
-                              : targetIndex * listItemExtent;
+                              : (targetIndex * listItemExtent).toDouble();
                           _controller.animateTo(
                             offset,
                             duration: const Duration(milliseconds: 240),

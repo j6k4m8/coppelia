@@ -42,6 +42,7 @@ If you hold in your heart other bulletpoints than these, please share and help m
 -   Playback resume that restores your last track and position when you reopen the app
 -   Configurable home shelves, sidebar sections, and layout choices
 -   Appearance controls: theme mode, font family, font scale, and layout density
+-   A–Z track browsing with quick alphabet jump
 -   Cached playlists/tracks/audio with size reporting and cache management
 -   Artwork fallbacks and rich detail views with context actions
 -   **NO ELECTRON 🫦**
