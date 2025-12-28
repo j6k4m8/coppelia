@@ -19,14 +19,28 @@ If you hold in your heart other bulletpoints than these, please share and help m
 
 ## Features
 
--   Jellyfin authentication and library browsing
--   Featured track shelf and playlist detail view
--   Audio playback with queue controls
--   light/dark modes, or follow system theme
--   Cached playlists, tracks, and audio streams
--   macOS-focused styling inspired by premium music apps
--   super duper configurable
+-   Jellyfin authentication
+-   Fast library browsing and search (albums, artists, genres, playlists)
+-   Audio playback with queue controls, play-next, and clear-queue
+    -   macOS Now Playing integration + media key shortcuts
+-   Favorite and unfavorite tracks/albums/artists
+-   Playback resume that restores your last track and position when you reopen the app
+-   Configurable home shelves, sidebar sections, and layout choices
+-   Appearance controls: theme mode, font family, and font scale
+-   Cached playlists/tracks/audio with size reporting and cache management
+-   Artwork fallbacks and rich detail views with context actions
 -   **NO ELECTRON 🫦**
+
+## Roadmap
+
+-   Android support
+-   Windows, Linux, iOS support (can you help??)
+-   Offline mode
+-   Playlist creation and editing
+-   More playback features (shuffle, repeat, etc)
+-   Your idea here?
+
+---
 
 ## Getting Started (Developer)
 
