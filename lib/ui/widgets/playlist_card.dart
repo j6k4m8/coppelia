@@ -33,6 +33,7 @@ class PlaylistCard extends StatelessWidget {
     double space(double value) => value * densityScale;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
+    final cardRadius = clamped(22, min: 12, max: 26);
     Widget buildArtworkFallback() => Container(
           color: ColorTokens.cardFillStrong(context),
           child: Center(
@@ -49,12 +50,9 @@ class PlaylistCard extends StatelessWidget {
         onTap: onTap,
         child: Container(
           width: clamped(200, min: 130, max: 240),
-          padding: EdgeInsets.all(space(16).clamp(8.0, 20.0)),
           decoration: BoxDecoration(
             color: ColorTokens.cardFill(context),
-            borderRadius: BorderRadius.circular(
-              clamped(22, min: 12, max: 26),
-            ),
+            borderRadius: BorderRadius.circular(cardRadius),
             border: Border.all(color: ColorTokens.border(context)),
           ),
           child: Column(
@@ -62,9 +60,10 @@ class PlaylistCard extends StatelessWidget {
             children: [
               Expanded(
                 child: ClipRRect(
-                borderRadius: BorderRadius.circular(
-                  clamped(16, min: 8, max: 20),
-                ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(cardRadius),
+                    topRight: Radius.circular(cardRadius),
+                  ),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
@@ -89,18 +88,30 @@ class PlaylistCard extends StatelessWidget {
                   ),
                 ),
               ),
-            SizedBox(height: space(12).clamp(6.0, 16.0)),
-              Text(
-                playlist.name,
-                style: theme.textTheme.titleMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            SizedBox(height: space(4).clamp(2.0, 6.0)),
-              Text(
-                '${playlist.trackCount} tracks',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: ColorTokens.textSecondary(context),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  space(16).clamp(10.0, 20.0),
+                  space(12).clamp(8.0, 16.0),
+                  space(16).clamp(10.0, 20.0),
+                  space(16).clamp(8.0, 20.0),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      playlist.name,
+                      style: theme.textTheme.titleMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: space(4).clamp(2.0, 6.0)),
+                    Text(
+                      '${playlist.trackCount} tracks',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: ColorTokens.textSecondary(context),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

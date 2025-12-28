@@ -8,6 +8,10 @@
     -   [x] shuffle
     -   [ ] repeat queue / playlist
     -   [ ] repeat track
--   [ ] on homepage, make all the cards have a no-margin art, NOT full bleed, but rather:
-    -   [ ] for side-by-side, the card art should be full height, with text to the right (with margin)
-    -   [ ] for cards where the art is above the text, art is full width (no margin), no bottom border radius, text below with margin. ditto playlists.
+-   [x] on homepage, make all the cards have a no-margin art, NOT full bleed, but rather:
+    -   [x] for side-by-side, the card art should be full height, with text to the right (with margin)
+    -   [x] for cards where the art is above the text, art is full width (no margin), no bottom border radius, text below with margin. ditto playlists.
+-   [ ] gestures:
+    -   [ ] on mobile now playing bottom panel or side panel, swipe up to open full now playing screen, swipe left/right on the song art and text to skip tracks. should "smooth pursuit" the finger, with next/prev track art and text peeking out on sides when swiping.
+    -   [ ] on mobile Now Playing popover screen, swipe down to dismiss, swipe left and right to skip tracks (should have album art of next/prev track peek out on sides when swiping)
+    -   [ ] on mobile homepage, swipe right on "background" or left edge to open/close side nav. and swipe left on side nav or the darkened background to close side nav.
