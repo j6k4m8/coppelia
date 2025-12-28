@@ -391,13 +391,38 @@ class CacheStore {
 
   /// Clears cached audio files.
   Future<void> clearAudioCache() async {
-    await _audioCache.emptyCache();
+    try {
+      await _audioCache.emptyCache();
+    } catch (_) {}
     await _saveCachedAudioEntries(const {});
+    try {
+      final directory = await getMediaCacheDirectory();
+      if (await directory.exists()) {
+        await directory.delete(recursive: true);
+      }
+    } catch (_) {
+      // Ignore failures clearing the on-disk cache directory.
+    }
   }
 
   /// Returns the approximate size of cached media on disk.
   Future<int> getMediaCacheBytes() async {
-    return _audioCache.store.getCacheSize();
+    try {
+      final directory = await getMediaCacheDirectory();
+      if (!await directory.exists()) {
+        return 0;
+      }
+      var total = 0;
+      await for (final entity
+          in directory.list(recursive: true, followLinks: false)) {
+        if (entity is File) {
+          total += await entity.length();
+        }
+      }
+      return total;
+    } catch (_) {
+      return 0;
+    }
   }
 
   /// Returns a list of cached audio entries with metadata.

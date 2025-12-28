@@ -3,8 +3,8 @@
 -   [ ] when you start loading a track (for playback), if it's not cached, do the "spinner" loading progress indicator on the track scrub bar. until it's ready to play. (still not working)
 -   [ ] cache eviction does not actually delete off disk, and we accumulate stuff on disk over time.
     -   [ ] cache max size (default to 500MB?)
-    -   [ ] cache size reporting in settings should reflect on disk
-    -   [ ] "clear cache" should delete files off disk.
+    -   [x] cache size reporting in settings should reflect on disk
+    -   [x] "clear cache" should delete files off disk.
     -   [ ] default is LRU cache eviction
         -   [ ] add right-click context menu on track/album/artist to "Make available offline" (pin to cache)
     -   [ ] add "Available offline" section to sidebar (Albums, Artists, Playlists, Tracks)
