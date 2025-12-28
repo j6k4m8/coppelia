@@ -64,6 +64,7 @@ class AppState extends ChangeNotifier {
   String _searchQuery = '';
   bool _isSearching = false;
   SearchResults? _searchResults;
+  int _searchFocusRequest = 0;
 
   List<Playlist> _playlists = [];
   List<MediaItem> _playlistTracks = [];
@@ -111,6 +112,8 @@ class AppState extends ChangeNotifier {
   bool _telemetryHistory = true;
   bool _settingsShortcutEnabled = true;
   KeyboardShortcut _settingsShortcut = KeyboardShortcut.defaultForPlatform();
+  bool _searchShortcutEnabled = true;
+  KeyboardShortcut _searchShortcut = KeyboardShortcut.searchForPlatform();
   NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.bottom;
   Map<HomeSection, bool> _homeSectionVisibility = {
     for (final section in HomeSection.values) section: true,
@@ -249,6 +252,9 @@ class AppState extends ChangeNotifier {
   /// Search results, when available.
   SearchResults? get searchResults => _searchResults;
 
+  /// Search focus request token.
+  int get searchFocusRequest => _searchFocusRequest;
+
   /// Currently playing track.
   MediaItem? get nowPlaying => _nowPlaying;
 
@@ -302,6 +308,12 @@ class AppState extends ChangeNotifier {
 
   /// Preferred keyboard shortcut for opening settings.
   KeyboardShortcut get settingsShortcut => _settingsShortcut;
+
+  /// True when the search shortcut is enabled.
+  bool get searchShortcutEnabled => _searchShortcutEnabled;
+
+  /// Preferred keyboard shortcut for focusing search.
+  KeyboardShortcut get searchShortcut => _searchShortcut;
 
   /// True when playback telemetry is enabled.
   bool get telemetryPlaybackEnabled => _telemetryPlayback;
@@ -395,6 +407,8 @@ class AppState extends ChangeNotifier {
     _settingsShortcutEnabled =
         await _settingsStore.loadSettingsShortcutEnabled();
     _settingsShortcut = await _settingsStore.loadSettingsShortcut();
+    _searchShortcutEnabled = await _settingsStore.loadSearchShortcutEnabled();
+    _searchShortcut = await _settingsStore.loadSearchShortcut();
     _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
     _homeSectionVisibility = await _settingsStore.loadHomeSectionVisibility();
     _sidebarVisibility = await _settingsStore.loadSidebarVisibility();
@@ -693,6 +707,12 @@ class AppState extends ChangeNotifier {
     if (notify) {
       notifyListeners();
     }
+  }
+
+  /// Requests focus for the search field.
+  void requestSearchFocus() {
+    _searchFocusRequest += 1;
+    notifyListeners();
   }
 
   /// Loads albums, using cached results when possible.
@@ -1114,6 +1134,20 @@ class AppState extends ChangeNotifier {
   Future<void> setSettingsShortcut(KeyboardShortcut shortcut) async {
     _settingsShortcut = shortcut;
     await _settingsStore.saveSettingsShortcut(shortcut);
+    notifyListeners();
+  }
+
+  /// Updates the search shortcut enabled preference.
+  Future<void> setSearchShortcutEnabled(bool enabled) async {
+    _searchShortcutEnabled = enabled;
+    await _settingsStore.saveSearchShortcutEnabled(enabled);
+    notifyListeners();
+  }
+
+  /// Updates the search shortcut preference.
+  Future<void> setSearchShortcut(KeyboardShortcut shortcut) async {
+    _searchShortcut = shortcut;
+    await _settingsStore.saveSearchShortcut(shortcut);
     notifyListeners();
   }
 

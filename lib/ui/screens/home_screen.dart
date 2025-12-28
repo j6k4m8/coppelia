@@ -321,18 +321,25 @@ class _Header extends StatefulWidget {
 
 class _HeaderState extends State<_Header> {
   late final TextEditingController _searchController;
+  final FocusNode _searchFocusNode = FocusNode();
   Timer? _debounce;
   late VoidCallback _stateListener;
+  late int _lastSearchFocusRequest;
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController(text: widget.state.searchQuery);
+    _lastSearchFocusRequest = widget.state.searchFocusRequest;
     _stateListener = () {
       if (widget.state.searchQuery.isEmpty &&
           _searchController.text.isNotEmpty) {
         _searchController.clear();
         setState(() {});
+      }
+      if (widget.state.searchFocusRequest != _lastSearchFocusRequest) {
+        _lastSearchFocusRequest = widget.state.searchFocusRequest;
+        _searchFocusNode.requestFocus();
       }
     };
     widget.state.addListener(_stateListener);
@@ -343,6 +350,7 @@ class _HeaderState extends State<_Header> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.state != widget.state) {
       oldWidget.state.removeListener(_stateListener);
+      _lastSearchFocusRequest = widget.state.searchFocusRequest;
       widget.state.addListener(_stateListener);
     }
   }
@@ -352,6 +360,7 @@ class _HeaderState extends State<_Header> {
     _debounce?.cancel();
     widget.state.removeListener(_stateListener);
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -472,6 +481,7 @@ class _HeaderState extends State<_Header> {
 
     final searchField = TextField(
       controller: _searchController,
+      focusNode: _searchFocusNode,
       onChanged: _onSearchChanged,
       decoration: InputDecoration(
         hintText: 'Search',

@@ -27,6 +27,9 @@ class PlaybackShortcuts extends StatelessWidget {
     if (state.settingsShortcutEnabled) {
       shortcuts[state.settingsShortcut.toKeySet()] = OpenSettingsIntent();
     }
+    if (state.searchShortcutEnabled) {
+      shortcuts[state.searchShortcut.toKeySet()] = FocusSearchIntent();
+    }
     return Shortcuts(
       shortcuts: shortcuts,
       child: Actions(
@@ -56,6 +59,9 @@ class PlaybackShortcuts extends StatelessWidget {
               }
               return state.selectLibraryView(LibraryView.settings);
             },
+          ),
+          FocusSearchIntent: CallbackAction<FocusSearchIntent>(
+            onInvoke: (_) => state.requestSearchFocus(),
           ),
         },
         child: Focus(
@@ -108,4 +114,10 @@ class PreviousTrackIntent extends Intent {
 class OpenSettingsIntent extends Intent {
   /// Creates an open settings intent.
   const OpenSettingsIntent();
+}
+
+/// Intent to focus the search field.
+class FocusSearchIntent extends Intent {
+  /// Creates a focus search intent.
+  const FocusSearchIntent();
 }

@@ -29,6 +29,9 @@ class SettingsStore {
   static const _settingsShortcutEnabledKey =
       'settings_shortcut_settings_enabled';
   static const _settingsShortcutKey = 'settings_shortcut_settings';
+  static const _searchShortcutEnabledKey =
+      'settings_shortcut_search_enabled';
+  static const _searchShortcutKey = 'settings_shortcut_search';
   static const _deviceIdKey = 'settings_device_id';
 
   /// Loads the preferred theme mode.
@@ -82,6 +85,32 @@ class SettingsStore {
   Future<void> saveSettingsShortcut(KeyboardShortcut shortcut) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_settingsShortcutKey, shortcut.serialize());
+  }
+
+  /// Loads whether the search shortcut is enabled.
+  Future<bool> loadSearchShortcutEnabled() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_searchShortcutEnabledKey) ?? true;
+  }
+
+  /// Saves whether the search shortcut is enabled.
+  Future<void> saveSearchShortcutEnabled(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_searchShortcutEnabledKey, enabled);
+  }
+
+  /// Loads the search shortcut.
+  Future<KeyboardShortcut> loadSearchShortcut() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_searchShortcutKey);
+    return KeyboardShortcut.tryParse(raw) ??
+        KeyboardShortcut.searchForPlatform();
+  }
+
+  /// Saves the search shortcut.
+  Future<void> saveSearchShortcut(KeyboardShortcut shortcut) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_searchShortcutKey, shortcut.serialize());
   }
 
   /// Loads or generates a unique device identifier.

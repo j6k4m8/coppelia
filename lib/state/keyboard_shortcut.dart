@@ -39,6 +39,17 @@ class KeyboardShortcut {
     );
   }
 
+  /// Default search shortcut: Cmd/Ctrl + K.
+  factory KeyboardShortcut.searchForPlatform() {
+    final isApple = defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+    return KeyboardShortcut(
+      key: LogicalKeyboardKey.keyK,
+      meta: isApple,
+      control: !isApple,
+    );
+  }
+
   /// Serializes this shortcut for persistence.
   String serialize() {
     return [

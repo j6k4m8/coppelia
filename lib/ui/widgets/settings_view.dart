@@ -534,16 +534,28 @@ class _KeyboardSettings extends StatelessWidget {
       children: [
         Text('Keyboard', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
+        Text(
+          'Open settings',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Use a global shortcut to jump to Settings.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: ColorTokens.textSecondary(context),
+              ),
+        ),
+        const SizedBox(height: 12),
         _SettingRow(
-          title: 'Open settings',
-          subtitle: 'Enable a global shortcut for Settings.',
+          title: 'Enabled',
+          subtitle: 'Allow the shortcut to open Settings.',
           forceInline: true,
           trailing: Switch(
             value: state.settingsShortcutEnabled,
             onChanged: (value) => state.setSettingsShortcutEnabled(value),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         _SettingRow(
           title: 'Shortcut',
           subtitle: 'Include Cmd/Ctrl/Alt plus a key.',
@@ -552,6 +564,39 @@ class _KeyboardSettings extends StatelessWidget {
             shortcut: state.settingsShortcut,
             enabled: state.settingsShortcutEnabled,
             onChanged: (shortcut) => state.setSettingsShortcut(shortcut),
+          ),
+        ),
+        Divider(height: 24, color: ColorTokens.border(context, 0.12)),
+        Text(
+          'Focus search',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Jump straight to the search field from anywhere.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: ColorTokens.textSecondary(context),
+              ),
+        ),
+        const SizedBox(height: 12),
+        _SettingRow(
+          title: 'Enabled',
+          subtitle: 'Allow the shortcut to focus Search.',
+          forceInline: true,
+          trailing: Switch(
+            value: state.searchShortcutEnabled,
+            onChanged: (value) => state.setSearchShortcutEnabled(value),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SettingRow(
+          title: 'Shortcut',
+          subtitle: 'Include Cmd/Ctrl/Alt plus a key.',
+          forceInline: true,
+          trailing: _ShortcutRecorder(
+            shortcut: state.searchShortcut,
+            enabled: state.searchShortcutEnabled,
+            onChanged: (shortcut) => state.setSearchShortcut(shortcut),
           ),
         ),
       ],

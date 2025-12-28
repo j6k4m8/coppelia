@@ -46,10 +46,22 @@ If you hold in your heart other bulletpoints than these, please share and help m
 -   Artwork fallbacks and rich detail views with context actions
 -   **NO ELECTRON 🫦**
 
+## Keyboard Shortcuts
+
+All shortcuts are configurable in the Settings screen. `^` indicates the Cmd key on macOS, and the Ctrl key on Windows/Linux.
+
+| Action               | Keyboard Shortcut        |
+| -------------------- | ------------------------ |
+| Play / Pause         | Media Play/Pause Key     |
+| Next Track           | Media Next Track Key     |
+| Previous Track       | Media Previous Track Key |
+| Focus Search Field   | `^` + `K`                |
+| Clear Search Field   | `Esc`                    |
+| Open Settings Screen | `^` + `,`                |
+
 ## Roadmap
 
--   Android support
--   Windows, Linux, iOS support (can you help??)
+-   Windows and Linux support (can you help??)
 -   Offline mode
 -   Playlist creation and editing
 -   More playback features (shuffle, repeat, etc)
