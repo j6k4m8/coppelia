@@ -11,6 +11,7 @@ import 'state/app_state.dart';
 import 'state/library_view.dart';
 import 'ui/screens/home_screen.dart';
 import 'ui/screens/login_screen.dart';
+import 'ui/widgets/playback_shortcuts.dart';
 
 /// Root widget for the Coppelia application.
 class CoppeliaApp extends StatelessWidget {
@@ -107,6 +108,9 @@ class _AppShell extends StatelessWidget {
         ),
         themeMode: state.themeMode,
         home: const _RootRouter(),
+        builder: (context, child) {
+          return PlaybackShortcuts(child: child ?? const SizedBox.shrink());
+        },
       ),
     );
   }

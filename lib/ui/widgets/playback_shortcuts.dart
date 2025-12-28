@@ -22,12 +22,22 @@ class PlaybackShortcuts extends StatelessWidget {
         LogicalKeySet(LogicalKeyboardKey.mediaTrackNext): NextTrackIntent(),
         LogicalKeySet(LogicalKeyboardKey.mediaTrackPrevious):
             PreviousTrackIntent(),
-        LogicalKeySet(LogicalKeyboardKey.space): TogglePlaybackIntent(),
+        LogicalKeySet(LogicalKeyboardKey.space):
+            TogglePlaybackWithSpaceIntent(),
       },
       child: Actions(
         actions: {
           TogglePlaybackIntent: CallbackAction<TogglePlaybackIntent>(
             onInvoke: (_) => state.togglePlayback(),
+          ),
+          TogglePlaybackWithSpaceIntent:
+              CallbackAction<TogglePlaybackWithSpaceIntent>(
+            onInvoke: (_) {
+              if (_isTextEditing()) {
+                return null;
+              }
+              return state.togglePlayback();
+            },
           ),
           NextTrackIntent: CallbackAction<NextTrackIntent>(
             onInvoke: (_) => state.nextTrack(),
@@ -43,12 +53,31 @@ class PlaybackShortcuts extends StatelessWidget {
       ),
     );
   }
+
+  bool _isTextEditing() {
+    final focus = FocusManager.instance.primaryFocus;
+    final context = focus?.context;
+    if (context == null) {
+      return false;
+    }
+    final widget = context.widget;
+    if (widget is EditableText) {
+      return true;
+    }
+    return context.findAncestorWidgetOfExactType<EditableText>() != null;
+  }
 }
 
 /// Intent to toggle playback.
 class TogglePlaybackIntent extends Intent {
   /// Creates a toggle playback intent.
   const TogglePlaybackIntent();
+}
+
+/// Intent to toggle playback with spacebar.
+class TogglePlaybackWithSpaceIntent extends Intent {
+  /// Creates a toggle playback intent for spacebar.
+  const TogglePlaybackWithSpaceIntent();
 }
 
 /// Intent to move to the next track.
