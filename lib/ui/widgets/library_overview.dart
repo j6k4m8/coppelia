@@ -143,6 +143,7 @@ class LibraryOverview extends StatelessWidget {
                 return PlaylistCard(
                   playlist: playlist,
                   onTap: () => state.selectPlaylist(playlist),
+                  onPlay: () => state.playPlaylist(playlist),
                 );
               },
             );

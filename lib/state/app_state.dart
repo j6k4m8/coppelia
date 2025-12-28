@@ -436,6 +436,21 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Loads a playlist and starts playback without navigating.
+  Future<void> playPlaylist(Playlist playlist) async {
+    List<MediaItem> tracks = const [];
+    try {
+      tracks = await _client.fetchPlaylistTracks(playlist.id);
+      await _cacheStore.savePlaylistTracks(playlist.id, tracks);
+    } catch (_) {
+      tracks = await _cacheStore.loadPlaylistTracks(playlist.id);
+    }
+    if (tracks.isEmpty) {
+      return;
+    }
+    await _playFromList(tracks, tracks.first);
+  }
+
   /// Clears the current playlist selection.
   void clearPlaylistSelection() {
     _selectedPlaylist = null;

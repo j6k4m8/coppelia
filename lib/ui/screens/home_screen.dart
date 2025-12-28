@@ -666,6 +666,8 @@ class _HomePlaylistsView extends StatelessWidget {
               playlist: playlist,
               onTap: () =>
                   context.read<AppState>().selectPlaylist(playlist),
+              onPlay: () =>
+                  context.read<AppState>().playPlaylist(playlist),
             );
           },
         );
