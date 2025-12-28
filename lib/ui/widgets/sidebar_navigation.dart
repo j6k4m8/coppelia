@@ -67,21 +67,41 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
         children: [
           Row(
             children: [
-              SizedBox(
-                width: 36,
-                height: 36,
-                child: SvgPicture.asset(
-                  'assets/logo.svg',
-                  width: 36,
-                  height: 36,
+              Expanded(
+                child: MouseRegion(
+                  cursor: state.isSidebarItemVisible(SidebarItem.home)
+                      ? SystemMouseCursors.click
+                      : SystemMouseCursors.basic,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: state.isSidebarItemVisible(SidebarItem.home)
+                        ? () => _handleNavigate(
+                              () => state.selectLibraryView(
+                                LibraryView.home,
+                              ),
+                            )
+                        : null,
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: SvgPicture.asset(
+                            'assets/logo.svg',
+                            width: 36,
+                            height: 36,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Coppelia',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
-              Text(
-                'Coppelia',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const Spacer(),
               if (widget.onCollapse != null)
                 IconButton(
                   onPressed: widget.onCollapse,
@@ -91,16 +111,6 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             ],
           ),
           const SizedBox(height: 32),
-          if (state.isSidebarItemVisible(SidebarItem.home))
-            _NavTile(
-              icon: Icons.home_filled,
-              label: 'Home',
-              selected: state.selectedPlaylist == null &&
-                  state.selectedView == LibraryView.home,
-              onTap: () => _handleNavigate(
-                () => state.selectLibraryView(LibraryView.home),
-              ),
-            ),
           if (state.isSidebarItemVisible(SidebarItem.settings))
             _NavTile(
               icon: Icons.menu,
