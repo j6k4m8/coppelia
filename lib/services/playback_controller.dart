@@ -1,3 +1,4 @@
+import 'package:audio_service/audio_service.dart' as audio_service;
 import 'package:just_audio/just_audio.dart';
 
 import '../models/media_item.dart';
@@ -29,7 +30,22 @@ class PlaybackController {
   /// The current media item from the queue.
   MediaItem? get currentMediaItem {
     final tag = _player.sequenceState?.currentSource?.tag;
-    return tag is MediaItem ? tag : null;
+    if (tag is MediaItem) {
+      return tag;
+    }
+    if (tag is audio_service.MediaItem) {
+      final extras = tag.extras;
+      if (extras == null) {
+        return null;
+      }
+      final raw = extras['coppelia'];
+      if (raw is Map) {
+        return MediaItem.fromJson(
+          raw.cast<String, dynamic>(),
+        );
+      }
+    }
+    return null;
   }
 
   /// Current queue index, if available.
@@ -136,16 +152,29 @@ class PlaybackController {
     CacheStore? cacheStore,
     Map<String, String>? headers,
   ) async {
+    final tag = audio_service.MediaItem(
+      id: item.id,
+      title: item.title,
+      album: item.album,
+      artist: item.artists.isNotEmpty
+          ? item.artists.join(', ')
+          : 'Unknown Artist',
+      duration: item.duration,
+      artUri: item.imageUrl == null ? null : Uri.parse(item.imageUrl!),
+      extras: <String, dynamic>{
+        'coppelia': item.toJson(),
+      },
+    );
     final file = cacheStore == null
         ? null
         : await cacheStore.getCachedAudio(item, touch: false);
     if (file != null) {
-      return AudioSource.file(file.path, tag: item);
+      return AudioSource.file(file.path, tag: tag);
     }
     return AudioSource.uri(
       Uri.parse(item.streamUrl),
       headers: headers,
-      tag: item,
+      tag: tag,
     );
   }
 }
