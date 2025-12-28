@@ -76,19 +76,19 @@ extension SidebarItemMetadata on SidebarItem {
       case SidebarItem.settings:
         return 'Settings';
       case SidebarItem.favoritesAlbums:
-        return 'Favorites • Albums';
+        return 'Albums';
       case SidebarItem.favoritesSongs:
-        return 'Favorites • Songs';
+        return 'Songs';
       case SidebarItem.favoritesArtists:
-        return 'Favorites • Artists';
+        return 'Artists';
       case SidebarItem.browseAlbums:
-        return 'Browse • Albums';
+        return 'Albums';
       case SidebarItem.browseArtists:
-        return 'Browse • Artists';
+        return 'Artists';
       case SidebarItem.browseGenres:
-        return 'Browse • Genres';
+        return 'Genres';
       case SidebarItem.browseTracks:
-        return 'Browse • Tracks';
+        return 'Tracks';
       case SidebarItem.history:
         return 'History';
       case SidebarItem.queue:

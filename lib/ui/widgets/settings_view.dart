@@ -284,176 +284,232 @@ class _LayoutSettings extends StatelessWidget {
         Divider(height: 32, color: ColorTokens.border(context, 0.12)),
         Text('Sidebar', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
-        _SettingsSubheader(title: 'Main'),
-        const SizedBox(height: 8),
-        _SettingRow(
-          title: SidebarItem.home.label,
-          subtitle: 'Show Home in the sidebar.',
-          forceInline: true,
-          trailing: Switch(
-            value: state.isSidebarItemVisible(SidebarItem.home),
-            onChanged: (value) =>
-                state.setSidebarItemVisible(SidebarItem.home, value),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _SettingRow(
-          title: SidebarItem.settings.label,
-          subtitle: 'Show Settings in the sidebar.',
-          forceInline: true,
-          trailing: Switch(
-            value: state.isSidebarItemVisible(SidebarItem.settings),
-            onChanged: (value) =>
-                state.setSidebarItemVisible(SidebarItem.settings, value),
-          ),
-        ),
-        const SizedBox(height: 16),
-        _SettingsSubheader(title: 'Favorites'),
-        const SizedBox(height: 8),
-        _SettingRow(
-          title: SidebarItem.favoritesAlbums.label,
-          subtitle: 'Show favorite albums.',
-          forceInline: true,
-          trailing: Switch(
-            value: state.isSidebarItemVisible(
-              SidebarItem.favoritesAlbums,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(left: 12),
+              child: _SettingsSubheader(title: 'Main'),
             ),
-            onChanged: (value) => state.setSidebarItemVisible(
-              SidebarItem.favoritesAlbums,
-              value,
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.home.label,
+                subtitle: 'Show Home in the sidebar.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(SidebarItem.home),
+                  onChanged: (value) =>
+                      state.setSidebarItemVisible(SidebarItem.home, value),
+                ),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _SettingRow(
-          title: SidebarItem.favoritesSongs.label,
-          subtitle: 'Show favorite songs.',
-          forceInline: true,
-          trailing: Switch(
-            value: state.isSidebarItemVisible(
-              SidebarItem.favoritesSongs,
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.settings.label,
+                subtitle: 'Show Settings in the sidebar.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(SidebarItem.settings),
+                  onChanged: (value) =>
+                      state.setSidebarItemVisible(SidebarItem.settings, value),
+                ),
+              ),
             ),
-            onChanged: (value) => state.setSidebarItemVisible(
-              SidebarItem.favoritesSongs,
-              value,
+            const SizedBox(height: 16),
+            const Padding(
+              padding: EdgeInsets.only(left: 12),
+              child: _SettingsSubheader(title: 'Favorites'),
             ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _SettingRow(
-          title: SidebarItem.favoritesArtists.label,
-          subtitle: 'Show favorite artists.',
-          forceInline: true,
-          trailing: Switch(
-            value: state.isSidebarItemVisible(
-              SidebarItem.favoritesArtists,
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.favoritesAlbums.label,
+                subtitle: 'Show favorite albums.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.favoritesAlbums,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.favoritesAlbums,
+                    value,
+                  ),
+                ),
+              ),
             ),
-            onChanged: (value) => state.setSidebarItemVisible(
-              SidebarItem.favoritesArtists,
-              value,
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.favoritesSongs.label,
+                subtitle: 'Show favorite songs.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.favoritesSongs,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.favoritesSongs,
+                    value,
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        _SettingsSubheader(title: 'Browse'),
-        const SizedBox(height: 8),
-        _SettingRow(
-          title: SidebarItem.browseAlbums.label,
-          subtitle: 'Show albums in Browse.',
-          forceInline: true,
-          trailing: Switch(
-            value: state.isSidebarItemVisible(
-              SidebarItem.browseAlbums,
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.favoritesArtists.label,
+                subtitle: 'Show favorite artists.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.favoritesArtists,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.favoritesArtists,
+                    value,
+                  ),
+                ),
+              ),
             ),
-            onChanged: (value) => state.setSidebarItemVisible(
-              SidebarItem.browseAlbums,
-              value,
+            const SizedBox(height: 16),
+            const Padding(
+              padding: EdgeInsets.only(left: 12),
+              child: _SettingsSubheader(title: 'Browse'),
             ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _SettingRow(
-          title: SidebarItem.browseArtists.label,
-          subtitle: 'Show artists in Browse.',
-          forceInline: true,
-          trailing: Switch(
-            value: state.isSidebarItemVisible(
-              SidebarItem.browseArtists,
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.browseAlbums.label,
+                subtitle: 'Show albums in Browse.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.browseAlbums,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.browseAlbums,
+                    value,
+                  ),
+                ),
+              ),
             ),
-            onChanged: (value) => state.setSidebarItemVisible(
-              SidebarItem.browseArtists,
-              value,
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.browseArtists.label,
+                subtitle: 'Show artists in Browse.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.browseArtists,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.browseArtists,
+                    value,
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _SettingRow(
-          title: SidebarItem.browseGenres.label,
-          subtitle: 'Show genres in Browse.',
-          forceInline: true,
-          trailing: Switch(
-            value: state.isSidebarItemVisible(
-              SidebarItem.browseGenres,
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.browseGenres.label,
+                subtitle: 'Show genres in Browse.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.browseGenres,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.browseGenres,
+                    value,
+                  ),
+                ),
+              ),
             ),
-            onChanged: (value) => state.setSidebarItemVisible(
-              SidebarItem.browseGenres,
-              value,
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.browseTracks.label,
+                subtitle: 'Show tracks in Browse.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.browseTracks,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.browseTracks,
+                    value,
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _SettingRow(
-          title: SidebarItem.browseTracks.label,
-          subtitle: 'Show tracks in Browse.',
-          forceInline: true,
-          trailing: Switch(
-            value: state.isSidebarItemVisible(
-              SidebarItem.browseTracks,
+            const SizedBox(height: 16),
+            const Padding(
+              padding: EdgeInsets.only(left: 12),
+              child: _SettingsSubheader(title: 'Playback'),
             ),
-            onChanged: (value) => state.setSidebarItemVisible(
-              SidebarItem.browseTracks,
-              value,
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.history.label,
+                subtitle: 'Show playback history.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(SidebarItem.history),
+                  onChanged: (value) =>
+                      state.setSidebarItemVisible(SidebarItem.history, value),
+                ),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        _SettingsSubheader(title: 'Playback'),
-        const SizedBox(height: 8),
-        _SettingRow(
-          title: SidebarItem.history.label,
-          subtitle: 'Show playback history.',
-          forceInline: true,
-          trailing: Switch(
-            value: state.isSidebarItemVisible(SidebarItem.history),
-            onChanged: (value) =>
-                state.setSidebarItemVisible(SidebarItem.history, value),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _SettingRow(
-          title: SidebarItem.queue.label,
-          subtitle: 'Show the play queue.',
-          forceInline: true,
-          trailing: Switch(
-            value: state.isSidebarItemVisible(SidebarItem.queue),
-            onChanged: (value) =>
-                state.setSidebarItemVisible(SidebarItem.queue, value),
-          ),
-        ),
-        const SizedBox(height: 16),
-        _SettingsSubheader(title: 'Playlists'),
-        const SizedBox(height: 8),
-        _SettingRow(
-          title: SidebarItem.playlists.label,
-          subtitle: 'Show playlist list in the sidebar.',
-          forceInline: true,
-          trailing: Switch(
-            value: state.isSidebarItemVisible(SidebarItem.playlists),
-            onChanged: (value) => state.setSidebarItemVisible(
-              SidebarItem.playlists,
-              value,
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.queue.label,
+                subtitle: 'Show the play queue.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(SidebarItem.queue),
+                  onChanged: (value) =>
+                      state.setSidebarItemVisible(SidebarItem.queue, value),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: 16),
+            const Padding(
+              padding: EdgeInsets.only(left: 12),
+              child: _SettingsSubheader(title: 'Playlists'),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.playlists.label,
+                subtitle: 'Show playlist list in the sidebar.',
+                forceInline: true,
+                trailing: Switch(
+                  value: state.isSidebarItemVisible(SidebarItem.playlists),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.playlists,
+                    value,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
