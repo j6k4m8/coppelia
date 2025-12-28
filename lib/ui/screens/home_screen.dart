@@ -76,7 +76,7 @@ class _MainContent extends StatelessWidget {
     final artistCount = stats?.artistCount ?? state.artists.length;
     final bodyContent = LayoutBuilder(
       builder: (context, constraints) {
-        const autoCollapseWidth = 980.0;
+        const autoCollapseWidth = 640.0;
         const collapseThreshold = 140.0;
         final autoCollapsed = constraints.maxWidth < autoCollapseWidth;
         final allowManual = !autoCollapsed;

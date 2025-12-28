@@ -102,7 +102,6 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
           if (showFavoritesSection) ...[
             _SectionHeader(
               title: 'Favorites',
-              isExpanded: _favoritesExpanded,
               onTap: () => setState(() {
                 _favoritesExpanded = !_favoritesExpanded;
               }),
@@ -165,7 +164,6 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
           if (showBrowseSection) ...[
             _SectionHeader(
               title: 'Browse',
-              isExpanded: _browseExpanded,
               onTap: () => setState(() {
                 _browseExpanded = !_browseExpanded;
               }),
@@ -219,7 +217,6 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
           if (showPlaybackSection) ...[
             _SectionHeader(
               title: 'Playback',
-              isExpanded: _playbackExpanded,
               onTap: () => setState(() {
                 _playbackExpanded = !_playbackExpanded;
               }),
@@ -258,7 +255,6 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
           if (showPlaylistsSection) ...[
             _SectionHeader(
               title: 'Playlists',
-              isExpanded: _playlistsExpanded,
               onTap: () => setState(() {
                 _playlistsExpanded = !_playlistsExpanded;
               }),
@@ -332,12 +328,10 @@ class _NavTile extends StatelessWidget {
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({
     required this.title,
-    required this.isExpanded,
     required this.onTap,
   });
 
   final String title;
-  final bool isExpanded;
   final VoidCallback onTap;
 
   @override
@@ -347,22 +341,12 @@ class _SectionHeader extends StatelessWidget {
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              title,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
-                  ?.copyWith(color: ColorTokens.textSecondary(context, 0.7)),
-            ),
-            AnimatedRotation(
-              turns: isExpanded ? 0.5 : 0.0,
-              duration: const Duration(milliseconds: 200),
-              child: const Icon(Icons.expand_more, size: 18),
-            ),
-          ],
+        child: Text(
+          title,
+          style: Theme.of(context)
+              .textTheme
+              .titleSmall
+              ?.copyWith(color: ColorTokens.textSecondary(context, 0.7)),
         ),
       ),
     );

@@ -1,30 +1,9 @@
 # TODO
 
-## HIGH PRIORITY
-
--   [x] sigh this is a big one... the proper spelling is "Coppelia" (two p's, one l). need to rename all files, folders, variables, etc. that have the wrong spelling. GAK!
--   [x] double clicking to play a track doesn't always update the now playing section... even though the play head works fine.
-
-## Bugs
-
--   [x] queue popup doesn't respect dark/light mode. solution: delete the popup altogether and clicking queue button just navigates to queue page.
-
-## Features / Improvements
-
--   [x] add ability to clear queue
--   [x] add "Albums" to artist pages
--   [x] add link to artist page(s) from album page
--   [x] on tracks, add right click -> "Go to Album" and "Go to Artist". on albums, add right click -> "Go to Artist".
-
 ## Low Priority
 
 -   [ ] add font selector to appearance settings
 -   [ ] add auto build and release pipeline to github actions workflows
--   [x] settings page has:
-    -   [x] toggle each section of homepage
-    -   [x] toggle each sidebar item
--   [x] make settings page a hamburger icon after Home, instead of button way at the bottom
--   [x] allow collapse of all sidebar sections, not just favs
 -   [ ] indicate how much cache / disk space is being used by cached media
 -   [x] in appearance/themes, allow tracking the system theme which overrides the light-dark setting.
 -   [x] "good evening {user}" should be "welcome back {user}", "good morning {user}", afternoon, and:
@@ -36,6 +15,6 @@
 -   [ ] playlists on the homepage should have a circular play button on them for single click play
 -   [ ] right click "Favorite" / "Unfavorite" on albums, artists, tracks. should hit jelly API and update UI accordingly. spinner while waiting for response.
 -   [ ] togleably (in settings page), the cards on hero header sections should either (on) show the album art at full size, filling the card's height, or (off) show the album art as a small square thumbnail on the left side with text to the right (what it is currently).
--   [ ] also change the settings page to have different tabs, for "Appearance" (will hold theme stuff, font stuff later), "Layout", "Cache", "Account"
+-   [x] also change the settings page to have different tabs, for "Appearance" (will hold theme stuff, font stuff later), "Layout", "Cache", "Account"
 -   [ ] left pane sidebar is too shy, hides on even relatively wide screens...
--   [ ] get rid of the carets in the sidebar, they are unnecessary clutter. you can still click the titles to expand / collapse sections.
+-   [x] get rid of the carets in the sidebar, they are unnecessary clutter. you can still click the titles to expand / collapse sections.
