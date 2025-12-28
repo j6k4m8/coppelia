@@ -19,6 +19,9 @@ class CacheStore {
   /// Creates a cache manager instance.
   CacheStore();
 
+  /// Default cache size limit (500 MB).
+  static const int defaultCacheMaxBytes = 500 * 1024 * 1024;
+
   static const _playlistsKey = 'cached_playlists';
   static const _tracksKey = 'cached_playlist_tracks';
   static const _featuredKey = 'cached_featured_tracks';
@@ -35,6 +38,7 @@ class CacheStore {
   static const _playHistoryKey = 'cached_play_history';
   static const _libraryStatsKey = 'cached_library_stats';
   static const _cachedAudioKey = 'cached_audio_entries';
+  static const _cachedAudioLimitKey = 'cached_audio_limit_bytes';
   static const _playbackResumeKey = 'cached_playback_resume';
 
   final DefaultCacheManager _audioCache = DefaultCacheManager();
@@ -355,6 +359,9 @@ class CacheStore {
   /// Returns a cached audio file if present.
   Future<File?> getCachedAudio(MediaItem item) async {
     final cached = await _audioCache.getFileFromCache(item.streamUrl);
+    if (cached != null) {
+      _rememberCachedAudio(item);
+    }
     return cached?.file;
   }
 
@@ -363,6 +370,7 @@ class CacheStore {
     try {
       await _audioCache.downloadFile(item.streamUrl);
       await _rememberCachedAudio(item);
+      await enforceCacheLimit();
     } catch (_) {
       // Ignore failed prefetch attempts.
     }
@@ -425,6 +433,24 @@ class CacheStore {
     }
   }
 
+  /// Loads the configured cache size limit.
+  Future<int> loadCacheMaxBytes() async {
+    final preferences = await SharedPreferences.getInstance();
+    final stored = preferences.getInt(_cachedAudioLimitKey);
+    if (stored != null && stored >= 0) {
+      return stored;
+    }
+    await preferences.setInt(_cachedAudioLimitKey, defaultCacheMaxBytes);
+    return defaultCacheMaxBytes;
+  }
+
+  /// Saves the configured cache size limit.
+  Future<void> saveCacheMaxBytes(int bytes) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setInt(_cachedAudioLimitKey, bytes);
+    await enforceCacheLimit(maxBytes: bytes);
+  }
+
   /// Returns a list of cached audio entries with metadata.
   Future<List<CachedAudioEntry>> loadCachedAudioEntries() async {
     final preferences = await SharedPreferences.getInstance();
@@ -482,6 +508,40 @@ class CacheStore {
   Future<void> evictCachedAudio(String streamUrl) async {
     await _audioCache.removeFile(streamUrl);
     await _forgetCachedAudio(streamUrl);
+  }
+
+  /// Enforces the cache size limit using LRU eviction.
+  Future<void> enforceCacheLimit({int? maxBytes}) async {
+    final limit = maxBytes ?? await loadCacheMaxBytes();
+    if (limit <= 0) {
+      return;
+    }
+    final entries = await loadCachedAudioEntries();
+    if (entries.isEmpty) {
+      return;
+    }
+    var total = entries.fold<int>(0, (sum, entry) => sum + entry.bytes);
+    if (total <= limit) {
+      return;
+    }
+    entries.sort((a, b) => a.cachedAt.compareTo(b.cachedAt));
+    final toRemove = <CachedAudioEntry>[];
+    for (final entry in entries) {
+      toRemove.add(entry);
+      total -= entry.bytes;
+      if (total <= limit) {
+        break;
+      }
+    }
+    if (toRemove.isEmpty) {
+      return;
+    }
+    for (final entry in toRemove) {
+      await _audioCache.removeFile(entry.streamUrl);
+    }
+    await _forgetCachedAudioEntries(
+      toRemove.map((entry) => entry.streamUrl).toSet(),
+    );
   }
 
   /// Returns the directory used by the media cache.
@@ -561,6 +621,22 @@ class CacheStore {
     }
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
     decoded.remove(streamUrl);
+    await _saveCachedAudioEntries(decoded);
+  }
+
+  Future<void> _forgetCachedAudioEntries(Set<String> streamUrls) async {
+    if (streamUrls.isEmpty) {
+      return;
+    }
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_cachedAudioKey);
+    if (raw == null || raw.isEmpty) {
+      return;
+    }
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    for (final url in streamUrls) {
+      decoded.remove(url);
+    }
     await _saveCachedAudioEntries(decoded);
   }
 

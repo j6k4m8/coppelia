@@ -661,6 +661,17 @@ class _CacheSettings extends StatefulWidget {
 
 class _CacheSettingsState extends State<_CacheSettings> {
   late Future<int> _cacheFuture;
+  static const List<int> _cacheLimitOptions = [
+    50 * 1024 * 1024,
+    500 * 1024 * 1024,
+    1024 * 1024 * 1024,
+    2 * 1024 * 1024 * 1024,
+    4 * 1024 * 1024 * 1024,
+    32 * 1024 * 1024 * 1024,
+    64 * 1024 * 1024 * 1024,
+    100 * 1024 * 1024 * 1024,
+    0,
+  ];
 
   @override
   void initState() {
@@ -720,6 +731,22 @@ class _CacheSettingsState extends State<_CacheSettings> {
         ),
         SizedBox(height: space(12)),
         _SettingRow(
+          title: 'Cache limit',
+          subtitle: 'Maximum disk space for cached audio.',
+          trailing: _CacheLimitPicker(
+            currentBytes: widget.state.cacheMaxBytes,
+            options: _cacheLimitOptions,
+            onChanged: (bytes) async {
+              await widget.state.setCacheMaxBytes(bytes);
+              _refreshCacheUsage();
+              if (context.mounted) {
+                widget.onSnack('Cache limit updated.');
+              }
+            },
+          ),
+        ),
+        SizedBox(height: space(12)),
+        _SettingRow(
           title: 'Cache location',
           subtitle: 'Open cached media in your file manager.',
           trailing: OutlinedButton(
@@ -758,6 +785,56 @@ class _CacheSettingsState extends State<_CacheSettings> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _CacheLimitPicker extends StatelessWidget {
+  const _CacheLimitPicker({
+    required this.currentBytes,
+    required this.options,
+    required this.onChanged,
+  });
+
+  final int currentBytes;
+  final List<int> options;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final resolvedOptions = options.contains(currentBytes)
+        ? List<int>.from(options)
+        : [...options, currentBytes];
+    resolvedOptions.sort((a, b) {
+      if (a == 0 && b == 0) {
+        return 0;
+      }
+      if (a == 0) {
+        return 1;
+      }
+      if (b == 0) {
+        return -1;
+      }
+      return a.compareTo(b);
+    });
+    return DropdownButtonHideUnderline(
+      child: DropdownButton<int>(
+        value: currentBytes,
+        onChanged: (value) {
+          if (value == null) {
+            return;
+          }
+          onChanged(value);
+        },
+        items: resolvedOptions
+            .map(
+              (bytes) => DropdownMenuItem(
+                value: bytes,
+                child: Text(bytes == 0 ? 'Unlimited' : formatBytes(bytes)),
+              ),
+            )
+            .toList(),
+      ),
     );
   }
 }

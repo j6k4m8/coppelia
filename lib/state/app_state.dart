@@ -138,6 +138,7 @@ class AppState extends ChangeNotifier {
   Artist? _jumpInArtist;
   bool _isLoadingJumpIn = false;
   DateTime? _lastJumpInRefreshAt;
+  int _cacheMaxBytes = CacheStore.defaultCacheMaxBytes;
 
   StreamSubscription<Duration>? _positionSubscription;
   StreamSubscription<Duration?>? _durationSubscription;
@@ -362,6 +363,9 @@ class AppState extends ChangeNotifier {
   /// True while Jump in picks are loading.
   bool get isLoadingJumpIn => _isLoadingJumpIn;
 
+  /// Current cache size limit in bytes.
+  int get cacheMaxBytes => _cacheMaxBytes;
+
   /// True when Jump in should auto-refresh.
   bool get shouldRefreshJumpIn {
     final last = _lastJumpInRefreshAt;
@@ -457,6 +461,7 @@ class AppState extends ChangeNotifier {
     _searchShortcut = await _settingsStore.loadSearchShortcut();
     _layoutDensity = await _settingsStore.loadLayoutDensity();
     _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
+    _cacheMaxBytes = await _cacheStore.loadCacheMaxBytes();
     _homeSectionVisibility = await _settingsStore.loadHomeSectionVisibility();
     _sidebarVisibility = await _settingsStore.loadSidebarVisibility();
     _sidebarWidth = await _settingsStore.loadSidebarWidth();
@@ -1386,6 +1391,13 @@ class AppState extends ChangeNotifier {
   /// Returns the estimated cached media size in bytes.
   Future<int> getMediaCacheBytes() async {
     return _cacheStore.getMediaCacheBytes();
+  }
+
+  /// Updates the cache size limit.
+  Future<void> setCacheMaxBytes(int bytes) async {
+    _cacheMaxBytes = bytes;
+    await _cacheStore.saveCacheMaxBytes(bytes);
+    notifyListeners();
   }
 
   /// Returns cached audio entries for display.
