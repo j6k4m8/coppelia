@@ -119,11 +119,11 @@ extension LibraryViewLabels on LibraryView {
       case LibraryView.favoritesArtists:
         return 'Artists you keep on repeat.';
       case LibraryView.offlineAlbums:
-        return 'Albums fully downloaded for offline playback.';
+        return 'Albums with tracks available offline.';
       case LibraryView.offlineArtists:
-        return 'Artists with every track available offline.';
+        return 'Artists with offline-ready tracks.';
       case LibraryView.offlinePlaylists:
-        return 'Playlists ready for offline playback.';
+        return 'Playlists with offline-ready tracks.';
       case LibraryView.offlineTracks:
         return 'Tracks you have pinned for offline listening.';
       case LibraryView.settings:

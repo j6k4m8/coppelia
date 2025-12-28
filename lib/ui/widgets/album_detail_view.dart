@@ -38,20 +38,27 @@ class AlbumDetailView extends StatelessWidget {
     final isFavoriteUpdating = state.isFavoriteAlbumUpdating(album.id);
     final canDownload = state.albumTracks.isNotEmpty;
     final pinnedFuture = state.isAlbumPinned(album);
+    final pinned = state.pinnedAudio;
+    final offlineTracks = state.albumTracks
+        .where((track) => pinned.contains(track.streamUrl))
+        .toList();
+    final showOfflineFilter = offlineTracks.isNotEmpty;
+    final displayTracks =
+        state.offlineOnlyFilter ? offlineTracks : state.albumTracks;
     return CollectionDetailView(
       title: album.name,
       subtitle: subtitle,
       subtitleWidget: subtitleWidget,
       imageUrl: headerImageUrl,
-      tracks: state.albumTracks,
+      tracks: displayTracks,
       nowPlaying: state.nowPlaying,
-      onPlayAll: state.albumTracks.isEmpty
+      onPlayAll: displayTracks.isEmpty
           ? null
-          : () => state.playFromAlbum(state.albumTracks.first),
-      onShuffle: state.albumTracks.isEmpty
+          : () => state.playFromList(displayTracks, displayTracks.first),
+      onShuffle: displayTracks.isEmpty
           ? null
-          : () => state.playShuffledList(state.albumTracks),
-      onTrackTap: state.playFromAlbum,
+          : () => state.playShuffledList(displayTracks),
+      onTrackTap: (track) => state.playFromList(displayTracks, track),
       onPlayNext: state.playNext,
       onAddToQueue: state.enqueueTrack,
       onAlbumTap: (track) {
@@ -119,6 +126,12 @@ class AlbumDetailView extends StatelessWidget {
             );
           },
         ),
+        if (showOfflineFilter)
+          FilterChip(
+            label: const Text('Offline only'),
+            selected: state.offlineOnlyFilter,
+            onSelected: state.setOfflineOnlyFilter,
+          ),
       ],
     );
   }

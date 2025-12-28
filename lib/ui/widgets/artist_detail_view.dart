@@ -51,6 +51,13 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
     final albums = _albumsForArtist(state.albums, artist.name);
     final hasAlbums = albums.isNotEmpty;
     final tracks = state.artistTracks;
+    final pinned = state.pinnedAudio;
+    final offlineTracks = tracks
+        .where((track) => pinned.contains(track.streamUrl))
+        .toList();
+    final showOfflineFilter = offlineTracks.isNotEmpty;
+    final displayTracks =
+        state.offlineOnlyFilter ? offlineTracks : tracks;
     final trackStartIndex = hasAlbums ? 2 : 1;
     final headerImageUrl = artist.imageUrl ??
         (albums.isNotEmpty ? albums.first.imageUrl : null) ??
@@ -60,7 +67,7 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
       children: [
         Expanded(
           child: ListView.separated(
-            itemCount: trackStartIndex + tracks.length,
+            itemCount: trackStartIndex + displayTracks.length,
             separatorBuilder: (_, index) {
               if (index == 0 || (hasAlbums && index == 1)) {
                 return SizedBox(height: space(24));
@@ -73,12 +80,15 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
                   title: artist.name,
                   subtitle: subtitle,
                   imageUrl: headerImageUrl,
-                  onPlayAll: tracks.isEmpty
+                  onPlayAll: displayTracks.isEmpty
                       ? null
-                      : () => state.playFromArtist(tracks.first),
-                  onShuffle: tracks.isEmpty
+                      : () => state.playFromList(
+                            displayTracks,
+                            displayTracks.first,
+                          ),
+                  onShuffle: displayTracks.isEmpty
                       ? null
-                      : () => state.playShuffledList(tracks),
+                      : () => state.playShuffledList(displayTracks),
                   actions: [
                     OutlinedButton.icon(
                       onPressed: state.isFavoriteArtistUpdating(artist.id)
@@ -145,6 +155,12 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
                         );
                       },
                     ),
+                    if (showOfflineFilter)
+                      FilterChip(
+                        label: const Text('Offline only'),
+                        selected: state.offlineOnlyFilter,
+                        onSelected: state.setOfflineOnlyFilter,
+                      ),
                   ],
                 );
               }
@@ -156,12 +172,12 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
                 );
               }
               final trackIndex = index - trackStartIndex;
-              final track = tracks[trackIndex];
+              final track = displayTracks[trackIndex];
               return TrackRow(
                 track: track,
                 index: trackIndex,
                 isActive: state.nowPlaying?.id == track.id,
-                onTap: () => state.playFromArtist(track),
+                onTap: () => state.playFromList(displayTracks, track),
                 onPlayNext: () => state.playNext(track),
                 onAddToQueue: () => state.enqueueTrack(track),
                 isFavorite: state.isFavoriteTrack(track.id),

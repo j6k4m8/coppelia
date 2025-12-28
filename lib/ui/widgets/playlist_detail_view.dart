@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/playlist.dart';
+import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../core/color_tokens.dart';
@@ -22,12 +23,20 @@ class PlaylistDetailView extends StatelessWidget {
     if (playlist == null) {
       return const SizedBox.shrink();
     }
+    final pinned = state.pinnedAudio;
+    final offlineTracks = state.playlistTracks
+        .where((track) => pinned.contains(track.streamUrl))
+        .toList();
+    final showOfflineFilter = offlineTracks.isNotEmpty;
+    final displayTracks = state.offlineOnlyFilter
+        ? offlineTracks
+        : state.playlistTracks;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: ListView.separated(
-            itemCount: state.playlistTracks.length + 1,
+            itemCount: displayTracks.length + 1,
             separatorBuilder: (_, index) {
               return SizedBox(
                 height: index == 0
@@ -37,15 +46,21 @@ class PlaylistDetailView extends StatelessWidget {
             },
             itemBuilder: (context, index) {
               if (index == 0) {
-                return _PlaylistHeader(playlist: playlist);
+                return _PlaylistHeader(
+                  playlist: playlist,
+                  tracks: displayTracks,
+                  showOfflineFilter: showOfflineFilter,
+                  offlineOnly: state.offlineOnlyFilter,
+                  onToggleOfflineOnly: state.setOfflineOnlyFilter,
+                );
               }
               final trackIndex = index - 1;
-              final track = state.playlistTracks[trackIndex];
+              final track = displayTracks[trackIndex];
               return TrackRow(
                 track: track,
                 index: trackIndex,
                 isActive: state.nowPlaying?.id == track.id,
-                onTap: () => state.playFromPlaylist(track),
+                onTap: () => state.playFromList(displayTracks, track),
                 onPlayNext: () => state.playNext(track),
                 onAddToQueue: () => state.enqueueTrack(track),
                 isFavorite: state.isFavoriteTrack(track.id),
@@ -76,9 +91,19 @@ class PlaylistDetailView extends StatelessWidget {
 }
 
 class _PlaylistHeader extends StatelessWidget {
-  const _PlaylistHeader({required this.playlist});
+  const _PlaylistHeader({
+    required this.playlist,
+    required this.tracks,
+    required this.showOfflineFilter,
+    required this.offlineOnly,
+    required this.onToggleOfflineOnly,
+  });
 
   final Playlist playlist;
+  final List<MediaItem> tracks;
+  final bool showOfflineFilter;
+  final bool offlineOnly;
+  final ValueChanged<bool> onToggleOfflineOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -146,20 +171,23 @@ class _PlaylistHeader extends StatelessWidget {
                 runSpacing: space(8),
                 children: [
                   FilledButton.icon(
-                    onPressed: state.playlistTracks.isEmpty
+                    onPressed: tracks.isEmpty
                         ? null
-                        : () => state.playFromPlaylist(
-                              state.playlistTracks.first,
-                            ),
+                        : () => state.playFromList(tracks, tracks.first),
                     icon: const Icon(Icons.play_arrow),
                     label: const Text('Play'),
                   ),
-                  if (state.playlistTracks.isNotEmpty)
+                  if (tracks.isNotEmpty)
                     FilledButton.tonalIcon(
-                      onPressed: () =>
-                          state.playShuffledList(state.playlistTracks),
+                      onPressed: () => state.playShuffledList(tracks),
                       icon: const Icon(Icons.shuffle),
                       label: const Text('Shuffle'),
+                    ),
+                  if (showOfflineFilter)
+                    FilterChip(
+                      label: const Text('Offline only'),
+                      selected: offlineOnly,
+                      onSelected: onToggleOfflineOnly,
                     ),
                 ],
               ),

@@ -42,14 +42,16 @@ class OfflinePlaylistsView extends StatelessWidget {
             subtitle: '${playlist.trackCount} tracks',
             imageUrl: playlist.imageUrl,
             icon: Icons.playlist_play,
-            onTap: () => state.selectPlaylist(playlist),
+            onTap: () =>
+                state.selectPlaylist(playlist, offlineOnly: true),
           ),
           listItemBuilder: (context, playlist) => LibraryListTile(
             title: playlist.name,
             subtitle: '${playlist.trackCount} tracks',
             imageUrl: playlist.imageUrl,
             icon: Icons.playlist_play,
-            onTap: () => state.selectPlaylist(playlist),
+            onTap: () =>
+                state.selectPlaylist(playlist, offlineOnly: true),
           ),
         );
       },

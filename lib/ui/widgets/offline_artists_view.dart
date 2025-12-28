@@ -49,7 +49,7 @@ class OfflineArtistsView extends StatelessWidget {
               subtitle: subtitle,
               imageUrl: artist.imageUrl,
               icon: Icons.people_alt,
-              onTap: () => state.selectArtist(artist),
+              onTap: () => state.selectArtist(artist, offlineOnly: true),
               onContextMenu: (position) => _showArtistMenu(
                 context,
                 position,
@@ -67,7 +67,7 @@ class OfflineArtistsView extends StatelessWidget {
               subtitle: subtitle,
               imageUrl: artist.imageUrl,
               icon: Icons.people_alt,
-              onTap: () => state.selectArtist(artist),
+              onTap: () => state.selectArtist(artist, offlineOnly: true),
               onContextMenu: (position) => _showArtistMenu(
                 context,
                 position,

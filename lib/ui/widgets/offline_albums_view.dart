@@ -43,7 +43,7 @@ class OfflineAlbumsView extends StatelessWidget {
             subtitle: album.artistName,
             imageUrl: album.imageUrl,
             icon: Icons.album,
-            onTap: () => state.selectAlbum(album),
+            onTap: () => state.selectAlbum(album, offlineOnly: true),
             onSubtitleTap: _canLinkArtist(album)
                 ? () => state.selectArtistByName(album.artistName)
                 : null,
@@ -59,7 +59,7 @@ class OfflineAlbumsView extends StatelessWidget {
             subtitle: album.artistName,
             imageUrl: album.imageUrl,
             icon: Icons.album,
-            onTap: () => state.selectAlbum(album),
+            onTap: () => state.selectAlbum(album, offlineOnly: true),
             onSubtitleTap: _canLinkArtist(album)
                 ? () => state.selectArtistByName(album.artistName)
                 : null,

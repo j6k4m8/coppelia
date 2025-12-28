@@ -91,6 +91,7 @@ class AppState extends ChangeNotifier {
   final Set<String> _favoriteAlbumUpdatesInFlight = {};
   final Set<String> _favoriteArtistUpdatesInFlight = {};
   final Set<String> _favoriteTrackUpdatesInFlight = {};
+  Set<String> _pinnedAudio = {};
   List<MediaItem> _recentTracks = [];
   List<MediaItem> _playHistory = [];
 
@@ -145,6 +146,7 @@ class AppState extends ChangeNotifier {
   bool _isLoadingJumpIn = false;
   DateTime? _lastJumpInRefreshAt;
   int _cacheMaxBytes = CacheStore.defaultCacheMaxBytes;
+  bool _offlineOnlyFilter = false;
 
   StreamSubscription<Duration>? _positionSubscription;
   StreamSubscription<Duration?>? _durationSubscription;
@@ -229,6 +231,9 @@ class AppState extends ChangeNotifier {
 
   /// Favorite tracks.
   List<MediaItem> get favoriteTracks => List.unmodifiable(_favoriteTracks);
+
+  /// Pinned audio stream URLs.
+  Set<String> get pinnedAudio => Set.unmodifiable(_pinnedAudio);
 
   /// Returns true when the album is marked as a favorite.
   bool isFavoriteAlbum(String albumId) =>
@@ -365,6 +370,9 @@ class AppState extends ChangeNotifier {
   /// True when auto-downloads are restricted to Wi-Fi.
   bool get autoDownloadFavoritesWifiOnly => _autoDownloadFavoritesWifiOnly;
 
+  /// True when the offline-only filter is active.
+  bool get offlineOnlyFilter => _offlineOnlyFilter;
+
   /// Preferred layout for now playing.
   NowPlayingLayout get nowPlayingLayout => _nowPlayingLayout;
 
@@ -497,6 +505,7 @@ class AppState extends ChangeNotifier {
     _sidebarVisibility = await _settingsStore.loadSidebarVisibility();
     _sidebarWidth = await _settingsStore.loadSidebarWidth();
     _sidebarCollapsed = await _settingsStore.loadSidebarCollapsed();
+    _pinnedAudio = await _cacheStore.loadPinnedAudio();
     await _loadCachedLibrary();
     await _restorePlaybackResumeState();
     _isBootstrapping = false;
@@ -638,12 +647,16 @@ class AppState extends ChangeNotifier {
   }
 
   /// Selects a playlist and loads its tracks.
-  Future<void> selectPlaylist(Playlist playlist) async {
+  Future<void> selectPlaylist(
+    Playlist playlist, {
+    bool offlineOnly = false,
+  }) async {
     if (_selectedView != LibraryView.home) {
       _recordViewHistory(_selectedView);
     }
     _selectedPlaylist = playlist;
     _selectedView = LibraryView.home;
+    _offlineOnlyFilter = offlineOnly;
     clearBrowseSelection(notify: false);
     clearSearch(notify: false);
     notifyListeners();
@@ -694,6 +707,9 @@ class AppState extends ChangeNotifier {
     _selectedView = view;
     _selectedPlaylist = null;
     _playlistTracks = [];
+    if (!_isOfflineLibraryView(view)) {
+      _offlineOnlyFilter = false;
+    }
     clearBrowseSelection(notify: false);
     if (view != LibraryView.home) {
       clearSearch(notify: false);
@@ -741,6 +757,13 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  bool _isOfflineLibraryView(LibraryView view) {
+    return view == LibraryView.offlineAlbums ||
+        view == LibraryView.offlineArtists ||
+        view == LibraryView.offlinePlaylists ||
+        view == LibraryView.offlineTracks;
+  }
+
   /// Navigates to an album by identifier.
   Future<void> selectAlbumById(String albumId) async {
     if (_albums.isEmpty) {
@@ -754,7 +777,7 @@ class AppState extends ChangeNotifier {
       }
     }
     if (match != null) {
-      await selectAlbum(match);
+      await selectAlbum(match, offlineOnly: _offlineOnlyFilter);
     }
   }
 
@@ -771,7 +794,7 @@ class AppState extends ChangeNotifier {
       }
     }
     if (match != null) {
-      await selectArtist(match);
+      await selectArtist(match, offlineOnly: _offlineOnlyFilter);
     }
   }
 
@@ -795,7 +818,7 @@ class AppState extends ChangeNotifier {
     if (match == null) {
       return;
     }
-    await selectArtist(match);
+    await selectArtist(match, offlineOnly: _offlineOnlyFilter);
   }
 
   /// Performs a search across the library.
@@ -1035,10 +1058,11 @@ class AppState extends ChangeNotifier {
   }
 
   /// Selects an album and loads its tracks.
-  Future<void> selectAlbum(Album album) async {
+  Future<void> selectAlbum(Album album, {bool offlineOnly = false}) async {
     _selectedAlbum = album;
     _selectedArtist = null;
     _selectedGenre = null;
+    _offlineOnlyFilter = offlineOnly;
     clearSearch(notify: false);
     notifyListeners();
     final cached = await _cacheStore.loadAlbumTracks(album.id);
@@ -1065,10 +1089,11 @@ class AppState extends ChangeNotifier {
   }
 
   /// Selects an artist and loads their tracks.
-  Future<void> selectArtist(Artist artist) async {
+  Future<void> selectArtist(Artist artist, {bool offlineOnly = false}) async {
     _selectedArtist = artist;
     _selectedAlbum = null;
     _selectedGenre = null;
+    _offlineOnlyFilter = offlineOnly;
     clearSearch(notify: false);
     notifyListeners();
     final cached = await _cacheStore.loadArtistTracks(artist.id);
@@ -1377,6 +1402,15 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Updates the offline-only filter for detail views.
+  void setOfflineOnlyFilter(bool enabled) {
+    if (_offlineOnlyFilter == enabled) {
+      return;
+    }
+    _offlineOnlyFilter = enabled;
+    notifyListeners();
+  }
+
   /// Updates the font family preference.
   Future<void> setFontFamily(String? family) async {
     _fontFamily = family;
@@ -1559,6 +1593,7 @@ class AppState extends ChangeNotifier {
   /// Pins a track for offline playback.
   Future<void> makeTrackAvailableOffline(MediaItem track) async {
     await _cacheStore.setPinnedAudio(track.streamUrl, true);
+    _pinnedAudio.add(track.streamUrl);
     await _cacheStore.prefetchAudio(track);
     notifyListeners();
   }
@@ -1566,6 +1601,7 @@ class AppState extends ChangeNotifier {
   /// Removes a track from offline pinning.
   Future<void> unpinTrackOffline(MediaItem track) async {
     await _cacheStore.setPinnedAudio(track.streamUrl, false);
+    _pinnedAudio.remove(track.streamUrl);
     notifyListeners();
   }
 
@@ -1602,6 +1638,7 @@ class AppState extends ChangeNotifier {
     final tracks = await _loadAlbumTracksForOffline(album);
     for (final track in tracks) {
       await _cacheStore.setPinnedAudio(track.streamUrl, true);
+      _pinnedAudio.add(track.streamUrl);
       await _cacheStore.prefetchAudio(track);
     }
     notifyListeners();
@@ -1612,6 +1649,7 @@ class AppState extends ChangeNotifier {
     final tracks = await _loadAlbumTracksForOffline(album);
     for (final track in tracks) {
       await _cacheStore.setPinnedAudio(track.streamUrl, false);
+      _pinnedAudio.remove(track.streamUrl);
     }
     notifyListeners();
   }
@@ -1621,6 +1659,7 @@ class AppState extends ChangeNotifier {
     final tracks = await _loadArtistTracksForOffline(artist);
     for (final track in tracks) {
       await _cacheStore.setPinnedAudio(track.streamUrl, true);
+      _pinnedAudio.add(track.streamUrl);
       await _cacheStore.prefetchAudio(track);
     }
     notifyListeners();
@@ -1631,91 +1670,122 @@ class AppState extends ChangeNotifier {
     final tracks = await _loadArtistTracksForOffline(artist);
     for (final track in tracks) {
       await _cacheStore.setPinnedAudio(track.streamUrl, false);
+      _pinnedAudio.remove(track.streamUrl);
     }
     notifyListeners();
   }
 
   /// Returns whether a track is pinned for offline playback.
   Future<bool> isTrackPinned(MediaItem track) async {
+    if (_pinnedAudio.isNotEmpty) {
+      return _pinnedAudio.contains(track.streamUrl);
+    }
     return _cacheStore.isPinnedAudio(track.streamUrl);
   }
 
-  /// Returns whether all tracks in an album are pinned for offline playback.
+  /// Returns whether any tracks in an album are pinned for offline playback.
   Future<bool> isAlbumPinned(Album album) async {
-    final tracks = await _loadAlbumTracksForOffline(album);
-    if (tracks.isEmpty) {
+    if (_pinnedAudio.isEmpty) {
       return false;
     }
-    final pinned = await _cacheStore.loadPinnedAudio();
-    return tracks.every((track) => pinned.contains(track.streamUrl));
+    final tracks = await _cacheStore.loadAlbumTracks(album.id);
+    if (tracks.isNotEmpty) {
+      return tracks.any((track) => _pinnedAudio.contains(track.streamUrl));
+    }
+    final cachedEntries = await _cacheStore.loadCachedAudioEntries();
+    final albumName = album.name.trim().toLowerCase();
+    return cachedEntries.any(
+      (entry) =>
+          _pinnedAudio.contains(entry.streamUrl) &&
+          entry.album.trim().toLowerCase() == albumName,
+    );
   }
 
-  /// Returns whether all tracks for an artist are pinned for offline playback.
+  /// Returns whether any tracks for an artist are pinned for offline playback.
   Future<bool> isArtistPinned(Artist artist) async {
-    final tracks = await _loadArtistTracksForOffline(artist);
-    if (tracks.isEmpty) {
+    if (_pinnedAudio.isEmpty) {
       return false;
     }
-    final pinned = await _cacheStore.loadPinnedAudio();
-    return tracks.every((track) => pinned.contains(track.streamUrl));
+    final tracks = await _cacheStore.loadArtistTracks(artist.id);
+    if (tracks.isNotEmpty) {
+      return tracks.any((track) => _pinnedAudio.contains(track.streamUrl));
+    }
+    final cachedEntries = await _cacheStore.loadCachedAudioEntries();
+    final artistName = artist.name.trim().toLowerCase();
+    return cachedEntries.any(
+      (entry) =>
+          _pinnedAudio.contains(entry.streamUrl) &&
+          entry.artists.any(
+            (name) => name.trim().toLowerCase() == artistName,
+          ),
+    );
   }
 
   /// Returns offline-ready albums based on pinned tracks.
   Future<List<Album>> loadOfflineAlbums() async {
-    final pinned = await _cacheStore.loadPinnedAudio();
-    if (pinned.isEmpty) {
+    if (_pinnedAudio.isEmpty) {
       return [];
     }
-    final albums = await _cacheStore.loadAlbums();
-    final offline = <Album>[];
-    for (final album in albums) {
-      final tracks = await _cacheStore.loadAlbumTracks(album.id);
-      if (tracks.isEmpty) {
-        continue;
-      }
-      if (tracks.every((track) => pinned.contains(track.streamUrl))) {
-        offline.add(album);
-      }
+    final cachedEntries = await _cacheStore.loadCachedAudioEntries();
+    final pinnedAlbums = cachedEntries
+        .where((entry) => _pinnedAudio.contains(entry.streamUrl))
+        .map((entry) => entry.album.trim().toLowerCase())
+        .where((name) => name.isNotEmpty)
+        .toSet();
+    if (pinnedAlbums.isEmpty) {
+      return [];
     }
+    final albums = _albums.isNotEmpty ? _albums : await _cacheStore.loadAlbums();
+    final offline = albums
+        .where(
+          (album) => pinnedAlbums.contains(album.name.trim().toLowerCase()),
+        )
+        .toList();
     offline.sort((a, b) => a.name.compareTo(b.name));
     return offline;
   }
 
   /// Returns offline-ready artists based on pinned tracks.
   Future<List<Artist>> loadOfflineArtists() async {
-    final pinned = await _cacheStore.loadPinnedAudio();
-    if (pinned.isEmpty) {
+    if (_pinnedAudio.isEmpty) {
       return [];
     }
-    final artists = await _cacheStore.loadArtists();
-    final offline = <Artist>[];
-    for (final artist in artists) {
-      final tracks = await _cacheStore.loadArtistTracks(artist.id);
-      if (tracks.isEmpty) {
+    final cachedEntries = await _cacheStore.loadCachedAudioEntries();
+    final pinnedArtists = <String>{};
+    for (final entry in cachedEntries) {
+      if (!_pinnedAudio.contains(entry.streamUrl)) {
         continue;
       }
-      if (tracks.every((track) => pinned.contains(track.streamUrl))) {
-        offline.add(artist);
+      for (final artist in entry.artists) {
+        final normalized = artist.trim().toLowerCase();
+        if (normalized.isNotEmpty) {
+          pinnedArtists.add(normalized);
+        }
       }
     }
+    if (pinnedArtists.isEmpty) {
+      return [];
+    }
+    final artists =
+        _artists.isNotEmpty ? _artists : await _cacheStore.loadArtists();
+    final offline = artists
+        .where((artist) => pinnedArtists.contains(artist.name.trim().toLowerCase()))
+        .toList();
     offline.sort((a, b) => a.name.compareTo(b.name));
     return offline;
   }
 
   /// Returns offline-ready playlists based on pinned tracks.
   Future<List<Playlist>> loadOfflinePlaylists() async {
-    final pinned = await _cacheStore.loadPinnedAudio();
-    if (pinned.isEmpty) {
+    if (_pinnedAudio.isEmpty) {
       return [];
     }
-    final playlists = await _cacheStore.loadPlaylists();
+    final playlists =
+        _playlists.isNotEmpty ? _playlists : await _cacheStore.loadPlaylists();
     final offline = <Playlist>[];
     for (final playlist in playlists) {
       final tracks = await _cacheStore.loadPlaylistTracks(playlist.id);
-      if (tracks.isEmpty) {
-        continue;
-      }
-      if (tracks.every((track) => pinned.contains(track.streamUrl))) {
+      if (tracks.any((track) => _pinnedAudio.contains(track.streamUrl))) {
         offline.add(playlist);
       }
     }
@@ -1725,13 +1795,12 @@ class AppState extends ChangeNotifier {
 
   /// Returns offline-ready tracks based on pinned audio.
   Future<List<MediaItem>> loadOfflineTracks() async {
-    final pinned = await _cacheStore.loadPinnedAudio();
-    if (pinned.isEmpty) {
+    if (_pinnedAudio.isEmpty) {
       return [];
     }
     final cached = await _cacheStore.loadCachedAudioEntries();
     final offline = cached
-        .where((entry) => pinned.contains(entry.streamUrl))
+        .where((entry) => _pinnedAudio.contains(entry.streamUrl))
         .map(_mediaItemFromCachedEntry)
         .toList();
     return offline;
