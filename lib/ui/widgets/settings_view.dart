@@ -245,6 +245,7 @@ class _LayoutSettings extends StatelessWidget {
         _SettingRow(
           title: 'Now playing layout',
           subtitle: 'Choose where the player is docked.',
+          forceInline: true,
           trailing: SegmentedButton<NowPlayingLayout>(
             segments: NowPlayingLayout.values
                 .map(
@@ -270,6 +271,7 @@ class _LayoutSettings extends StatelessWidget {
             child: _SettingRow(
               title: section.label,
               subtitle: section.description,
+              forceInline: true,
               trailing: Switch(
                 value: state.isHomeSectionVisible(section),
                 onChanged: (value) =>
@@ -286,6 +288,7 @@ class _LayoutSettings extends StatelessWidget {
         _SettingRow(
           title: SidebarItem.home.label,
           subtitle: 'Show Home in the sidebar.',
+          forceInline: true,
           trailing: Switch(
             value: state.isSidebarItemVisible(SidebarItem.home),
             onChanged: (value) =>
@@ -296,6 +299,7 @@ class _LayoutSettings extends StatelessWidget {
         _SettingRow(
           title: SidebarItem.settings.label,
           subtitle: 'Show Settings in the sidebar.',
+          forceInline: true,
           trailing: Switch(
             value: state.isSidebarItemVisible(SidebarItem.settings),
             onChanged: (value) =>
@@ -308,6 +312,7 @@ class _LayoutSettings extends StatelessWidget {
         _SettingRow(
           title: SidebarItem.favoritesAlbums.label,
           subtitle: 'Show favorite albums.',
+          forceInline: true,
           trailing: Switch(
             value: state.isSidebarItemVisible(
               SidebarItem.favoritesAlbums,
@@ -322,6 +327,7 @@ class _LayoutSettings extends StatelessWidget {
         _SettingRow(
           title: SidebarItem.favoritesSongs.label,
           subtitle: 'Show favorite songs.',
+          forceInline: true,
           trailing: Switch(
             value: state.isSidebarItemVisible(
               SidebarItem.favoritesSongs,
@@ -336,6 +342,7 @@ class _LayoutSettings extends StatelessWidget {
         _SettingRow(
           title: SidebarItem.favoritesArtists.label,
           subtitle: 'Show favorite artists.',
+          forceInline: true,
           trailing: Switch(
             value: state.isSidebarItemVisible(
               SidebarItem.favoritesArtists,
@@ -352,6 +359,7 @@ class _LayoutSettings extends StatelessWidget {
         _SettingRow(
           title: SidebarItem.browseAlbums.label,
           subtitle: 'Show albums in Browse.',
+          forceInline: true,
           trailing: Switch(
             value: state.isSidebarItemVisible(
               SidebarItem.browseAlbums,
@@ -366,6 +374,7 @@ class _LayoutSettings extends StatelessWidget {
         _SettingRow(
           title: SidebarItem.browseArtists.label,
           subtitle: 'Show artists in Browse.',
+          forceInline: true,
           trailing: Switch(
             value: state.isSidebarItemVisible(
               SidebarItem.browseArtists,
@@ -380,6 +389,7 @@ class _LayoutSettings extends StatelessWidget {
         _SettingRow(
           title: SidebarItem.browseGenres.label,
           subtitle: 'Show genres in Browse.',
+          forceInline: true,
           trailing: Switch(
             value: state.isSidebarItemVisible(
               SidebarItem.browseGenres,
@@ -396,6 +406,7 @@ class _LayoutSettings extends StatelessWidget {
         _SettingRow(
           title: SidebarItem.history.label,
           subtitle: 'Show playback history.',
+          forceInline: true,
           trailing: Switch(
             value: state.isSidebarItemVisible(SidebarItem.history),
             onChanged: (value) =>
@@ -406,6 +417,7 @@ class _LayoutSettings extends StatelessWidget {
         _SettingRow(
           title: SidebarItem.queue.label,
           subtitle: 'Show the play queue.',
+          forceInline: true,
           trailing: Switch(
             value: state.isSidebarItemVisible(SidebarItem.queue),
             onChanged: (value) =>
@@ -418,6 +430,7 @@ class _LayoutSettings extends StatelessWidget {
         _SettingRow(
           title: SidebarItem.playlists.label,
           subtitle: 'Show playlist list in the sidebar.',
+          forceInline: true,
           trailing: Switch(
             value: state.isSidebarItemVisible(SidebarItem.playlists),
             onChanged: (value) => state.setSidebarItemVisible(
@@ -628,6 +641,38 @@ class _AccountSettings extends StatelessWidget {
               ],
             ),
           ),
+        const SizedBox(height: 24),
+        Text('Telemetry', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 12),
+        _SettingRow(
+          title: 'Playback reporting',
+          subtitle: 'Send now playing and pause/resume state to Jellyfin.',
+          forceInline: true,
+          trailing: Switch(
+            value: state.telemetryPlaybackEnabled,
+            onChanged: state.setTelemetryPlayback,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _SettingRow(
+          title: 'Progress updates',
+          subtitle: 'Report playback progress while a track is playing.',
+          forceInline: true,
+          trailing: Switch(
+            value: state.telemetryProgressEnabled,
+            onChanged: state.setTelemetryProgress,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _SettingRow(
+          title: 'Play history',
+          subtitle: 'Send play completion events for library history.',
+          forceInline: true,
+          trailing: Switch(
+            value: state.telemetryHistoryEnabled,
+            onChanged: state.setTelemetryHistory,
+          ),
+        ),
         const SizedBox(height: 16),
         _SettingRow(
           title: 'Sign out',
@@ -647,11 +692,13 @@ class _SettingRow extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.trailing,
+    this.forceInline = false,
   });
 
   final String title;
   final String subtitle;
   final Widget trailing;
+  final bool forceInline;
 
   @override
   Widget build(BuildContext context) {
@@ -672,7 +719,7 @@ class _SettingRow extends StatelessWidget {
             ),
           ],
         );
-        if (isNarrow) {
+        if (isNarrow && !forceInline) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

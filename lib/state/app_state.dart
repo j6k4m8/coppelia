@@ -95,6 +95,9 @@ class AppState extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.dark;
   String? _fontFamily = 'SF Pro Display';
   double _fontScale = 1.0;
+  bool _telemetryPlayback = true;
+  bool _telemetryProgress = true;
+  bool _telemetryHistory = true;
   NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.side;
   Map<HomeSection, bool> _homeSectionVisibility = {
     for (final section in HomeSection.values) section: true,
@@ -111,6 +114,11 @@ class AppState extends ChangeNotifier {
   StreamSubscription<Duration?>? _durationSubscription;
   StreamSubscription<PlayerState>? _playerStateSubscription;
   StreamSubscription<int?>? _currentIndexSubscription;
+
+  String? _playSessionId;
+  String? _reportedStartSessionId;
+  String? _reportedStopSessionId;
+  DateTime? _lastProgressReportAt;
 
   /// Current authenticated session.
   AuthSession? get session => _session;
@@ -256,6 +264,15 @@ class AppState extends ChangeNotifier {
   /// Preferred font scale.
   double get fontScale => _fontScale;
 
+  /// True when playback telemetry is enabled.
+  bool get telemetryPlaybackEnabled => _telemetryPlayback;
+
+  /// True when playback progress telemetry is enabled.
+  bool get telemetryProgressEnabled => _telemetryProgress;
+
+  /// True when play history telemetry is enabled.
+  bool get telemetryHistoryEnabled => _telemetryHistory;
+
   /// Preferred layout for now playing.
   NowPlayingLayout get nowPlayingLayout => _nowPlayingLayout;
 
@@ -328,6 +345,9 @@ class AppState extends ChangeNotifier {
     _themeMode = await _settingsStore.loadThemeMode();
     _fontFamily = await _settingsStore.loadFontFamily();
     _fontScale = await _settingsStore.loadFontScale();
+    _telemetryPlayback = await _settingsStore.loadPlaybackTelemetry();
+    _telemetryProgress = await _settingsStore.loadProgressTelemetry();
+    _telemetryHistory = await _settingsStore.loadHistoryTelemetry();
     _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
     _homeSectionVisibility = await _settingsStore.loadHomeSectionVisibility();
     _sidebarVisibility = await _settingsStore.loadSidebarVisibility();
@@ -397,6 +417,10 @@ class AppState extends ChangeNotifier {
     _libraryStats = null;
     _queue = [];
     _nowPlaying = null;
+    _playSessionId = null;
+    _reportedStartSessionId = null;
+    _reportedStopSessionId = null;
+    _lastProgressReportAt = null;
     _isBuffering = false;
     await _sessionStore.saveSession(null);
     notifyListeners();
@@ -772,10 +796,7 @@ class AppState extends ChangeNotifier {
       cacheStore: _cacheStore,
       headers: _playbackHeaders(),
     );
-    if (_nowPlaying?.id != track.id) {
-      _nowPlaying = track;
-      notifyListeners();
-    }
+    _setNowPlaying(track);
     await _playback.play();
   }
 
@@ -823,10 +844,7 @@ class AppState extends ChangeNotifier {
       cacheStore: _cacheStore,
       headers: _playbackHeaders(),
     );
-    if (_nowPlaying?.id != track.id) {
-      _nowPlaying = track;
-      notifyListeners();
-    }
+    _setNowPlaying(track);
     await _playback.play();
   }
 
@@ -905,6 +923,11 @@ class AppState extends ChangeNotifier {
 
   /// Clears the current playback queue.
   Future<void> clearQueue() async {
+    _maybeReportStoppedForSession(
+      track: _nowPlaying,
+      sessionId: _playSessionId,
+      completed: false,
+    );
     final currentIndex = _playback.currentIndex;
     if (_queue.isEmpty || currentIndex == null || currentIndex < 0) {
       await _playback.clearQueue(keepCurrent: false);
@@ -937,6 +960,27 @@ class AppState extends ChangeNotifier {
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeMode = mode;
     await _settingsStore.saveThemeMode(mode);
+    notifyListeners();
+  }
+
+  /// Updates playback telemetry preference.
+  Future<void> setTelemetryPlayback(bool enabled) async {
+    _telemetryPlayback = enabled;
+    await _settingsStore.savePlaybackTelemetry(enabled);
+    notifyListeners();
+  }
+
+  /// Updates playback progress telemetry preference.
+  Future<void> setTelemetryProgress(bool enabled) async {
+    _telemetryProgress = enabled;
+    await _settingsStore.saveProgressTelemetry(enabled);
+    notifyListeners();
+  }
+
+  /// Updates playback history telemetry preference.
+  Future<void> setTelemetryHistory(bool enabled) async {
+    _telemetryHistory = enabled;
+    await _settingsStore.saveHistoryTelemetry(enabled);
     notifyListeners();
   }
 
@@ -1051,6 +1095,7 @@ class AppState extends ChangeNotifier {
     _positionSubscription = _playback.positionStream.listen((position) {
       _position = position;
       _positionNotifier.value = position;
+      _maybeReportProgress();
     });
     _durationSubscription = _playback.durationStream.listen((duration) {
       _duration = duration ?? Duration.zero;
@@ -1070,15 +1115,18 @@ class AppState extends ChangeNotifier {
       if (playingChanged || bufferingChanged) {
         notifyListeners();
       }
+      if (playingChanged) {
+        _maybeReportPlaybackState(isPaused: !_isPlaying);
+      }
+      if (state.processingState == ProcessingState.completed) {
+        _maybeReportStopped(completed: true);
+      }
     });
     _currentIndexSubscription =
         _playback.currentIndexStream.listen((index) {
       if (index != null && index >= 0 && index < _queue.length) {
         final next = _queue[index];
-        if (_nowPlaying?.id != next.id) {
-          _nowPlaying = next;
-          _recordPlayHistory(next);
-        }
+        _setNowPlaying(next, notify: false);
       }
       notifyListeners();
     });
@@ -1091,6 +1139,159 @@ class AppState extends ChangeNotifier {
       _playHistory = _playHistory.sublist(0, 50);
     }
     unawaited(_cacheStore.savePlayHistory(_playHistory));
+  }
+
+  void _setNowPlaying(MediaItem track, {bool notify = true}) {
+    if (_nowPlaying?.id == track.id) {
+      return;
+    }
+    final previousTrack = _nowPlaying;
+    final previousSession = _playSessionId;
+    _maybeReportStoppedForSession(
+      track: previousTrack,
+      sessionId: previousSession,
+      completed: false,
+    );
+    _nowPlaying = track;
+    _recordPlayHistory(track);
+    _playSessionId = _buildPlaySessionId(track);
+    _reportedStartSessionId = null;
+    _reportedStopSessionId = null;
+    _lastProgressReportAt = null;
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  String _buildPlaySessionId(MediaItem track) {
+    final timestamp = DateTime.now().microsecondsSinceEpoch;
+    return '${track.id}-$timestamp';
+  }
+
+  void _maybeReportPlaybackState({required bool isPaused}) {
+    if (!_telemetryPlayback) {
+      return;
+    }
+    if (_isPlaying) {
+      if (_reportedStartSessionId != _playSessionId) {
+        _reportPlaybackStart();
+      } else {
+        _reportPlaybackProgress(isPaused: false, force: true);
+      }
+      return;
+    }
+    _reportPlaybackProgress(isPaused: isPaused, force: true);
+  }
+
+  void _maybeReportProgress() {
+    if (!_telemetryProgress) {
+      return;
+    }
+    if (!_isPlaying) {
+      return;
+    }
+    final now = DateTime.now();
+    final last = _lastProgressReportAt;
+    const interval = Duration(seconds: 15);
+    if (last != null && now.difference(last) < interval) {
+      return;
+    }
+    _lastProgressReportAt = now;
+    _reportPlaybackProgress(isPaused: false, force: false);
+  }
+
+  void _maybeReportStopped({required bool completed}) {
+    _maybeReportStoppedForSession(
+      track: _nowPlaying,
+      sessionId: _playSessionId,
+      completed: completed,
+    );
+  }
+
+  void _maybeReportStoppedForSession({
+    required MediaItem? track,
+    required String? sessionId,
+    required bool completed,
+  }) {
+    if (!_telemetryHistory) {
+      return;
+    }
+    if (track == null || sessionId == null) {
+      return;
+    }
+    if (_reportedStopSessionId == sessionId) {
+      return;
+    }
+    _reportedStopSessionId = sessionId;
+    _reportPlaybackStopped(
+      track,
+      sessionId: sessionId,
+      completed: completed,
+    );
+  }
+
+  void _reportPlaybackStart() {
+    final track = _nowPlaying;
+    final sessionId = _playSessionId;
+    if (track == null || sessionId == null) {
+      return;
+    }
+    if (_reportedStartSessionId == sessionId) {
+      return;
+    }
+    _reportedStartSessionId = sessionId;
+    unawaited(
+      _client.reportPlaybackStart(
+        track: track,
+        position: _position,
+        isPaused: false,
+        playSessionId: sessionId,
+        duration: _duration,
+      ),
+    );
+  }
+
+  void _reportPlaybackProgress({
+    required bool isPaused,
+    required bool force,
+  }) {
+    final track = _nowPlaying;
+    final sessionId = _playSessionId;
+    if (track == null || sessionId == null) {
+      return;
+    }
+    if (!_telemetryProgress && !force) {
+      return;
+    }
+    if (!_telemetryPlayback && force) {
+      return;
+    }
+    unawaited(
+      _client.reportPlaybackProgress(
+        track: track,
+        position: _position,
+        isPaused: isPaused,
+        playSessionId: sessionId,
+        duration: _duration,
+      ),
+    );
+  }
+
+  void _reportPlaybackStopped(
+    MediaItem track, {
+    required String sessionId,
+    required bool completed,
+  }) {
+    unawaited(
+      _client.reportPlaybackStopped(
+        track: track,
+        position: _position,
+        isPaused: !_isPlaying,
+        completed: completed,
+        playSessionId: sessionId,
+        duration: _duration,
+      ),
+    );
   }
 
   Future<void> _loadAlbums() async {
@@ -1338,8 +1539,7 @@ class AppState extends ChangeNotifier {
       headers: _playbackHeaders(),
     );
     if (_nowPlaying?.id != track.id) {
-      _nowPlaying = track;
-      notifyListeners();
+      _setNowPlaying(track);
     }
     await _playback.play();
   }

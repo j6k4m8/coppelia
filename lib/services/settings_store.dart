@@ -20,6 +20,9 @@ class SettingsStore {
   static const _sidebarVisibilityKey = 'settings_sidebar_visibility';
   static const _fontFamilyKey = 'settings_font_family';
   static const _fontScaleKey = 'settings_font_scale';
+  static const _telemetryPlaybackKey = 'settings_telemetry_playback';
+  static const _telemetryProgressKey = 'settings_telemetry_progress';
+  static const _telemetryHistoryKey = 'settings_telemetry_history';
 
   /// Loads the preferred theme mode.
   Future<ThemeMode> loadThemeMode() async {
@@ -187,4 +190,39 @@ class SettingsStore {
     await preferences.setDouble(_fontScaleKey, scale);
   }
 
+  /// Loads the playback telemetry preference.
+  Future<bool> loadPlaybackTelemetry() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_telemetryPlaybackKey) ?? true;
+  }
+
+  /// Saves the playback telemetry preference.
+  Future<void> savePlaybackTelemetry(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_telemetryPlaybackKey, enabled);
+  }
+
+  /// Loads the playback progress telemetry preference.
+  Future<bool> loadProgressTelemetry() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_telemetryProgressKey) ?? true;
+  }
+
+  /// Saves the playback progress telemetry preference.
+  Future<void> saveProgressTelemetry(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_telemetryProgressKey, enabled);
+  }
+
+  /// Loads the playback history telemetry preference.
+  Future<bool> loadHistoryTelemetry() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_telemetryHistoryKey) ?? true;
+  }
+
+  /// Saves the playback history telemetry preference.
+  Future<void> saveHistoryTelemetry(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_telemetryHistoryKey, enabled);
+  }
 }

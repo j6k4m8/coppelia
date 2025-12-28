@@ -86,4 +86,30 @@ void main() {
 
     expect(scale, closeTo(1.1, 0.001));
   });
+
+  test('settings store defaults telemetry toggles to true', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SettingsStore();
+
+    final playback = await store.loadPlaybackTelemetry();
+    final progress = await store.loadProgressTelemetry();
+    final history = await store.loadHistoryTelemetry();
+
+    expect(playback, isTrue);
+    expect(progress, isTrue);
+    expect(history, isTrue);
+  });
+
+  test('settings store saves telemetry toggles', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SettingsStore();
+
+    await store.savePlaybackTelemetry(false);
+    await store.saveProgressTelemetry(false);
+    await store.saveHistoryTelemetry(false);
+
+    expect(await store.loadPlaybackTelemetry(), isFalse);
+    expect(await store.loadProgressTelemetry(), isFalse);
+    expect(await store.loadHistoryTelemetry(), isFalse);
+  });
 }

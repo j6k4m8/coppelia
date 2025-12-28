@@ -428,6 +428,62 @@ class JellyfinClient {
     }
   }
 
+  /// Reports that playback has started for an item.
+  Future<void> reportPlaybackStart({
+    required MediaItem track,
+    required Duration position,
+    required bool isPaused,
+    required String playSessionId,
+    required Duration duration,
+  }) async {
+    await _reportPlaybackEvent(
+      endpoint: 'Playing',
+      track: track,
+      position: position,
+      duration: duration,
+      isPaused: isPaused,
+      playSessionId: playSessionId,
+    );
+  }
+
+  /// Reports a playback progress update for an item.
+  Future<void> reportPlaybackProgress({
+    required MediaItem track,
+    required Duration position,
+    required bool isPaused,
+    required String playSessionId,
+    required Duration duration,
+  }) async {
+    await _reportPlaybackEvent(
+      endpoint: 'Playing/Progress',
+      track: track,
+      position: position,
+      duration: duration,
+      isPaused: isPaused,
+      playSessionId: playSessionId,
+    );
+  }
+
+  /// Reports that playback has stopped for an item.
+  Future<void> reportPlaybackStopped({
+    required MediaItem track,
+    required Duration position,
+    required bool isPaused,
+    required bool completed,
+    required String playSessionId,
+    required Duration duration,
+  }) async {
+    await _reportPlaybackEvent(
+      endpoint: 'Playing/Stopped',
+      track: track,
+      position: position,
+      duration: duration,
+      isPaused: isPaused,
+      playSessionId: playSessionId,
+      completed: completed,
+    );
+  }
+
   /// Searches the library for matching items.
   Future<SearchResults> searchLibrary(String query) async {
     final session = _requireSession();
@@ -643,5 +699,48 @@ class JellyfinClient {
     }
     final items = payload['Items'] as List<dynamic>? ?? [];
     return items.length;
+  }
+
+  Future<void> _reportPlaybackEvent({
+    required String endpoint,
+    required MediaItem track,
+    required Duration position,
+    required Duration duration,
+    required bool isPaused,
+    required String playSessionId,
+    bool completed = false,
+  }) async {
+    final session = _requireSession();
+    final uri = Uri.parse('${session.serverUrl}/Sessions/$endpoint').replace(
+      queryParameters: {
+        'api_key': session.accessToken,
+      },
+    );
+    final payload = <String, dynamic>{
+      'ItemId': track.id,
+      'MediaSourceId': track.id,
+      'PositionTicks': position.inMilliseconds * 10000,
+      'DurationTicks': duration.inMilliseconds * 10000,
+      'IsPaused': isPaused,
+      'PlayMethod': 'DirectStream',
+      'CanSeek': true,
+      'PlaySessionId': playSessionId,
+      'UserId': session.userId,
+    };
+    if (endpoint == 'Playing/Stopped') {
+      payload['Failed'] = false;
+      payload['PlayedToCompletion'] = completed;
+    }
+    final response = await _httpClient.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Emby-Authorization': _authorizationHeader(),
+      },
+      body: jsonEncode(payload),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Unable to report playback (${response.statusCode}).');
+    }
   }
 }
