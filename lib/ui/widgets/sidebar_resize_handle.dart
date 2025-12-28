@@ -24,7 +24,7 @@ class SidebarResizeHandle extends StatelessWidget {
       onHorizontalDragUpdate: (details) => onDragUpdate(details.delta.dx),
       onHorizontalDragEnd: (_) => onDragEnd?.call(),
       child: Container(
-        width: 8,
+        width: 4,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [

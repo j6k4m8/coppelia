@@ -77,6 +77,7 @@ class _SettingsTabBar extends StatelessWidget {
         labelPadding: const EdgeInsets.symmetric(horizontal: 6),
         labelColor: Theme.of(context).colorScheme.onSurface,
         unselectedLabelColor: ColorTokens.textSecondary(context),
+        dividerColor: Colors.transparent,
         indicator: BoxDecoration(
           color: ColorTokens.cardFill(context, 0.18),
           borderRadius: BorderRadius.circular(12),
