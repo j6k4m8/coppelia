@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/playlist.dart';
 import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 import '../../core/color_tokens.dart';
 import 'artwork_image.dart';
 import 'track_row.dart';
@@ -15,6 +16,8 @@ class PlaylistDetailView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     final playlist = state.selectedPlaylist;
     if (playlist == null) {
       return const SizedBox.shrink();
@@ -26,7 +29,11 @@ class PlaylistDetailView extends StatelessWidget {
           child: ListView.separated(
             itemCount: state.playlistTracks.length + 1,
             separatorBuilder: (_, index) {
-              return SizedBox(height: index == 0 ? 24 : 6);
+              return SizedBox(
+                height: index == 0
+                    ? space(24)
+                    : space(6).clamp(4.0, 10.0),
+              );
             },
             itemBuilder: (context, index) {
               if (index == 0) {
@@ -76,31 +83,44 @@ class _PlaylistHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.read<AppState>();
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
     Widget buildArtworkFallback(bool isNarrow) => Container(
-          width: isNarrow ? 160 : 140,
-          height: isNarrow ? 160 : 140,
+          width: clamped(isNarrow ? 160 : 140, min: 110, max: 190),
+          height: clamped(isNarrow ? 160 : 140, min: 110, max: 190),
           color: ColorTokens.cardFillStrong(context),
-          child: const Icon(Icons.queue_music, size: 36),
+          child: Icon(
+            Icons.queue_music,
+            size: clamped(36, min: 26, max: 42),
+          ),
         );
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(space(24).clamp(14.0, 32.0)),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: ColorTokens.heroGradient(context),
         ),
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(
+          clamped(26, min: 16, max: 30),
+        ),
         border: Border.all(color: ColorTokens.border(context)),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isNarrow = constraints.maxWidth < 720;
+          final artworkSize =
+              clamped(isNarrow ? 160 : 140, min: 110, max: 190);
           final artwork = ClipRRect(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(
+              clamped(20, min: 12, max: 24),
+            ),
             child: ArtworkImage(
               imageUrl: playlist.imageUrl,
-              width: isNarrow ? 160 : 140,
-              height: isNarrow ? 160 : 140,
+              width: artworkSize,
+              height: artworkSize,
               fit: BoxFit.cover,
               placeholder: buildArtworkFallback(isNarrow),
             ),
@@ -112,7 +132,7 @@ class _PlaylistHeader extends StatelessWidget {
                 playlist.name,
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: space(8)),
               Text(
                 '${playlist.trackCount} tracks',
                 style: Theme.of(context)
@@ -120,10 +140,10 @@ class _PlaylistHeader extends StatelessWidget {
                     .bodyMedium
                     ?.copyWith(color: ColorTokens.textSecondary(context)),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: space(16)),
               Wrap(
-                spacing: 12,
-                runSpacing: 8,
+                spacing: space(12),
+                runSpacing: space(8),
                 children: [
                   FilledButton.icon(
                     onPressed: state.playlistTracks.isEmpty
@@ -143,7 +163,7 @@ class _PlaylistHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 artwork,
-                const SizedBox(height: 20),
+                SizedBox(height: space(20)),
                 details,
               ],
             );
@@ -151,7 +171,7 @@ class _PlaylistHeader extends StatelessWidget {
           return Row(
             children: [
               artwork,
-              const SizedBox(width: 24),
+              SizedBox(width: space(24)),
               Expanded(child: details),
             ],
           );

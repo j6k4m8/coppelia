@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 
 /// A subtle glowing bar that indicates background buffering.
 class GlowingLoadingBar extends StatefulWidget {
@@ -33,13 +37,17 @@ class _GlowingLoadingBarState extends State<GlowingLoadingBar>
 
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    final barHeight = (6 * densityScale).clamp(3.0, 8.0);
+    final radius = (6 * densityScale).clamp(3.0, 8.0);
     return SizedBox(
-      height: 6,
+      height: barHeight,
       child: AnimatedOpacity(
         opacity: widget.isVisible ? 1.0 : 0.0,
         duration: const Duration(milliseconds: 250),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(radius),
           child: TickerMode(
             enabled: widget.isVisible,
             child: AnimatedBuilder(

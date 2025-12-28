@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../models/media_item.dart';
 import '../../models/playlist.dart';
 import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
 import '../../state/now_playing_layout.dart';
 import '../../core/color_tokens.dart';
@@ -41,12 +42,15 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
     final content = _MainContent(state: state);
     return Scaffold(
       body: GradientBackground(
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: EdgeInsets.only(
+              top: (14 * densityScale).clamp(12.0, 20.0),
+            ),
             child: Column(
               children: [
                 Expanded(child: content),
@@ -74,6 +78,8 @@ class _MainContentState extends State<_MainContent> {
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     final stats = state.libraryStats;
     final playlistCount = stats?.playlistCount ?? state.playlists.length;
     final int trackCount = stats?.trackCount ??
@@ -149,7 +155,8 @@ class _MainContentState extends State<_MainContent> {
 
         final content = Expanded(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(32, 24, 24, 24),
+            padding:
+                const EdgeInsets.fromLTRB(32, 24, 24, 24).scale(densityScale),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -161,7 +168,7 @@ class _MainContentState extends State<_MainContent> {
                   artistCount: artistCount,
                   state: state,
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: space(24)),
                 SizedBox(
                   height: 6,
                   child: AnimatedOpacity(
@@ -170,7 +177,7 @@ class _MainContentState extends State<_MainContent> {
                     child: const LinearProgressIndicator(minHeight: 2),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: space(12)),
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 350),

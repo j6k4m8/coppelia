@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/color_tokens.dart';
 import '../../models/album.dart';
 import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 import 'artwork_image.dart';
 import 'context_menu.dart';
 import 'library_card.dart';
@@ -38,6 +39,8 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     final artist = state.selectedArtist;
     if (artist == null) {
       return const SizedBox.shrink();
@@ -60,9 +63,9 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
             itemCount: trackStartIndex + tracks.length,
             separatorBuilder: (_, index) {
               if (index == 0 || (hasAlbums && index == 1)) {
-                return const SizedBox(height: 24);
+                return SizedBox(height: space(24));
               }
-              return const SizedBox(height: 6);
+              return SizedBox(height: space(6).clamp(4.0, 10.0));
             },
             itemBuilder: (context, index) {
               if (index == 0) {
@@ -192,6 +195,10 @@ class _ArtistHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 720;
@@ -202,17 +209,22 @@ class _ArtistHeader extends StatelessWidget {
               color: ColorTokens.cardFillStrong(context),
               child: Icon(
                 Icons.person,
-                size: size == null ? 42 : 36,
+                size: size == null
+                    ? clamped(42, min: 32, max: 48)
+                    : clamped(36, min: 26, max: 42),
               ),
             );
+        final artworkSize = clamped(isNarrow ? 160 : 140, min: 110, max: 190);
         final artwork = ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(
+            clamped(20, min: 12, max: 24),
+          ),
           child: ArtworkImage(
             imageUrl: imageUrl,
-            width: isNarrow ? 160 : 140,
-            height: isNarrow ? 160 : 140,
+            width: artworkSize,
+            height: artworkSize,
             fit: BoxFit.cover,
-            placeholder: buildArtworkFallback(size: isNarrow ? 160 : 140),
+            placeholder: buildArtworkFallback(size: artworkSize),
           ),
         );
         Widget details({
@@ -226,7 +238,7 @@ class _ArtistHeader extends StatelessWidget {
                 title,
                 style: titleStyle ?? theme.textTheme.headlineMedium,
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: space(8)),
               Text(
                 subtitle,
                 style: subtitleStyle ??
@@ -234,10 +246,10 @@ class _ArtistHeader extends StatelessWidget {
                       color: ColorTokens.textSecondary(context),
                     ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: space(16)),
               Wrap(
-                spacing: 12,
-                runSpacing: 8,
+                spacing: space(12),
+                runSpacing: space(8),
                 children: [
                   FilledButton.icon(
                     onPressed: onPlayAll,
@@ -252,12 +264,14 @@ class _ArtistHeader extends StatelessWidget {
 
         return Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(space(24).clamp(14.0, 32.0)),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: ColorTokens.heroGradient(context),
             ),
-            borderRadius: BorderRadius.circular(26),
+            borderRadius: BorderRadius.circular(
+              clamped(26, min: 16, max: 30),
+            ),
             border: Border.all(color: ColorTokens.border(context)),
           ),
           child: isNarrow
@@ -265,14 +279,14 @@ class _ArtistHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     artwork,
-                    const SizedBox(height: 20),
+                    SizedBox(height: space(20)),
                     details(),
                   ],
                 )
               : Row(
                   children: [
                     artwork,
-                    const SizedBox(width: 24),
+                    SizedBox(width: space(24)),
                     Expanded(child: details()),
                   ],
                 ),
@@ -295,6 +309,8 @@ class _ArtistAlbumsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -308,18 +324,20 @@ class _ArtistAlbumsSection extends StatelessWidget {
                 ?.copyWith(color: ColorTokens.textSecondary(context)),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: space(16)),
         LayoutBuilder(
           builder: (context, constraints) {
-            final crossAxisCount = (constraints.maxWidth / 220).floor();
+            final targetWidth = space(220).clamp(160.0, 260.0);
+            final crossAxisCount =
+                (constraints.maxWidth / targetWidth).floor();
             final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
             return GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: columns,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
+                crossAxisSpacing: space(16),
+                mainAxisSpacing: space(16),
                 childAspectRatio: 1.1,
               ),
               itemCount: albums.length,

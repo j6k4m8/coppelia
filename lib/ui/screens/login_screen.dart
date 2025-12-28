@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 import '../../core/color_tokens.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/gradient_background.dart';
@@ -34,20 +35,22 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final appState = context.watch<AppState>();
+    final densityScale = appState.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
 
     return Scaffold(
       body: GradientBackground(
         child: Center(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final available = constraints.maxWidth - 32;
+              final available = constraints.maxWidth - space(32);
               final maxWidth = available < 280
                   ? constraints.maxWidth * 0.9
                   : 440.0;
               return ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: maxWidth),
                 child: GlassContainer(
-                  padding: const EdgeInsets.all(32),
+                  padding: EdgeInsets.all(space(32).clamp(16.0, 40.0)),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,34 +59,39 @@ class _LoginScreenState extends State<LoginScreen> {
                         'Welcome back',
                         style: theme.textTheme.headlineMedium,
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: space(8)),
                       Text(
                         'Connect your Jellyfin music library and start listening.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: ColorTokens.textSecondary(context, 0.7),
                         ),
                       ),
-                      const SizedBox(height: 28),
+                      SizedBox(height: space(28)),
                       _buildField(
                         label: 'Server URL',
                         controller: _serverController,
                         hint: 'https://jellyfin.yourdomain.com',
+                        densityScale: densityScale,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: space(16)),
                       _buildField(
                         label: 'Username',
                         controller: _usernameController,
+                        densityScale: densityScale,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: space(16)),
                       _buildField(
                         label: 'Password',
                         controller: _passwordController,
                         obscureText: true,
+                        densityScale: densityScale,
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: space(24)),
                       if (appState.authError != null)
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
+                          padding: EdgeInsets.only(
+                            bottom: space(12).clamp(8.0, 16.0),
+                          ),
                           child: Text(
                             appState.authError!,
                             style: theme.textTheme.bodyMedium?.copyWith(
@@ -107,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               : const Text('Sign in'),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: space(16)),
                       Text(
                         'Tip: Use a local Jellyfin user with music library access.',
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -130,12 +138,16 @@ class _LoginScreenState extends State<LoginScreen> {
     required TextEditingController controller,
     String? hint,
     bool obscureText = false,
+    required double densityScale,
   }) {
+    double space(double value) => value * densityScale;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label),
-        const SizedBox(height: 8),
+        SizedBox(height: space(8)),
         TextField(
           controller: controller,
           obscureText: obscureText,
@@ -144,7 +156,9 @@ class _LoginScreenState extends State<LoginScreen> {
             filled: true,
             fillColor: ColorTokens.cardFill(context, 0.06),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(
+                clamped(14, min: 10, max: 18),
+              ),
               borderSide: BorderSide.none,
             ),
           ),

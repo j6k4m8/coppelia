@@ -8,6 +8,7 @@ import '../../core/formatters.dart';
 import '../../state/app_state.dart';
 import '../../state/home_section.dart';
 import '../../state/keyboard_shortcut.dart';
+import '../../state/layout_density.dart';
 import '../../state/now_playing_layout.dart';
 import '../../state/sidebar_item.dart';
 import '../../core/color_tokens.dart';
@@ -22,15 +23,17 @@ class SettingsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     return DefaultTabController(
       length: 5,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SectionHeader(title: 'Settings'),
-          const SizedBox(height: 12),
+          SizedBox(height: space(12)),
           _SettingsTabBar(),
-          const SizedBox(height: 16),
+          SizedBox(height: space(16)),
           Expanded(
             child: TabBarView(
               children: [
@@ -70,8 +73,11 @@ class SettingsView extends StatelessWidget {
 class _SettingsTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: EdgeInsets.all(space(4).clamp(2.0, 6.0)),
       decoration: BoxDecoration(
         color: ColorTokens.cardFill(context, 0.08),
         borderRadius: BorderRadius.circular(16),
@@ -79,7 +85,8 @@ class _SettingsTabBar extends StatelessWidget {
       ),
       child: TabBar(
         isScrollable: true,
-        labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+        labelPadding:
+            EdgeInsets.symmetric(horizontal: space(6).clamp(4.0, 10.0)),
         labelColor: Theme.of(context).colorScheme.onSurface,
         unselectedLabelColor: ColorTokens.textSecondary(context),
         dividerColor: Colors.transparent,
@@ -106,9 +113,15 @@ class _SettingsTabLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     return Tab(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+        padding: EdgeInsets.symmetric(
+          horizontal: space(18).clamp(12.0, 22.0),
+          vertical: space(6).clamp(4.0, 10.0),
+        ),
         child: Text(text),
       ),
     );
@@ -122,8 +135,12 @@ class _SettingsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    final padding = EdgeInsets.all((20 * densityScale).clamp(12.0, 28.0));
     return SingleChildScrollView(
       child: GlassContainer(
+        padding: padding,
         child: child,
       ),
     );
@@ -145,11 +162,13 @@ class _AppearanceSettings extends StatelessWidget {
             .any((choice) => choice.scale == state.fontScale)
         ? state.fontScale
         : 1.0;
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Appearance', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
+        SizedBox(height: space(12)),
         _SettingRow(
           title: 'Theme',
           subtitle: 'Follow system appearance or set manually.',
@@ -175,7 +194,7 @@ class _AppearanceSettings extends StatelessWidget {
             },
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: space(16)),
         _SettingRow(
           title: 'Font family',
           subtitle: 'Choose a display font for the app.',
@@ -210,7 +229,7 @@ class _AppearanceSettings extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: space(16)),
         _SettingRow(
           title: 'Font size',
           subtitle: 'Scale typography across the interface.',
@@ -232,6 +251,25 @@ class _AppearanceSettings extends StatelessWidget {
             },
           ),
         ),
+        SizedBox(height: space(16)),
+        _SettingRow(
+          title: 'Layout density',
+          subtitle: 'Adjust padding and spacing throughout the UI.',
+          trailing: SegmentedButton<LayoutDensity>(
+            segments: LayoutDensity.values
+                .map(
+                  (density) => ButtonSegment(
+                    value: density,
+                    label: Text(density.label),
+                  ),
+                )
+                .toList(),
+            selected: {state.layoutDensity},
+            onSelectionChanged: (selection) {
+              state.setLayoutDensity(selection.first);
+            },
+          ),
+        ),
       ],
     );
   }
@@ -244,11 +282,13 @@ class _LayoutSettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Layout', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
+        SizedBox(height: space(12)),
         _SettingRow(
           title: 'Now playing layout',
           subtitle: 'Choose where the player is docked.',
@@ -269,12 +309,12 @@ class _LayoutSettings extends StatelessWidget {
             },
           ),
         ),
-        Divider(height: 32, color: ColorTokens.border(context, 0.12)),
+        Divider(height: space(32), color: ColorTokens.border(context, 0.12)),
         Text('Home', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
+        SizedBox(height: space(12)),
         ...HomeSection.values.map(
           (section) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: EdgeInsets.only(bottom: space(12)),
             child: _SettingRow(
               title: section.label,
               subtitle: section.description,
@@ -287,9 +327,9 @@ class _LayoutSettings extends StatelessWidget {
             ),
           ),
         ),
-        Divider(height: 32, color: ColorTokens.border(context, 0.12)),
+        Divider(height: space(32), color: ColorTokens.border(context, 0.12)),
         Text('Sidebar', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
+        SizedBox(height: space(12)),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -297,7 +337,7 @@ class _LayoutSettings extends StatelessWidget {
               padding: EdgeInsets.only(left: 12),
               child: _SettingsSubheader(title: 'Main'),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: space(8)),
             Padding(
               padding: const EdgeInsets.only(left: 24),
               child: _SettingRow(
@@ -311,7 +351,7 @@ class _LayoutSettings extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: space(12)),
             Padding(
               padding: const EdgeInsets.only(left: 24),
               child: _SettingRow(
@@ -325,12 +365,12 @@ class _LayoutSettings extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: space(16)),
             const Padding(
               padding: EdgeInsets.only(left: 12),
               child: _SettingsSubheader(title: 'Favorites'),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: space(8)),
             Padding(
               padding: const EdgeInsets.only(left: 24),
               child: _SettingRow(
@@ -348,7 +388,7 @@ class _LayoutSettings extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: space(12)),
             Padding(
               padding: const EdgeInsets.only(left: 24),
               child: _SettingRow(
@@ -366,7 +406,7 @@ class _LayoutSettings extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: space(12)),
             Padding(
               padding: const EdgeInsets.only(left: 24),
               child: _SettingRow(
@@ -384,12 +424,12 @@ class _LayoutSettings extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: space(16)),
             const Padding(
               padding: EdgeInsets.only(left: 12),
               child: _SettingsSubheader(title: 'Browse'),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: space(8)),
             Padding(
               padding: const EdgeInsets.only(left: 24),
               child: _SettingRow(
@@ -407,7 +447,7 @@ class _LayoutSettings extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: space(12)),
             Padding(
               padding: const EdgeInsets.only(left: 24),
               child: _SettingRow(
@@ -425,7 +465,7 @@ class _LayoutSettings extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: space(12)),
             Padding(
               padding: const EdgeInsets.only(left: 24),
               child: _SettingRow(
@@ -443,7 +483,7 @@ class _LayoutSettings extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: space(12)),
             Padding(
               padding: const EdgeInsets.only(left: 24),
               child: _SettingRow(
@@ -461,12 +501,12 @@ class _LayoutSettings extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: space(16)),
             const Padding(
               padding: EdgeInsets.only(left: 12),
               child: _SettingsSubheader(title: 'Playback'),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: space(8)),
             Padding(
               padding: const EdgeInsets.only(left: 24),
               child: _SettingRow(
@@ -480,7 +520,7 @@ class _LayoutSettings extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: space(12)),
             Padding(
               padding: const EdgeInsets.only(left: 24),
               child: _SettingRow(
@@ -494,12 +534,12 @@ class _LayoutSettings extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: space(16)),
             const Padding(
               padding: EdgeInsets.only(left: 12),
               child: _SettingsSubheader(title: 'Playlists'),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: space(8)),
             Padding(
               padding: const EdgeInsets.only(left: 24),
               child: _SettingRow(
@@ -529,23 +569,25 @@ class _KeyboardSettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Keyboard', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
+        SizedBox(height: space(12)),
         Text(
           'Open settings',
           style: Theme.of(context).textTheme.titleMedium,
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: space(4)),
         Text(
           'Use a global shortcut to jump to Settings.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: ColorTokens.textSecondary(context),
               ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: space(12)),
         _SettingRow(
           title: 'Enabled',
           subtitle: 'Allow the shortcut to open Settings.',
@@ -555,7 +597,7 @@ class _KeyboardSettings extends StatelessWidget {
             onChanged: (value) => state.setSettingsShortcutEnabled(value),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: space(8)),
         _SettingRow(
           title: 'Shortcut',
           subtitle: 'Include Cmd/Ctrl/Alt plus a key.',
@@ -566,19 +608,19 @@ class _KeyboardSettings extends StatelessWidget {
             onChanged: (shortcut) => state.setSettingsShortcut(shortcut),
           ),
         ),
-        Divider(height: 24, color: ColorTokens.border(context, 0.12)),
+        Divider(height: space(24), color: ColorTokens.border(context, 0.12)),
         Text(
           'Focus search',
           style: Theme.of(context).textTheme.titleMedium,
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: space(4)),
         Text(
           'Jump straight to the search field from anywhere.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: ColorTokens.textSecondary(context),
               ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: space(12)),
         _SettingRow(
           title: 'Enabled',
           subtitle: 'Allow the shortcut to focus Search.',
@@ -588,7 +630,7 @@ class _KeyboardSettings extends StatelessWidget {
             onChanged: (value) => state.setSearchShortcutEnabled(value),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: space(8)),
         _SettingRow(
           title: 'Shortcut',
           subtitle: 'Include Cmd/Ctrl/Alt plus a key.',
@@ -647,11 +689,13 @@ class _CacheSettingsState extends State<_CacheSettings> {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale = widget.state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Cache', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
+        SizedBox(height: space(12)),
         _SettingRow(
           title: 'Media cache',
           subtitle: 'Downloaded artwork and audio stored on disk.',
@@ -674,7 +718,7 @@ class _CacheSettingsState extends State<_CacheSettings> {
             },
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: space(12)),
         _SettingRow(
           title: 'Cache location',
           subtitle: 'Open cached media in your file manager.',
@@ -683,7 +727,7 @@ class _CacheSettingsState extends State<_CacheSettings> {
             child: Text(_fileManagerLabel()),
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: space(12)),
         _SettingRow(
           title: 'Cached metadata',
           subtitle: 'Refresh playlists, albums, and recent tracks.',
@@ -698,7 +742,7 @@ class _CacheSettingsState extends State<_CacheSettings> {
             child: const Text('Clear'),
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: space(12)),
         _SettingRow(
           title: 'Cached audio',
           subtitle: 'Remove downloaded audio files.',
@@ -833,6 +877,10 @@ class _AccountSettings extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final session = state.session;
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
     final stats = state.libraryStats;
     final trackCount = stats?.trackCount ??
         state.playlists.fold<int>(
@@ -846,7 +894,7 @@ class _AccountSettings extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Account', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
+        SizedBox(height: space(12)),
         if (session == null)
           Text(
             'No active session.',
@@ -857,10 +905,12 @@ class _AccountSettings extends StatelessWidget {
           )
         else
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(space(16).clamp(10.0, 20.0)),
             decoration: BoxDecoration(
               color: ColorTokens.cardFill(context, 0.08),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(
+                clamped(18, min: 12, max: 22),
+              ),
               border: Border.all(color: ColorTokens.border(context, 0.12)),
             ),
             child: Column(
@@ -873,19 +923,19 @@ class _AccountSettings extends StatelessWidget {
                       .bodySmall
                       ?.copyWith(color: ColorTokens.textSecondary(context)),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: space(6).clamp(4.0, 10.0)),
                 Text(
                   session.userName,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: space(16)),
                 _AccountMetaRow(label: 'Server', value: session.serverUrl),
-                const SizedBox(height: 8),
+                SizedBox(height: space(8)),
                 _AccountMetaRow(label: 'User ID', value: session.userId),
-                const SizedBox(height: 16),
+                SizedBox(height: space(16)),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: space(8),
+                  runSpacing: space(8),
                   children: [
                     _AccountStatChip(
                       label: 'Tracks',
@@ -908,9 +958,9 @@ class _AccountSettings extends StatelessWidget {
               ],
             ),
           ),
-        const SizedBox(height: 24),
+        SizedBox(height: space(24)),
         Text('Telemetry', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 12),
+        SizedBox(height: space(12)),
         _SettingRow(
           title: 'Playback reporting',
           subtitle: 'Send now playing and pause/resume state to Jellyfin.',
@@ -920,7 +970,7 @@ class _AccountSettings extends StatelessWidget {
             onChanged: state.setTelemetryPlayback,
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: space(12)),
         _SettingRow(
           title: 'Progress updates',
           subtitle: 'Report playback progress while a track is playing.',
@@ -930,7 +980,7 @@ class _AccountSettings extends StatelessWidget {
             onChanged: state.setTelemetryProgress,
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: space(12)),
         _SettingRow(
           title: 'Play history',
           subtitle: 'Send play completion events for library history.',
@@ -940,7 +990,7 @@ class _AccountSettings extends StatelessWidget {
             onChanged: state.setTelemetryHistory,
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: space(16)),
         _SettingRow(
           title: 'Sign out',
           subtitle: 'Disconnect from this Jellyfin account.',
@@ -969,6 +1019,9 @@ class _SettingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 520;
@@ -976,7 +1029,7 @@ class _SettingRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, style: Theme.of(context).textTheme.bodyLarge),
-            const SizedBox(height: 4),
+            SizedBox(height: space(4).clamp(2.0, 6.0)),
             Text(
               subtitle,
               style: Theme.of(context)
@@ -991,7 +1044,7 @@ class _SettingRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               textBlock,
-              const SizedBox(height: 12),
+              SizedBox(height: space(12)),
               trailing,
             ],
           );
@@ -1000,7 +1053,7 @@ class _SettingRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(child: textBlock),
-            const SizedBox(width: 16),
+            SizedBox(width: space(16).clamp(10.0, 20.0)),
             trailing,
           ],
         );

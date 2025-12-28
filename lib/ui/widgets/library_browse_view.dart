@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
 import '../../state/browse_layout.dart';
+import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
 import '../../core/color_tokens.dart';
 import 'section_header.dart';
@@ -93,11 +94,16 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     final layout = state.browseLayoutFor(widget.view);
     final itemCount = widget.items.length;
     final letterIndex = _buildLetterIndex(widget.items);
     final letters = letterIndex.keys.toList(growable: false);
-    final contentRightPadding = letters.isNotEmpty ? 48.0 : 0.0;
+    final contentRightPadding =
+        letters.isNotEmpty ? space(48).clamp(32.0, 64.0) : 0.0;
+    final listItemExtent =
+        (_listItemExtent * densityScale).clamp(42.0, 96.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,13 +138,15 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: space(16)),
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
               final gridMetrics = _GridMetrics.fromWidth(
                 width: constraints.maxWidth,
                 itemAspectRatio: 1.05,
+                itemMinWidth: space(220).clamp(160.0, 260.0),
+                spacing: space(16),
               );
               return Stack(
                 children: [
@@ -150,8 +158,8 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: gridMetrics.columns,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
+                            crossAxisSpacing: gridMetrics.spacing,
+                            mainAxisSpacing: gridMetrics.spacing,
                             childAspectRatio: gridMetrics.aspectRatio,
                           ),
                           itemBuilder: (context, index) {
@@ -164,11 +172,11 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                           padding: EdgeInsets.only(right: contentRightPadding),
                           itemCount: widget.items.length,
                           separatorBuilder: (_, __) =>
-                              const SizedBox(height: 6),
+                              SizedBox(height: space(6).clamp(4.0, 10.0)),
                           itemBuilder: (context, index) {
                             final item = widget.items[index];
                             return SizedBox(
-                              height: _listItemExtent,
+                              height: listItemExtent,
                               child: widget.listItemBuilder(context, item),
                             );
                           },
@@ -187,7 +195,7 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                           }
                           final offset = layout == BrowseLayout.grid
                               ? gridMetrics.offsetForIndex(targetIndex)
-                              : targetIndex * _listItemExtent;
+                              : targetIndex * listItemExtent;
                           _controller.animateTo(
                             offset,
                             duration: const Duration(milliseconds: 240),
@@ -197,8 +205,8 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                       ),
                     ),
                   Positioned(
-                    right: 24,
-                    bottom: 24,
+                    right: space(24),
+                    bottom: space(24),
                     child: AnimatedOpacity(
                       opacity: _showBackToTop ? 1 : 0,
                       duration: const Duration(milliseconds: 200),
@@ -250,19 +258,24 @@ class _AlphabetScroller extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     return LayoutBuilder(
       builder: (context, constraints) {
-        const slotHeight = 18.0;
-        final maxSlots = ((constraints.maxHeight - 16) / slotHeight)
+        final slotHeight = space(18).clamp(14.0, 22.0);
+        final maxSlots = ((constraints.maxHeight - space(16)) / slotHeight)
             .floor()
             .clamp(1, letters.length);
         final displayLetters = _subsampleLetters(letters, maxSlots);
         return Container(
-          width: 28,
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          width: space(28).clamp(22.0, 36.0),
+          padding: EdgeInsets.symmetric(vertical: space(8)),
           decoration: BoxDecoration(
             color: ColorTokens.cardFill(context, 0.04),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(
+              space(20).clamp(14.0, 24.0),
+            ),
             border: Border.all(color: ColorTokens.border(context)),
           ),
           child: Column(
@@ -313,12 +326,16 @@ class _AlphabetLetter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     final baseStyle = Theme.of(context).textTheme.labelSmall;
     return TextButton(
       onPressed: onTap,
       style: ButtonStyle(
         padding: MaterialStateProperty.all(EdgeInsets.zero),
-        minimumSize: MaterialStateProperty.all(const Size(20, 20)),
+        minimumSize:
+            MaterialStateProperty.all(Size(space(20), space(20))),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         foregroundColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.hovered)) {
@@ -345,32 +362,37 @@ class _GridMetrics {
     required this.itemWidth,
     required this.itemHeight,
     required this.aspectRatio,
+    required this.spacing,
   });
 
   final int columns;
   final double itemWidth;
   final double itemHeight;
   final double aspectRatio;
+  final double spacing;
 
   static _GridMetrics fromWidth({
     required double width,
     required double itemAspectRatio,
+    required double itemMinWidth,
+    required double spacing,
   }) {
-    final crossAxisCount = (width / 220).floor();
+    final crossAxisCount = (width / itemMinWidth).floor();
     final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
-    final spacing = 16 * (columns - 1);
-    final itemWidth = (width - spacing) / columns;
+    final totalSpacing = spacing * (columns - 1);
+    final itemWidth = (width - totalSpacing) / columns;
     final itemHeight = itemWidth / itemAspectRatio;
     return _GridMetrics(
       columns: columns,
       itemWidth: itemWidth,
       itemHeight: itemHeight,
       aspectRatio: itemAspectRatio,
+      spacing: spacing,
     );
   }
 
   double offsetForIndex(int index) {
     final row = (index / columns).floor();
-    return row * (itemHeight + 16);
+    return row * (itemHeight + spacing);
   }
 }

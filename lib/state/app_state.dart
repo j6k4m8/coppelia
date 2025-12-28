@@ -23,6 +23,7 @@ import '../services/session_store.dart';
 import 'browse_layout.dart';
 import 'home_section.dart';
 import 'keyboard_shortcut.dart';
+import 'layout_density.dart';
 import 'library_view.dart';
 import 'now_playing_layout.dart';
 import 'sidebar_item.dart';
@@ -114,6 +115,7 @@ class AppState extends ChangeNotifier {
   KeyboardShortcut _settingsShortcut = KeyboardShortcut.defaultForPlatform();
   bool _searchShortcutEnabled = true;
   KeyboardShortcut _searchShortcut = KeyboardShortcut.searchForPlatform();
+  LayoutDensity _layoutDensity = LayoutDensity.comfortable;
   NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.bottom;
   Map<HomeSection, bool> _homeSectionVisibility = {
     for (final section in HomeSection.values) section: true,
@@ -315,6 +317,9 @@ class AppState extends ChangeNotifier {
   /// Preferred keyboard shortcut for focusing search.
   KeyboardShortcut get searchShortcut => _searchShortcut;
 
+  /// Preferred layout density.
+  LayoutDensity get layoutDensity => _layoutDensity;
+
   /// True when playback telemetry is enabled.
   bool get telemetryPlaybackEnabled => _telemetryPlayback;
 
@@ -409,6 +414,7 @@ class AppState extends ChangeNotifier {
     _settingsShortcut = await _settingsStore.loadSettingsShortcut();
     _searchShortcutEnabled = await _settingsStore.loadSearchShortcutEnabled();
     _searchShortcut = await _settingsStore.loadSearchShortcut();
+    _layoutDensity = await _settingsStore.loadLayoutDensity();
     _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
     _homeSectionVisibility = await _settingsStore.loadHomeSectionVisibility();
     _sidebarVisibility = await _settingsStore.loadSidebarVisibility();
@@ -1148,6 +1154,13 @@ class AppState extends ChangeNotifier {
   Future<void> setSearchShortcut(KeyboardShortcut shortcut) async {
     _searchShortcut = shortcut;
     await _settingsStore.saveSearchShortcut(shortcut);
+    notifyListeners();
+  }
+
+  /// Updates the layout density preference.
+  Future<void> setLayoutDensity(LayoutDensity density) async {
+    _layoutDensity = density;
+    await _settingsStore.saveLayoutDensity(density);
     notifyListeners();
   }
 

@@ -6,6 +6,7 @@ import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
 import '../../state/now_playing_layout.dart';
 import 'artwork_image.dart';
@@ -37,6 +38,8 @@ class _SidePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     final track = state.nowPlaying;
     final isFavorite =
         track == null ? false : state.isFavoriteTrack(track.id);
@@ -44,7 +47,8 @@ class _SidePanel extends StatelessWidget {
         track == null ? false : state.isFavoriteTrackUpdating(track.id);
     return Container(
       width: 320,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+      padding:
+          const EdgeInsets.fromLTRB(20, 24, 20, 24).scale(densityScale),
       decoration: BoxDecoration(
         color: ColorTokens.panelBackground(context),
         border: Border(
@@ -69,18 +73,18 @@ class _SidePanel extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: space(20)),
           _Artwork(track: track),
-          const SizedBox(height: 20),
+          SizedBox(height: space(20)),
           Text(
             track?.title ?? 'Nothing queued',
             style: Theme.of(context).textTheme.titleLarge,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: space(6).clamp(4.0, 10.0)),
           _NowPlayingMeta(track: track),
-          const SizedBox(height: 20),
+          SizedBox(height: space(20)),
           AnimatedBuilder(
             animation: Listenable.merge([
               state.positionListenable,
@@ -99,7 +103,7 @@ class _SidePanel extends StatelessWidget {
               );
             },
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: space(12)),
           Center(
             child: _Controls(
               isPlaying: state.isPlaying,
@@ -108,9 +112,9 @@ class _SidePanel extends StatelessWidget {
               onPrevious: state.previousTrack,
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: space(20)),
           Divider(color: ColorTokens.border(context, 0.12)),
-          const SizedBox(height: 16),
+          SizedBox(height: space(16)),
           Text(
             'Playing next',
             style: Theme.of(context)
@@ -118,7 +122,7 @@ class _SidePanel extends StatelessWidget {
                 .titleSmall
                 ?.copyWith(color: ColorTokens.textSecondary(context, 0.7)),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: space(12)),
           Expanded(
             child: _QueueList(queue: state.queue, nowPlaying: track),
           ),
@@ -136,13 +140,16 @@ class _BottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     final track = state.nowPlaying;
     final isFavorite =
         track == null ? false : state.isFavoriteTrack(track.id);
     final isUpdating =
         track == null ? false : state.isFavoriteTrackUpdating(track.id);
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+      padding:
+          const EdgeInsets.fromLTRB(24, 12, 24, 16).scale(densityScale),
       decoration: BoxDecoration(
         color: ColorTokens.panelBackground(context),
         border: Border(
@@ -161,7 +168,7 @@ class _BottomBar extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: space(4).clamp(2.0, 6.0)),
               _NowPlayingMeta(track: track),
             ],
           );
@@ -172,11 +179,11 @@ class _BottomBar extends StatelessWidget {
                 Row(
                   children: [
                     _MiniArtwork(track: track),
-                    const SizedBox(width: 12),
+                    SizedBox(width: space(12).clamp(8.0, 16.0)),
                     Expanded(child: titleBlock),
                   ],
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: space(10).clamp(6.0, 14.0)),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -199,7 +206,7 @@ class _BottomBar extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: space(6).clamp(4.0, 10.0)),
                 AnimatedBuilder(
                   animation: Listenable.merge([
                     state.positionListenable,
@@ -228,7 +235,7 @@ class _BottomBar extends StatelessWidget {
               Row(
                 children: [
                   _MiniArtwork(track: track),
-                  const SizedBox(width: 16),
+                  SizedBox(width: space(16).clamp(10.0, 20.0)),
                   Expanded(child: titleBlock),
                   if (track != null)
                     _FavoriteButton(
@@ -249,7 +256,7 @@ class _BottomBar extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: space(6).clamp(4.0, 10.0)),
               AnimatedBuilder(
                 animation: Listenable.merge([
                   state.positionListenable,
@@ -286,6 +293,9 @@ class _QueueList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     if (queue.isEmpty) {
       return Text(
         'Queue is empty.',
@@ -305,7 +315,7 @@ class _QueueList extends StatelessWidget {
       itemBuilder: (context, index) {
         final item = visibleQueue[index];
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: EdgeInsets.only(bottom: space(8).clamp(4.0, 12.0)),
           child: Text(
             item.title,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -340,6 +350,9 @@ class _NowPlayingMeta extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       );
     }
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     final state = context.read<AppState>();
     final baseStyle = Theme.of(context)
         .textTheme
@@ -372,14 +385,14 @@ class _NowPlayingMeta extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: space(6).clamp(4.0, 10.0)),
         Text(
           '•',
           style: TextStyle(
             color: ColorTokens.textSecondary(context, 0.4),
           ),
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: space(6).clamp(4.0, 10.0)),
         Flexible(
           child: MouseRegion(
             cursor: track!.albumId == null
@@ -419,10 +432,14 @@ class _FavoriteButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.read<AppState>();
     final theme = Theme.of(context);
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
     if (isUpdating) {
       return SizedBox(
-        width: 18,
-        height: 18,
+        width: clamped(18, min: 14, max: 22),
+        height: clamped(18, min: 14, max: 22),
         child: CircularProgressIndicator(
           strokeWidth: 2,
           color: theme.colorScheme.primary,
@@ -435,12 +452,12 @@ class _FavoriteButton extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: () => state.setTrackFavorite(track, !isFavorite),
         child: SizedBox(
-          width: 24,
-          height: 24,
+          width: clamped(24, min: 18, max: 30),
+          height: clamped(24, min: 18, max: 30),
           child: Center(
             child: Icon(
               isFavorite ? Icons.favorite : Icons.favorite_border,
-              size: 16,
+              size: clamped(16, min: 12, max: 20),
               color: isFavorite
                   ? theme.colorScheme.primary
                   : ColorTokens.textSecondary(context),
@@ -510,10 +527,16 @@ class _ProgressScrubberState extends State<_ProgressScrubber>
     final totalMs = widget.duration.inMilliseconds;
     final currentMs = widget.position.inMilliseconds.clamp(0, totalMs);
     final value = totalMs > 0 ? currentMs / totalMs : 0.0;
-    final height = widget.compact ? 32.0 : 40.0;
-    final trackHeight = widget.compact ? 4.0 : 6.0;
-    final thumbRadius = widget.compact ? 6.0 : 8.0;
-    final overlayRadius = widget.compact ? 10.0 : 12.0;
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    final height =
+        ((widget.compact ? 32.0 : 40.0) * densityScale).clamp(24.0, 52.0);
+    final trackHeight =
+        ((widget.compact ? 4.0 : 6.0) * densityScale).clamp(2.0, 8.0);
+    final thumbRadius =
+        ((widget.compact ? 6.0 : 8.0) * densityScale).clamp(4.0, 10.0);
+    final overlayRadius =
+        ((widget.compact ? 10.0 : 12.0) * densityScale).clamp(6.0, 14.0);
     final primary = Theme.of(context).colorScheme.primary;
 
     return Column(
@@ -561,7 +584,9 @@ class _ProgressScrubberState extends State<_ProgressScrubber>
             },
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(
+          height: (6 * densityScale).clamp(4.0, 10.0),
+        ),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -593,13 +618,22 @@ class _Artwork extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
     final imageUrl = track?.imageUrl;
     Widget buildArtworkFallback() => Container(
           color: ColorTokens.cardFillStrong(context),
-          child: const Icon(Icons.music_note, size: 48),
+          child: Icon(
+            Icons.music_note,
+            size: clamped(48, min: 34, max: 60),
+          ),
         );
     return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(
+        clamped(24, min: 14, max: 30),
+      ),
       child: AspectRatio(
         aspectRatio: 1,
         child: ArtworkImage(
@@ -619,18 +653,28 @@ class _MiniArtwork extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
     final imageUrl = track?.imageUrl;
+    final artSize = clamped(56, min: 40, max: 68);
     Widget buildArtworkFallback() => Container(
-          width: 56,
-          height: 56,
+          width: artSize,
+          height: artSize,
           color: ColorTokens.cardFillStrong(context),
-          child: const Icon(Icons.music_note, size: 24),
+          child: Icon(
+            Icons.music_note,
+            size: clamped(24, min: 16, max: 28),
+          ),
         );
     return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(
+        clamped(14, min: 10, max: 18),
+      ),
       child: SizedBox(
-        width: 56,
-        height: 56,
+        width: artSize,
+        height: artSize,
         child: ArtworkImage(
           imageUrl: imageUrl,
           fit: BoxFit.cover,
@@ -656,11 +700,17 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
+    final iconSize = clamped(24, min: 18, max: 28);
     return Row(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         IconButton(
+          iconSize: iconSize,
           icon: const Icon(Icons.skip_previous),
           onPressed: onPrevious,
         ),
@@ -668,11 +718,17 @@ class _Controls extends StatelessWidget {
           onPressed: onPlayPause,
           style: FilledButton.styleFrom(
             shape: const CircleBorder(),
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(
+              clamped(14, min: 10, max: 18),
+            ),
           ),
-          child: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
+          child: Icon(
+            isPlaying ? Icons.pause : Icons.play_arrow,
+            size: clamped(22, min: 16, max: 26),
+          ),
         ),
         IconButton(
+          iconSize: iconSize,
           icon: const Icon(Icons.skip_next),
           onPressed: onNext,
         ),

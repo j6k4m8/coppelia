@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/playlist.dart';
 import '../../core/color_tokens.dart';
+import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 import 'artwork_image.dart';
 
 /// Artwork tile for a playlist.
@@ -26,10 +29,17 @@ class PlaylistCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
     Widget buildArtworkFallback() => Container(
           color: ColorTokens.cardFillStrong(context),
-          child: const Center(
-            child: Icon(Icons.queue_music, size: 32),
+          child: Center(
+            child: Icon(
+              Icons.queue_music,
+              size: clamped(32, min: 18, max: 36),
+            ),
           ),
         );
     return MouseRegion(
@@ -38,11 +48,13 @@ class PlaylistCard extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
-          width: 200,
-          padding: const EdgeInsets.all(16),
+          width: clamped(200, min: 130, max: 240),
+          padding: EdgeInsets.all(space(16).clamp(8.0, 20.0)),
           decoration: BoxDecoration(
             color: ColorTokens.cardFill(context),
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(
+              clamped(22, min: 12, max: 26),
+            ),
             border: Border.all(color: ColorTokens.border(context)),
           ),
           child: Column(
@@ -50,7 +62,9 @@ class PlaylistCard extends StatelessWidget {
             children: [
               Expanded(
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(
+                  clamped(16, min: 8, max: 20),
+                ),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
@@ -65,7 +79,9 @@ class PlaylistCard extends StatelessWidget {
                         Align(
                           alignment: Alignment.bottomRight,
                           child: Padding(
-                            padding: const EdgeInsets.all(10),
+                            padding: EdgeInsets.all(
+                              space(10).clamp(4.0, 12.0),
+                            ),
                             child: _PlayOverlayButton(onTap: onPlay!),
                           ),
                         ),
@@ -73,14 +89,14 @@ class PlaylistCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+            SizedBox(height: space(12).clamp(6.0, 16.0)),
               Text(
                 playlist.name,
                 style: theme.textTheme.titleMedium,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
+            SizedBox(height: space(4).clamp(2.0, 6.0)),
               Text(
                 '${playlist.trackCount} tracks',
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -103,6 +119,10 @@ class _PlayOverlayButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
     final background = isDark
         ? Colors.white.withOpacity(0.18)
         : Colors.white.withOpacity(0.92);
@@ -115,8 +135,8 @@ class _PlayOverlayButton extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
-          width: 40,
-          height: 40,
+          width: clamped(40, min: 24, max: 48),
+          height: clamped(40, min: 24, max: 48),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: background,
@@ -130,7 +150,11 @@ class _PlayOverlayButton extends StatelessWidget {
             ],
           ),
           child: Center(
-            child: Icon(Icons.play_arrow, size: 18, color: iconColor),
+            child: Icon(
+              Icons.play_arrow,
+              size: clamped(18, min: 12, max: 22),
+              color: iconColor,
+            ),
           ),
         ),
       ),

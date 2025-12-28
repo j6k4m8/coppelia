@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/playlist.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
+import '../../state/layout_density.dart';
 import '../../state/sidebar_item.dart';
 import '../../core/color_tokens.dart';
 
@@ -53,8 +54,11 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             state.isSidebarItemVisible(SidebarItem.queue);
     final showPlaylistsSection =
         state.isSidebarItemVisible(SidebarItem.playlists);
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24)
+          .scale(densityScale),
       decoration: BoxDecoration(
         color: ColorTokens.panelBackground(context),
         border: Border(
@@ -85,15 +89,15 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                     child: Row(
                       children: [
                         SizedBox(
-                          width: 36,
-                          height: 36,
+                          width: space(36).clamp(28.0, 42.0),
+                          height: space(36).clamp(28.0, 42.0),
                           child: SvgPicture.asset(
                             'assets/logo.svg',
-                            width: 36,
-                            height: 36,
+                            width: space(36).clamp(28.0, 42.0),
+                            height: space(36).clamp(28.0, 42.0),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: space(12).clamp(8.0, 16.0)),
                         Text(
                           'Coppelia',
                           style: Theme.of(context).textTheme.titleLarge,
@@ -111,7 +115,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                 ),
             ],
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: space(32)),
           if (state.isSidebarItemVisible(SidebarItem.settings))
             _NavTile(
               icon: Icons.menu,
@@ -122,7 +126,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                 () => state.selectLibraryView(LibraryView.settings),
               ),
             ),
-          const SizedBox(height: 20),
+          SizedBox(height: space(20)),
           if (showFavoritesSection) ...[
             _SectionHeader(
               title: 'Favorites',
@@ -136,7 +140,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
               child: _favoritesExpanded
                   ? Column(
                       children: [
-                        const SizedBox(height: 8),
+                        SizedBox(height: space(8)),
                         if (state.isSidebarItemVisible(
                           SidebarItem.favoritesAlbums,
                         ))
@@ -187,7 +191,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                   : const SizedBox.shrink(),
             ),
           ],
-          const SizedBox(height: 20),
+          SizedBox(height: space(20)),
           if (showBrowseSection) ...[
             _SectionHeader(
               title: 'Browse',
@@ -201,7 +205,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
               child: _browseExpanded
                   ? Column(
                       children: [
-                        const SizedBox(height: 8),
+                        SizedBox(height: space(8)),
                         if (state.isSidebarItemVisible(
                           SidebarItem.browseAlbums,
                         ))
@@ -260,7 +264,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                   : const SizedBox.shrink(),
             ),
           ],
-          const SizedBox(height: 16),
+          SizedBox(height: space(16)),
           if (showPlaybackSection) ...[
             _SectionHeader(
               title: 'Playback',
@@ -274,7 +278,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
               child: _playbackExpanded
                   ? Column(
                       children: [
-                        const SizedBox(height: 8),
+                        SizedBox(height: space(8)),
                         if (state.isSidebarItemVisible(SidebarItem.history))
                           _NavTile(
                             icon: Icons.history,
@@ -302,7 +306,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                   : const SizedBox.shrink(),
             ),
           ],
-          const SizedBox(height: 16),
+          SizedBox(height: space(16)),
           if (showPlaylistsSection) ...[
             _SectionHeader(
               title: 'Playlists',
@@ -316,7 +320,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
               child: _playlistsExpanded
                   ? Column(
                       children: [
-                        const SizedBox(height: 12),
+                        SizedBox(height: space(12)),
                         ...state.playlists.map(
                           (playlist) => Padding(
                             padding: const EdgeInsets.only(bottom: 4),
@@ -336,7 +340,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                   : const SizedBox.shrink(),
             ),
           ],
-          const SizedBox(height: 16),
+          SizedBox(height: space(16)),
         ],
       ),
     );
@@ -358,19 +362,29 @@ class _NavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: space(12).clamp(8.0, 16.0),
+          vertical: space(10).clamp(6.0, 14.0),
+        ),
         decoration: BoxDecoration(
           color: selected ? ColorTokens.activeRow(context) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(
+            clamped(16, min: 10, max: 20),
+          ),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 18),
-            const SizedBox(width: 12),
+            Icon(icon, size: clamped(18, min: 14, max: 20)),
+            SizedBox(width: space(12).clamp(8.0, 16.0)),
             Text(label),
           ],
         ),
@@ -390,11 +404,17 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        padding: EdgeInsets.symmetric(
+          horizontal: space(6).clamp(4.0, 8.0),
+          vertical: space(6).clamp(4.0, 8.0),
+        ),
         child: Text(
           title,
           style: Theme.of(context)
@@ -420,19 +440,29 @@ class _PlaylistTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: space(12).clamp(8.0, 16.0),
+          vertical: space(10).clamp(6.0, 14.0),
+        ),
         decoration: BoxDecoration(
           color: selected ? ColorTokens.activeRow(context) : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(
+            clamped(14, min: 10, max: 18),
+          ),
         ),
         child: Row(
           children: [
-            const Icon(Icons.queue_music, size: 16),
-            const SizedBox(width: 10),
+            Icon(Icons.queue_music, size: clamped(16, min: 12, max: 18)),
+            SizedBox(width: space(10).clamp(6.0, 14.0)),
             Expanded(
               child: Text(
                 playlist.name,

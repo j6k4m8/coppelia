@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 
 /// Title row for content sections.
 class SectionHeader extends StatelessWidget {
@@ -13,6 +17,9 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 420;
@@ -30,7 +37,7 @@ class SectionHeader extends StatelessWidget {
                 title,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: space(6).clamp(4.0, 10.0)),
               action!,
             ],
           );

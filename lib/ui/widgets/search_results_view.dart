@@ -5,6 +5,7 @@ import '../../core/color_tokens.dart';
 import '../../models/album.dart';
 import '../../models/artist.dart';
 import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 import '../../models/playlist.dart';
 import 'context_menu.dart';
 import 'library_card.dart';
@@ -19,6 +20,8 @@ class SearchResultsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     if (state.isSearching && state.searchResults == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -49,15 +52,16 @@ class SearchResultsView extends StatelessWidget {
                   ?.copyWith(color: ColorTokens.textSecondary(context)),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: space(16)),
           if (results.tracks.isNotEmpty) ...[
             SectionHeader(title: 'Tracks'),
-            const SizedBox(height: 12),
+            SizedBox(height: space(12)),
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: results.tracks.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 6),
+              separatorBuilder: (_, __) =>
+                  SizedBox(height: space(6).clamp(4.0, 10.0)),
               itemBuilder: (context, index) {
                 final track = results.tracks[index];
                 return TrackRow(
@@ -88,11 +92,11 @@ class SearchResultsView extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: space(24)),
           ],
           if (results.albums.isNotEmpty) ...[
             SectionHeader(title: 'Albums'),
-            const SizedBox(height: 12),
+            SizedBox(height: space(12)),
             _CardGrid(
               itemCount: results.albums.length,
               itemBuilder: (context, index) {
@@ -115,11 +119,11 @@ class SearchResultsView extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: space(24)),
           ],
           if (results.artists.isNotEmpty) ...[
             SectionHeader(title: 'Artists'),
-            const SizedBox(height: 12),
+            SizedBox(height: space(12)),
             _CardGrid(
               itemCount: results.artists.length,
               itemBuilder: (context, index) {
@@ -139,11 +143,11 @@ class SearchResultsView extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: space(24)),
           ],
           if (results.genres.isNotEmpty) ...[
             SectionHeader(title: 'Genres'),
-            const SizedBox(height: 12),
+            SizedBox(height: space(12)),
             _CardGrid(
               itemCount: results.genres.length,
               itemBuilder: (context, index) {
@@ -157,11 +161,11 @@ class SearchResultsView extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: space(24)),
           ],
           if (results.playlists.isNotEmpty) ...[
             SectionHeader(title: 'Playlists'),
-            const SizedBox(height: 12),
+            SizedBox(height: space(12)),
             _CardGrid(
               itemCount: results.playlists.length,
               itemBuilder: (context, index) {
@@ -299,9 +303,13 @@ class _CardGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = (constraints.maxWidth / 220).floor();
+        final targetWidth = space(220).clamp(160.0, 260.0);
+        final crossAxisCount = (constraints.maxWidth / targetWidth).floor();
         final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
         return GridView.builder(
           shrinkWrap: true,
@@ -309,8 +317,8 @@ class _CardGrid extends StatelessWidget {
           itemCount: itemCount,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
+            crossAxisSpacing: space(16),
+            mainAxisSpacing: space(16),
             childAspectRatio: 1.05,
           ),
           itemBuilder: itemBuilder,

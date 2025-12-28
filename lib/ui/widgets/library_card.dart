@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/color_tokens.dart';
+import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 import 'artwork_image.dart';
 
 /// Card for album, artist, or genre tiles.
@@ -40,9 +43,15 @@ class LibraryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
     Widget buildArtworkFallback() => Container(
           color: ColorTokens.cardFillStrong(context),
-          child: Center(child: Icon(icon, size: 32)),
+          child: Center(
+            child: Icon(icon, size: clamped(32, min: 18, max: 36)),
+          ),
         );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -50,10 +59,12 @@ class LibraryCard extends StatelessWidget {
       onSecondaryTapDown: (details) =>
           onContextMenu?.call(details.globalPosition),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(space(16).clamp(8.0, 20.0)),
         decoration: BoxDecoration(
           color: ColorTokens.cardFill(context),
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(
+            clamped(22, min: 12, max: 26),
+          ),
           border: Border.all(color: ColorTokens.border(context)),
         ),
         child: Column(
@@ -61,7 +72,9 @@ class LibraryCard extends StatelessWidget {
           children: [
             Expanded(
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(
+                  clamped(16, min: 8, max: 20),
+                ),
                 child: ArtworkImage(
                   imageUrl: imageUrl,
                   fit: BoxFit.cover,
@@ -69,14 +82,14 @@ class LibraryCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: space(12).clamp(8.0, 16.0)),
             Text(
               title,
               style: Theme.of(context).textTheme.titleMedium,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: space(4).clamp(2.0, 6.0)),
             _Subtitle(
               subtitle: subtitle,
               onTap: onSubtitleTap,

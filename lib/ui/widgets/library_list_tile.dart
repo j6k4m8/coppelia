@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/color_tokens.dart';
+import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 import 'artwork_image.dart';
 
 /// Compact list tile for library items.
@@ -40,11 +43,16 @@ class LibraryListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
+    final artSize = clamped(48, min: 24, max: 56);
     Widget buildArtworkFallback() => Container(
-          width: 48,
-          height: 48,
+          width: artSize,
+          height: artSize,
           color: ColorTokens.cardFillStrong(context),
-          child: Icon(icon, size: 20),
+          child: Icon(icon, size: clamped(20, min: 14, max: 24)),
         );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -52,25 +60,32 @@ class LibraryListTile extends StatelessWidget {
       onSecondaryTapDown: (details) =>
           onContextMenu?.call(details.globalPosition),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: space(12).clamp(6.0, 16.0),
+          vertical: space(10).clamp(4.0, 12.0),
+        ),
         decoration: BoxDecoration(
           color: ColorTokens.cardFill(context, 0.04),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(
+            clamped(16, min: 8, max: 20),
+          ),
           border: Border.all(color: ColorTokens.border(context)),
         ),
         child: Row(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(
+                clamped(12, min: 6, max: 16),
+              ),
               child: ArtworkImage(
                 imageUrl: imageUrl,
-                width: 48,
-                height: 48,
+                width: artSize,
+                height: artSize,
                 fit: BoxFit.cover,
                 placeholder: buildArtworkFallback(),
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: space(14).clamp(6.0, 18.0)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,7 +96,7 @@ class LibraryListTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: space(4).clamp(2.0, 6.0)),
                   _Subtitle(
                     subtitle: subtitle,
                     onTap: onSubtitleTap,
@@ -89,10 +104,10 @@ class LibraryListTile extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: space(8).clamp(3.0, 10.0)),
             Icon(
               Icons.chevron_right,
-              size: 18,
+              size: clamped(18, min: 12, max: 20),
               color: ColorTokens.textSecondary(context, 0.55),
             ),
           ],

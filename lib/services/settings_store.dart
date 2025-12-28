@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../state/now_playing_layout.dart';
 import '../state/home_section.dart';
 import '../state/keyboard_shortcut.dart';
+import '../state/layout_density.dart';
 import '../state/sidebar_item.dart';
 
 /// Persists user preferences for the app.
@@ -32,6 +33,7 @@ class SettingsStore {
   static const _searchShortcutEnabledKey =
       'settings_shortcut_search_enabled';
   static const _searchShortcutKey = 'settings_shortcut_search';
+  static const _layoutDensityKey = 'settings_layout_density';
   static const _deviceIdKey = 'settings_device_id';
 
   /// Loads the preferred theme mode.
@@ -280,6 +282,32 @@ class SettingsStore {
     final preferences = await SharedPreferences.getInstance();
     final raw = preferences.getDouble(_fontScaleKey);
     return raw ?? 1.0;
+  }
+
+  /// Loads the preferred layout density.
+  Future<LayoutDensity> loadLayoutDensity() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_layoutDensityKey);
+    switch (raw) {
+      case 'sardine':
+        return LayoutDensity.sardine;
+      case 'spacious':
+        return LayoutDensity.spacious;
+      case 'comfortable':
+      default:
+        return LayoutDensity.comfortable;
+    }
+  }
+
+  /// Saves the preferred layout density.
+  Future<void> saveLayoutDensity(LayoutDensity density) async {
+    final preferences = await SharedPreferences.getInstance();
+    final value = switch (density) {
+      LayoutDensity.sardine => 'sardine',
+      LayoutDensity.comfortable => 'comfortable',
+      LayoutDensity.spacious => 'spacious',
+    };
+    await preferences.setString(_layoutDensityKey, value);
   }
 
   /// Saves the preferred font scale.

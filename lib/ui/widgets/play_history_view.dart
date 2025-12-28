@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 import '../../core/color_tokens.dart';
 import 'section_header.dart';
 import 'track_row.dart';
@@ -14,6 +15,8 @@ class PlayHistoryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     final history = state.playHistory;
     if (history.isEmpty) {
       return Center(
@@ -39,11 +42,12 @@ class PlayHistoryView extends StatelessWidget {
                 ?.copyWith(color: ColorTokens.textSecondary(context)),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: space(16)),
         Expanded(
           child: ListView.separated(
             itemCount: history.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 6),
+            separatorBuilder: (_, __) =>
+                SizedBox(height: space(6).clamp(4.0, 10.0)),
             itemBuilder: (context, index) {
               final track = history[index];
               return TrackRow(

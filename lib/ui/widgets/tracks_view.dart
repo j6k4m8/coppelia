@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/color_tokens.dart';
 import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 import 'section_header.dart';
 import 'track_row.dart';
 
@@ -55,6 +56,8 @@ class _TracksViewState extends State<TracksView> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     final total = state.libraryStats?.trackCount ?? 0;
     final count = state.libraryTracks.length;
     final label = total > 0 ? '$count of $total tracks' : '$count tracks';
@@ -76,16 +79,19 @@ class _TracksViewState extends State<TracksView> {
                 ?.copyWith(color: ColorTokens.textSecondary(context)),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: space(16)),
         Expanded(
           child: ListView.separated(
             controller: _controller,
             itemCount: count + (state.hasMoreTracks ? 1 : 0),
-            separatorBuilder: (_, __) => const SizedBox(height: 6),
+            separatorBuilder: (_, __) =>
+                SizedBox(height: space(6).clamp(4.0, 10.0)),
             itemBuilder: (context, index) {
               if (index >= count) {
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(
+                    vertical: space(16).clamp(10.0, 20.0),
+                  ),
                   child: Center(
                     child: state.isLoadingTracks
                         ? const SizedBox(

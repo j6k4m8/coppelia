@@ -41,7 +41,7 @@ If you hold in your heart other bulletpoints than these, please share and help m
 -   Favorite and unfavorite tracks/albums/artists
 -   Playback resume that restores your last track and position when you reopen the app
 -   Configurable home shelves, sidebar sections, and layout choices
--   Appearance controls: theme mode, font family, and font scale
+-   Appearance controls: theme mode, font family, font scale, and layout density
 -   Cached playlists/tracks/audio with size reporting and cache management
 -   Artwork fallbacks and rich detail views with context actions
 -   **NO ELECTRON 🫦**

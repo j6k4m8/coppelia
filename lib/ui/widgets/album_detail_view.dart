@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/color_tokens.dart';
 import '../../models/album.dart';
 import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 import 'collection_detail_view.dart';
 import 'section_header.dart';
 
@@ -77,8 +78,9 @@ class _ArtistInlineLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     return Padding(
-      padding: const EdgeInsets.only(top: 16),
+      padding: EdgeInsets.only(top: 16 * densityScale),
       child: SectionHeader(
         title: 'Artist',
         action: MouseRegion(
@@ -113,6 +115,8 @@ class _AlbumSubtitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
     final baseStyle = Theme.of(context)
         .textTheme
         .bodyMedium
@@ -127,14 +131,14 @@ class _AlbumSubtitle extends StatelessWidget {
           '$trackCount tracks',
           style: baseStyle,
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: space(6).clamp(4.0, 10.0)),
         Text(
           '•',
           style: TextStyle(
             color: ColorTokens.textSecondary(context, 0.4),
           ),
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: space(6).clamp(4.0, 10.0)),
         Flexible(
           child: onArtistTap == null
               ? Text(

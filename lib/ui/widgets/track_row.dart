@@ -2,10 +2,13 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
 import '../../models/media_item.dart';
+import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 import 'artwork_image.dart';
 import 'context_menu.dart';
 
@@ -71,21 +74,29 @@ class TrackRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isActive = this.isActive;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
     final useSingleTap = !kIsWeb &&
         (Platform.isIOS || Platform.isAndroid || Platform.isFuchsia);
     final baseColor =
         isActive ? ColorTokens.activeRow(context) : Colors.transparent;
+    final rowRadius = clamped(14, min: 6, max: 16);
+    final artSize = clamped(44, min: 24, max: 56);
+    final artRadius = clamped(10, min: 4, max: 12);
+    final indexWidth = clamped(32, min: 16, max: 36);
     Widget buildArtworkFallback() => Container(
-          width: 44,
-          height: 44,
+          width: artSize,
+          height: artSize,
           color: ColorTokens.cardFillStrong(context),
-          child: const Icon(Icons.music_note, size: 18),
+          child: Icon(Icons.music_note, size: clamped(18, min: 14, max: 20)),
         );
     return Material(
       color: baseColor,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(rowRadius),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(rowRadius),
         onTap: useSingleTap ? onTap : null,
         onDoubleTap: useSingleTap ? null : onTap,
         onSecondaryTapDown: (details) =>
@@ -93,11 +104,14 @@ class TrackRow extends StatelessWidget {
         hoverColor: ColorTokens.hoverRow(context),
         splashColor: ColorTokens.hoverRow(context),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: EdgeInsets.symmetric(
+            horizontal: space(16),
+            vertical: space(10).clamp(4.0, 14.0),
+          ),
           child: Row(
             children: [
               SizedBox(
-                width: 32,
+                width: indexWidth,
                 child: Text(
                   '${index + 1}'.padLeft(2, '0'),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -105,20 +119,20 @@ class TrackRow extends StatelessWidget {
                       ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: space(12).clamp(6.0, 16.0)),
               ClipRRect(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(artRadius),
                 child: track.imageUrl == null
                     ? buildArtworkFallback()
                     : ArtworkImage(
                         imageUrl: track.imageUrl,
-                        width: 44,
-                        height: 44,
+                        width: artSize,
+                        height: artSize,
                         fit: BoxFit.cover,
                         placeholder: buildArtworkFallback(),
                       ),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: space(14).clamp(8.0, 18.0)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,7 +143,7 @@ class TrackRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyLarge,
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: space(2).clamp(1.0, 4.0)),
                     _TrackMetaRow(
                       artistLabel: track.artists.isNotEmpty
                           ? track.artists.join(', ')
@@ -141,24 +155,24 @@ class TrackRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: space(12).clamp(6.0, 16.0)),
               if (isFavoriteUpdating) ...[
                 SizedBox(
-                  width: 14,
-                  height: 14,
+                  width: clamped(14, min: 12, max: 16),
+                  height: clamped(14, min: 12, max: 16),
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: space(8).clamp(4.0, 10.0)),
               ] else if (isFavorite) ...[
                 Icon(
                   Icons.favorite,
-                  size: 14,
+                  size: clamped(14, min: 12, max: 16),
                   color: Theme.of(context).colorScheme.primary,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: space(8).clamp(4.0, 10.0)),
               ],
               Text(
                 formatDuration(track.duration),
