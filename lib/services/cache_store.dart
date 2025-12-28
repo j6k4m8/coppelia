@@ -702,6 +702,17 @@ class CacheStore {
     await _savePinnedAudio(current);
   }
 
+  /// Returns whether a track is pinned for offline playback.
+  Future<bool> isPinnedAudio(String streamUrl) async {
+    final pinned = await _loadPinnedAudio();
+    return pinned.contains(streamUrl);
+  }
+
+  /// Loads pinned track URLs for offline playback.
+  Future<Set<String>> loadPinnedAudio() async {
+    return _loadPinnedAudio();
+  }
+
   Future<void> _forgetCachedAudioEntries(Set<String> streamUrls) async {
     if (streamUrls.isEmpty) {
       return;

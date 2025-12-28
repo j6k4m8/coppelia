@@ -1415,6 +1415,104 @@ class AppState extends ChangeNotifier {
     await _cacheStore.evictCachedAudio(streamUrl);
   }
 
+  /// Pins a track for offline playback.
+  Future<void> makeTrackAvailableOffline(MediaItem track) async {
+    await _cacheStore.setPinnedAudio(track.streamUrl, true);
+    await _cacheStore.prefetchAudio(track);
+  }
+
+  /// Removes a track from offline pinning.
+  Future<void> unpinTrackOffline(MediaItem track) async {
+    await _cacheStore.setPinnedAudio(track.streamUrl, false);
+  }
+
+  Future<List<MediaItem>> _loadAlbumTracksForOffline(Album album) async {
+    final cached = await _cacheStore.loadAlbumTracks(album.id);
+    if (cached.isNotEmpty) {
+      return cached;
+    }
+    try {
+      final tracks = await _client.fetchAlbumTracks(album.id);
+      await _cacheStore.saveAlbumTracks(album.id, tracks);
+      return tracks;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<List<MediaItem>> _loadArtistTracksForOffline(Artist artist) async {
+    final cached = await _cacheStore.loadArtistTracks(artist.id);
+    if (cached.isNotEmpty) {
+      return cached;
+    }
+    try {
+      final tracks = await _client.fetchArtistTracks(artist.id);
+      await _cacheStore.saveArtistTracks(artist.id, tracks);
+      return tracks;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Pins all tracks in an album for offline playback.
+  Future<void> makeAlbumAvailableOffline(Album album) async {
+    final tracks = await _loadAlbumTracksForOffline(album);
+    for (final track in tracks) {
+      await _cacheStore.setPinnedAudio(track.streamUrl, true);
+      await _cacheStore.prefetchAudio(track);
+    }
+  }
+
+  /// Removes an album from offline pinning.
+  Future<void> unpinAlbumOffline(Album album) async {
+    final tracks = await _loadAlbumTracksForOffline(album);
+    for (final track in tracks) {
+      await _cacheStore.setPinnedAudio(track.streamUrl, false);
+    }
+  }
+
+  /// Pins all tracks for an artist for offline playback.
+  Future<void> makeArtistAvailableOffline(Artist artist) async {
+    final tracks = await _loadArtistTracksForOffline(artist);
+    for (final track in tracks) {
+      await _cacheStore.setPinnedAudio(track.streamUrl, true);
+      await _cacheStore.prefetchAudio(track);
+    }
+  }
+
+  /// Removes an artist from offline pinning.
+  Future<void> unpinArtistOffline(Artist artist) async {
+    final tracks = await _loadArtistTracksForOffline(artist);
+    for (final track in tracks) {
+      await _cacheStore.setPinnedAudio(track.streamUrl, false);
+    }
+  }
+
+  /// Returns whether a track is pinned for offline playback.
+  Future<bool> isTrackPinned(MediaItem track) async {
+    return _cacheStore.isPinnedAudio(track.streamUrl);
+  }
+
+  /// Returns whether all tracks in an album are pinned for offline playback.
+  Future<bool> isAlbumPinned(Album album) async {
+    final tracks = await _loadAlbumTracksForOffline(album);
+    if (tracks.isEmpty) {
+      return false;
+    }
+    final pinned = await _cacheStore.loadPinnedAudio();
+    return tracks.every((track) => pinned.contains(track.streamUrl));
+  }
+
+  /// Returns whether all tracks for an artist are pinned for offline playback.
+  Future<bool> isArtistPinned(Artist artist) async {
+    final tracks = await _loadArtistTracksForOffline(artist);
+    if (tracks.isEmpty) {
+      return false;
+    }
+    final pinned = await _cacheStore.loadPinnedAudio();
+    return tracks.every((track) => pinned.contains(track.streamUrl));
+  }
+
   /// Releases audio resources.
   @override
   void dispose() {

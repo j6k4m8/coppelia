@@ -144,6 +144,10 @@ Future<void> _showAlbumMenu(
   final canGoToArtist =
       album.artistName.isNotEmpty && album.artistName != 'Unknown Artist';
   final isFavorite = state.isFavoriteAlbum(album.id);
+  final isPinned = await state.isAlbumPinned(album);
+  if (!context.mounted) {
+    return;
+  }
   final selection = await showContextMenu<_AlbumAction>(
     context,
     position,
@@ -158,7 +162,29 @@ Future<void> _showAlbumMenu(
       ),
       PopupMenuItem(
         value: _AlbumAction.favorite,
-        child: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
+        child: isFavorite
+            ? const Row(
+                children: [
+                  Icon(Icons.favorite, size: 16),
+                  SizedBox(width: 8),
+                  Text('Unfavorite'),
+                ],
+              )
+            : const Text('Favorite'),
+      ),
+      PopupMenuItem(
+        value: isPinned
+            ? _AlbumAction.unpinOffline
+            : _AlbumAction.makeAvailableOffline,
+        child: isPinned
+            ? const Row(
+                children: [
+                  Icon(Icons.download_done_rounded, size: 16),
+                  SizedBox(width: 8),
+                  Text('Unpin from Offline'),
+                ],
+              )
+            : const Text('Make Available Offline'),
       ),
       if (canGoToArtist)
         const PopupMenuItem(
@@ -176,12 +202,25 @@ Future<void> _showAlbumMenu(
   if (selection == _AlbumAction.goToArtist) {
     await state.selectArtistByName(album.artistName);
   }
-    if (selection == _AlbumAction.favorite) {
-      await state.setAlbumFavorite(album, !isFavorite);
-    }
+  if (selection == _AlbumAction.favorite) {
+    await state.setAlbumFavorite(album, !isFavorite);
+  }
+  if (selection == _AlbumAction.makeAvailableOffline) {
+    await state.makeAlbumAvailableOffline(album);
+  }
+  if (selection == _AlbumAction.unpinOffline) {
+    await state.unpinAlbumOffline(album);
+  }
 }
 
-enum _AlbumAction { play, open, favorite, goToArtist }
+enum _AlbumAction {
+  play,
+  open,
+  favorite,
+  makeAvailableOffline,
+  unpinOffline,
+  goToArtist
+}
 
 class _ArtistHeader extends StatelessWidget {
   const _ArtistHeader({

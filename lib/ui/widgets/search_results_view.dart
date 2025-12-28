@@ -191,6 +191,10 @@ class SearchResultsView extends StatelessWidget {
     final albumArtist = album.artistName;
     final canGoToArtist = _canLinkArtist(album);
     final isFavorite = state.isFavoriteAlbum(album.id);
+    final isPinned = await state.isAlbumPinned(album);
+    if (!context.mounted) {
+      return;
+    }
     final selection = await showContextMenu<_AlbumAction>(
       context,
       position,
@@ -205,7 +209,29 @@ class SearchResultsView extends StatelessWidget {
         ),
         PopupMenuItem(
           value: _AlbumAction.favorite,
-          child: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
+          child: isFavorite
+              ? const Row(
+                  children: [
+                    Icon(Icons.favorite, size: 16),
+                    SizedBox(width: 8),
+                    Text('Unfavorite'),
+                  ],
+                )
+              : const Text('Favorite'),
+        ),
+        PopupMenuItem(
+          value: isPinned
+              ? _AlbumAction.unpinOffline
+              : _AlbumAction.makeAvailableOffline,
+          child: isPinned
+              ? const Row(
+                  children: [
+                    Icon(Icons.download_done_rounded, size: 16),
+                    SizedBox(width: 8),
+                    Text('Unpin from Offline'),
+                  ],
+                )
+              : const Text('Make Available Offline'),
         ),
         if (canGoToArtist)
           const PopupMenuItem(
@@ -226,6 +252,12 @@ class SearchResultsView extends StatelessWidget {
     if (selection == _AlbumAction.favorite) {
       await state.setAlbumFavorite(album, !isFavorite);
     }
+    if (selection == _AlbumAction.makeAvailableOffline) {
+      await state.makeAlbumAvailableOffline(album);
+    }
+    if (selection == _AlbumAction.unpinOffline) {
+      await state.unpinAlbumOffline(album);
+    }
   }
 
   Future<void> _showArtistMenu(
@@ -235,6 +267,10 @@ class SearchResultsView extends StatelessWidget {
     AppState state,
   ) async {
     final isFavorite = state.isFavoriteArtist(artist.id);
+    final isPinned = await state.isArtistPinned(artist);
+    if (!context.mounted) {
+      return;
+    }
     final selection = await showContextMenu<_ArtistAction>(
       context,
       position,
@@ -249,7 +285,29 @@ class SearchResultsView extends StatelessWidget {
         ),
         PopupMenuItem(
           value: _ArtistAction.favorite,
-          child: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
+          child: isFavorite
+              ? const Row(
+                  children: [
+                    Icon(Icons.favorite, size: 16),
+                    SizedBox(width: 8),
+                    Text('Unfavorite'),
+                  ],
+                )
+              : const Text('Favorite'),
+        ),
+        PopupMenuItem(
+          value: isPinned
+              ? _ArtistAction.unpinOffline
+              : _ArtistAction.makeAvailableOffline,
+          child: isPinned
+              ? const Row(
+                  children: [
+                    Icon(Icons.download_done_rounded, size: 16),
+                    SizedBox(width: 8),
+                    Text('Unpin from Offline'),
+                  ],
+                )
+              : const Text('Make Available Offline'),
         ),
       ],
     );
@@ -261,6 +319,12 @@ class SearchResultsView extends StatelessWidget {
     }
     if (selection == _ArtistAction.favorite) {
       await state.setArtistFavorite(artist, !isFavorite);
+    }
+    if (selection == _ArtistAction.makeAvailableOffline) {
+      await state.makeArtistAvailableOffline(artist);
+    }
+    if (selection == _ArtistAction.unpinOffline) {
+      await state.unpinArtistOffline(artist);
     }
   }
 }
@@ -286,9 +350,22 @@ class _PlaylistResultCard extends StatelessWidget {
   }
 }
 
-enum _AlbumAction { play, open, favorite, goToArtist }
+enum _AlbumAction {
+  play,
+  open,
+  favorite,
+  makeAvailableOffline,
+  unpinOffline,
+  goToArtist
+}
 
-enum _ArtistAction { play, open, favorite }
+enum _ArtistAction {
+  play,
+  open,
+  favorite,
+  makeAvailableOffline,
+  unpinOffline
+}
 
 bool _canLinkArtist(Album album) {
   final artist = album.artistName;

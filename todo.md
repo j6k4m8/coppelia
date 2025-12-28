@@ -2,11 +2,11 @@
 
 -   [ ] when you start loading a track (for playback), if it's not cached, do the "spinner" loading progress indicator on the track scrub bar. until it's ready to play. (still not working)
 -   [ ] cache eviction does not actually delete off disk, and we accumulate stuff on disk over time.
-    -   [ ] cache max size (default to 500MB?)
+    -   [x] cache max size (default to 500MB?)
     -   [x] cache size reporting in settings should reflect on disk
     -   [x] "clear cache" should delete files off disk.
-    -   [ ] default is LRU cache eviction
-        -   [ ] add right-click context menu on track/album/artist to "Make available offline" (pin to cache)
+    -   [x] default is LRU cache eviction
+        -   [x] add right-click context menu on track/album/artist to "Make available offline" (pin to cache)
     -   [ ] add "Available offline" section to sidebar (Albums, Artists, Playlists, Tracks)
 -   [x] appearance: add "compact" mode with less padding; three-way switch "Sardinemode" | "Comfortable" | "Spacious"
 -   [ ] UI thrash: scroll gets janky again during updates (investigate repaint storms)
@@ -21,3 +21,5 @@
     -   [ ] repeat track
 -   [x] "now playing" full-screen expanded view that showcases the album art if you click the album art in the mini player.
 -   [x] add to the homepage a "Jump in" section that has cards for (independently) randomly selected album, artist, and track
+-   [ ] on album / artist pages, add Favorite / Unfavorite button if applicable (on the detail header)
+-   [ ] on album / artist pages, add Make Available Offline / Remove from Offline button if applicable (on the detail header)

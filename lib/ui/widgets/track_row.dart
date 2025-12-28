@@ -195,11 +195,9 @@ class TrackRow extends StatelessWidget {
   }
 
   Future<void> _showMenu(BuildContext context, Offset position) async {
-    if (onPlayNext == null &&
-        onAddToQueue == null &&
-        onToggleFavorite == null &&
-        onGoToAlbum == null &&
-        onGoToArtist == null) {
+    final state = context.read<AppState>();
+    final isPinned = await state.isTrackPinned(track);
+    if (!context.mounted) {
       return;
     }
     final items = <PopupMenuEntry<_TrackMenuAction>>[
@@ -228,10 +226,34 @@ class TrackRow extends StatelessWidget {
       items.add(
         PopupMenuItem(
           value: _TrackMenuAction.favorite,
-          child: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
+          child: isFavorite
+              ? const Row(
+                  children: [
+                    Icon(Icons.favorite, size: 16),
+                    SizedBox(width: 8),
+                    Text('Unfavorite'),
+                  ],
+                )
+              : const Text('Favorite'),
         ),
       );
     }
+    items.add(
+      PopupMenuItem(
+        value: isPinned
+            ? _TrackMenuAction.unpinOffline
+            : _TrackMenuAction.makeAvailableOffline,
+        child: isPinned
+            ? const Row(
+                children: [
+                  Icon(Icons.download_done_rounded, size: 16),
+                  SizedBox(width: 8),
+                  Text('Unpin from Offline'),
+                ],
+              )
+            : const Text('Make Available Offline'),
+      ),
+    );
     if (onGoToAlbum != null) {
       items.add(
         const PopupMenuItem(
@@ -261,6 +283,10 @@ class TrackRow extends StatelessWidget {
       onAddToQueue?.call();
     } else if (action == _TrackMenuAction.favorite) {
       await onToggleFavorite?.call();
+    } else if (action == _TrackMenuAction.makeAvailableOffline) {
+      await state.makeTrackAvailableOffline(track);
+    } else if (action == _TrackMenuAction.unpinOffline) {
+      await state.unpinTrackOffline(track);
     } else if (action == _TrackMenuAction.goToAlbum) {
       onGoToAlbum?.call();
     } else if (action == _TrackMenuAction.goToArtist) {
@@ -274,6 +300,8 @@ enum _TrackMenuAction {
   playNext,
   addToQueue,
   favorite,
+  makeAvailableOffline,
+  unpinOffline,
   goToAlbum,
   goToArtist,
 }
