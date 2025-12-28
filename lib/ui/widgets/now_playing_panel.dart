@@ -88,11 +88,14 @@ class _SidePanel extends StatelessWidget {
               state.isBufferingListenable,
             ]),
             builder: (context, _) {
+              final shouldPulse = track != null &&
+                  !state.isNowPlayingCached &&
+                  (state.isBuffering || state.isPreparingPlayback);
               return _ProgressScrubber(
                 position: state.position,
                 duration: state.duration,
                 onSeek: state.seek,
-                isBuffering: state.isBuffering,
+                isBuffering: shouldPulse,
               );
             },
           ),
@@ -204,12 +207,15 @@ class _BottomBar extends StatelessWidget {
                     state.isBufferingListenable,
                   ]),
                   builder: (context, _) {
+                    final shouldPulse = track != null &&
+                        !state.isNowPlayingCached &&
+                        (state.isBuffering || state.isPreparingPlayback);
                     return _ProgressScrubber(
                       position: state.position,
                       duration: state.duration,
                       onSeek: state.seek,
                       compact: true,
-                      isBuffering: state.isBuffering,
+                      isBuffering: shouldPulse,
                     );
                   },
                 ),
@@ -251,12 +257,15 @@ class _BottomBar extends StatelessWidget {
                   state.isBufferingListenable,
                 ]),
                 builder: (context, _) {
+                  final shouldPulse = track != null &&
+                      !state.isNowPlayingCached &&
+                      (state.isBuffering || state.isPreparingPlayback);
                   return _ProgressScrubber(
                     position: state.position,
                     duration: state.duration,
                     onSeek: state.seek,
                     compact: true,
-                    isBuffering: state.isBuffering,
+                    isBuffering: shouldPulse,
                   );
                 },
               ),

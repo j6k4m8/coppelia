@@ -3,8 +3,8 @@
   A native macOS + iOS app for Jellyfin music libraries (Windows/Linux/Android coming soon).
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/Supported-000000?style=for-the-badge&logo=ios&logoColor=white" alt="iOS Supported"/>
-    <img src="https://img.shields.io/badge/Platform-macosOS-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Platform"/>
+  <img src="https://img.shields.io/badge/iPhone+iPad-000000?style=for-the-badge&logo=ios&logoColor=white" alt="iOS Supported"/>&nbsp;
+    <img src="https://img.shields.io/badge/Platform-macOS-333333?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Platform"/> &nbsp;
   <img src="https://img.shields.io/badge/Framework-Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter Framework"/>
 </p>
 

@@ -31,6 +31,7 @@ import '../widgets/sidebar_resize_handle.dart';
 import '../widgets/genre_detail_view.dart';
 import '../widgets/play_history_view.dart';
 import '../widgets/queue_view.dart';
+import '../widgets/tracks_view.dart';
 
 /// Main shell for authenticated users.
 class HomeScreen extends StatelessWidget {
@@ -680,6 +681,9 @@ class _LibraryContent extends StatelessWidget {
     }
     if (state.selectedView == LibraryView.genres) {
       return const GenresView();
+    }
+    if (state.selectedView == LibraryView.tracks) {
+      return const TracksView();
     }
     if (state.selectedView == LibraryView.favoritesAlbums) {
       return const FavoriteAlbumsView();

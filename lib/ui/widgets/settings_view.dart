@@ -400,6 +400,21 @@ class _LayoutSettings extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        _SettingRow(
+          title: SidebarItem.browseTracks.label,
+          subtitle: 'Show tracks in Browse.',
+          forceInline: true,
+          trailing: Switch(
+            value: state.isSidebarItemVisible(
+              SidebarItem.browseTracks,
+            ),
+            onChanged: (value) => state.setSidebarItemVisible(
+              SidebarItem.browseTracks,
+              value,
+            ),
+          ),
+        ),
         const SizedBox(height: 16),
         _SettingsSubheader(title: 'Playback'),
         const SizedBox(height: 8),

@@ -12,6 +12,9 @@ enum LibraryView {
   /// Browse genres.
   genres,
 
+  /// Browse tracks.
+  tracks,
+
   /// Favorite albums section.
   favoritesAlbums,
 
@@ -53,6 +56,8 @@ extension LibraryViewLabels on LibraryView {
         return 'Artists';
       case LibraryView.genres:
         return 'Genres';
+      case LibraryView.tracks:
+        return 'Tracks';
       case LibraryView.favoritesAlbums:
         return 'Favorite Albums';
       case LibraryView.favoritesSongs:
@@ -85,6 +90,8 @@ extension LibraryViewLabels on LibraryView {
         return 'All artists in your collection.';
       case LibraryView.genres:
         return 'Browse by mood and style.';
+      case LibraryView.tracks:
+        return 'Every track in your library.';
       case LibraryView.favoritesAlbums:
         return 'Quick access to albums you love.';
       case LibraryView.favoritesSongs:

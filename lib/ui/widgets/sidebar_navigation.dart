@@ -46,7 +46,8 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
           SidebarItem.browseAlbums,
         ) ||
         state.isSidebarItemVisible(SidebarItem.browseArtists) ||
-        state.isSidebarItemVisible(SidebarItem.browseGenres);
+        state.isSidebarItemVisible(SidebarItem.browseGenres) ||
+        state.isSidebarItemVisible(SidebarItem.browseTracks);
     final showPlaybackSection =
         state.isSidebarItemVisible(SidebarItem.history) ||
             state.isSidebarItemVisible(SidebarItem.queue);
@@ -238,6 +239,20 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                             onTap: () => _handleNavigate(
                               () =>
                                   state.selectLibraryView(LibraryView.genres),
+                            ),
+                          ),
+                        if (state.isSidebarItemVisible(
+                          SidebarItem.browseTracks,
+                        ))
+                          _NavTile(
+                            icon: Icons.music_note,
+                            label: 'Tracks',
+                            selected: state.selectedPlaylist == null &&
+                                state.selectedView == LibraryView.tracks,
+                            onTap: () => _handleNavigate(
+                              () => state.selectLibraryView(
+                                LibraryView.tracks,
+                              ),
                             ),
                           ),
                       ],

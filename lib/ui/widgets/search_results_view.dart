@@ -5,6 +5,7 @@ import '../../core/color_tokens.dart';
 import '../../models/album.dart';
 import '../../models/artist.dart';
 import '../../state/app_state.dart';
+import '../../models/playlist.dart';
 import 'context_menu.dart';
 import 'library_card.dart';
 import 'section_header.dart';
@@ -156,6 +157,21 @@ class SearchResultsView extends StatelessWidget {
                 );
               },
             ),
+            const SizedBox(height: 24),
+          ],
+          if (results.playlists.isNotEmpty) ...[
+            SectionHeader(title: 'Playlists'),
+            const SizedBox(height: 12),
+            _CardGrid(
+              itemCount: results.playlists.length,
+              itemBuilder: (context, index) {
+                final playlist = results.playlists[index];
+                return _PlaylistResultCard(
+                  playlist: playlist,
+                  onTap: () => state.selectPlaylist(playlist),
+                );
+              },
+            ),
           ],
         ],
       ),
@@ -242,6 +258,27 @@ class SearchResultsView extends StatelessWidget {
     if (selection == _ArtistAction.favorite) {
       await state.setArtistFavorite(artist, !isFavorite);
     }
+  }
+}
+
+class _PlaylistResultCard extends StatelessWidget {
+  const _PlaylistResultCard({
+    required this.playlist,
+    required this.onTap,
+  });
+
+  final Playlist playlist;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return LibraryCard(
+      title: playlist.name,
+      subtitle: '${playlist.trackCount} tracks',
+      imageUrl: playlist.imageUrl,
+      icon: Icons.queue_music,
+      onTap: onTap,
+    );
   }
 }
 

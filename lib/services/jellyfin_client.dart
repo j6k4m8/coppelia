@@ -528,9 +528,9 @@ class JellyfinClient {
     ).replace(
       queryParameters: {
         'SearchTerm': query,
-        'IncludeItemTypes': 'Audio,MusicAlbum,MusicArtist,Genre',
+        'IncludeItemTypes': 'Audio,MusicAlbum,MusicArtist,Genre,Playlist',
         'Recursive': 'true',
-        'Limit': '60',
+        'Limit': '80',
         'Fields':
             'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
                 'ChildCount,AlbumArtist,AlbumArtists',
@@ -547,6 +547,7 @@ class JellyfinClient {
     final albums = <Album>[];
     final artists = <Artist>[];
     final genres = <Genre>[];
+    final playlists = <Playlist>[];
     for (final entry in items) {
       final item = entry as Map<String, dynamic>;
       final type = item['Type']?.toString();
@@ -572,6 +573,10 @@ class JellyfinClient {
         genres.add(
           Genre.fromJellyfin(item, serverUrl: session.serverUrl),
         );
+      } else if (type == 'Playlist') {
+        playlists.add(
+          Playlist.fromJellyfin(item, serverUrl: session.serverUrl),
+        );
       }
     }
     return SearchResults(
@@ -579,6 +584,7 @@ class JellyfinClient {
       albums: albums,
       artists: artists,
       genres: genres,
+      playlists: playlists,
     );
   }
 
@@ -636,6 +642,43 @@ class JellyfinClient {
     final response = await _httpClient.get(uri);
     if (response.statusCode != 200) {
       throw Exception('Unable to load recently played tracks.');
+    }
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = payload['Items'] as List<dynamic>? ?? [];
+    return items
+        .map((item) => MediaItem.fromJellyfin(
+              item as Map<String, dynamic>,
+              serverUrl: session.serverUrl,
+              token: session.accessToken,
+              userId: session.userId,
+              deviceId: _deviceId,
+            ))
+        .toList();
+  }
+
+  /// Fetches paginated tracks for the library browse view.
+  Future<List<MediaItem>> fetchLibraryTracks({
+    required int startIndex,
+    required int limit,
+  }) async {
+    final session = _requireSession();
+    final uri = Uri.parse(
+      '${session.serverUrl}/Users/${session.userId}/Items',
+    ).replace(
+      queryParameters: {
+        'IncludeItemTypes': 'Audio',
+        'Recursive': 'true',
+        'SortBy': 'SortName',
+        'StartIndex': '$startIndex',
+        'Limit': '$limit',
+        'Fields':
+            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems',
+        'api_key': session.accessToken,
+      },
+    );
+    final response = await _httpClient.get(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Unable to load tracks.');
     }
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
     final items = payload['Items'] as List<dynamic>? ?? [];

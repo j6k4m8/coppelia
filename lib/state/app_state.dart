@@ -71,6 +71,10 @@ class AppState extends ChangeNotifier {
   List<Album> _albums = [];
   List<Artist> _artists = [];
   List<Genre> _genres = [];
+  List<MediaItem> _libraryTracks = [];
+  bool _isLoadingTracks = false;
+  bool _hasMoreTracks = true;
+  int _tracksOffset = 0;
   List<MediaItem> _albumTracks = [];
   List<MediaItem> _artistTracks = [];
   List<MediaItem> _genreTracks = [];
@@ -90,6 +94,8 @@ class AppState extends ChangeNotifier {
   Duration _duration = Duration.zero;
   bool _isPlaying = false;
   bool _isBuffering = false;
+  bool _isNowPlayingCached = false;
+  bool _isPreparingPlayback = false;
   final ValueNotifier<Duration> _positionNotifier =
       ValueNotifier(Duration.zero);
   final ValueNotifier<Duration> _durationNotifier =
@@ -118,6 +124,8 @@ class AppState extends ChangeNotifier {
   StreamSubscription<Duration?>? _durationSubscription;
   StreamSubscription<PlayerState>? _playerStateSubscription;
   StreamSubscription<int?>? _currentIndexSubscription;
+
+  static const int _tracksPageSize = 100;
 
   String? _playSessionId;
   String? _reportedStartSessionId;
@@ -174,6 +182,9 @@ class AppState extends ChangeNotifier {
 
   /// Available genres.
   List<Genre> get genres => List.unmodifiable(_genres);
+
+  /// All tracks in the library browse view.
+  List<MediaItem> get libraryTracks => List.unmodifiable(_libraryTracks);
 
   /// Tracks for the selected album.
   List<MediaItem> get albumTracks => List.unmodifiable(_albumTracks);
@@ -261,6 +272,18 @@ class AppState extends ChangeNotifier {
 
   /// Listenable buffering updates.
   ValueListenable<bool> get isBufferingListenable => _isBufferingNotifier;
+
+  /// True when the current track is cached locally.
+  bool get isNowPlayingCached => _isNowPlayingCached;
+
+  /// True while a track is preparing to play.
+  bool get isPreparingPlayback => _isPreparingPlayback;
+
+  /// True while the full track list is loading.
+  bool get isLoadingTracks => _isLoadingTracks;
+
+  /// True when there are more tracks to load.
+  bool get hasMoreTracks => _hasMoreTracks;
 
   /// Active theme mode.
   ThemeMode get themeMode => _themeMode;
@@ -420,6 +443,10 @@ class AppState extends ChangeNotifier {
     _albums = [];
     _artists = [];
     _genres = [];
+    _libraryTracks = [];
+    _isLoadingTracks = false;
+    _hasMoreTracks = true;
+    _tracksOffset = 0;
     _albumTracks = [];
     _artistTracks = [];
     _genreTracks = [];
@@ -439,6 +466,8 @@ class AppState extends ChangeNotifier {
     _lastNowPlayingUpdateAt = null;
     _activeSessionHasPlayed = false;
     _isBuffering = false;
+    _isNowPlayingCached = false;
+    _isPreparingPlayback = false;
     unawaited(_nowPlayingService.clear());
     await _sessionStore.saveSession(null);
     notifyListeners();
@@ -552,6 +581,9 @@ class AppState extends ChangeNotifier {
     }
     if (view == LibraryView.genres) {
       unawaited(loadGenres());
+    }
+    if (view == LibraryView.tracks) {
+      unawaited(loadLibraryTracks());
     }
     if (view == LibraryView.favoritesAlbums) {
       unawaited(loadFavoriteAlbums());
@@ -679,6 +711,47 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
     await _loadGenres();
+  }
+
+  /// Loads paginated tracks for the library browse view.
+  Future<void> loadLibraryTracks({bool reset = false}) async {
+    if (_session == null) {
+      return;
+    }
+    if (_isLoadingTracks) {
+      return;
+    }
+    if (!reset && !_hasMoreTracks) {
+      return;
+    }
+    if (reset) {
+      _libraryTracks = [];
+      _tracksOffset = 0;
+      _hasMoreTracks = true;
+      notifyListeners();
+    }
+    _isLoadingTracks = true;
+    notifyListeners();
+    try {
+      final tracks = await _client.fetchLibraryTracks(
+        startIndex: _tracksOffset,
+        limit: _tracksPageSize,
+      );
+      if (reset) {
+        _libraryTracks = tracks;
+      } else {
+        _libraryTracks = [..._libraryTracks, ...tracks];
+      }
+      _tracksOffset += tracks.length;
+      if (tracks.length < _tracksPageSize) {
+        _hasMoreTracks = false;
+      }
+    } catch (_) {
+      // Ignore load failures; keep whatever tracks we already have.
+    } finally {
+      _isLoadingTracks = false;
+      notifyListeners();
+    }
   }
 
   /// Loads favorite albums.
@@ -952,6 +1025,8 @@ class AppState extends ChangeNotifier {
       _durationNotifier.value = _duration;
       _isPlaying = false;
       _isBuffering = false;
+      _isNowPlayingCached = false;
+      _isPreparingPlayback = false;
       _isPlayingNotifier.value = _isPlaying;
       _isBufferingNotifier.value = _isBuffering;
       _lastNowPlayingUpdateAt = null;
@@ -1129,14 +1204,20 @@ class AppState extends ChangeNotifier {
           state.processingState == ProcessingState.buffering;
       final playingChanged = _isPlaying != nextPlaying;
       final bufferingChanged = _isBuffering != nextBuffering;
+      final shouldStopPreparing = _isPreparingPlayback &&
+          (state.processingState == ProcessingState.ready ||
+              state.processingState == ProcessingState.completed);
       _isPlaying = nextPlaying;
       if (_isPlaying) {
         _activeSessionHasPlayed = true;
       }
       _isBuffering = nextBuffering;
+      if (shouldStopPreparing) {
+        _isPreparingPlayback = false;
+      }
       _isPlayingNotifier.value = _isPlaying;
       _isBufferingNotifier.value = _isBuffering;
-      if (playingChanged || bufferingChanged) {
+      if (playingChanged || bufferingChanged || shouldStopPreparing) {
         notifyListeners();
         _updateNowPlayingInfo(force: true);
       }
@@ -1251,6 +1332,7 @@ class AppState extends ChangeNotifier {
     _nowPlaying = track;
     _position = Duration.zero;
     _positionNotifier.value = _position;
+    unawaited(_refreshNowPlayingCacheStatus(track));
     if (recordHistory) {
       _recordPlayHistory(track);
     }
@@ -1689,6 +1771,7 @@ class AppState extends ChangeNotifier {
     }
     final normalized = _normalizeTracksForPlayback(tracks);
     final playbackTrack = normalized[index];
+    await _refreshNowPlayingCacheStatus(playbackTrack);
     final previousQueue = List<MediaItem>.from(_queue);
     _queue = normalized;
     final didSetQueue = await _performPlaybackAction(
@@ -1702,6 +1785,9 @@ class AppState extends ChangeNotifier {
     );
     if (!didSetQueue) {
       _queue = previousQueue;
+      if (_isPreparingPlayback) {
+        _isPreparingPlayback = false;
+      }
       notifyListeners();
       return;
     }
@@ -1766,6 +1852,28 @@ class AppState extends ChangeNotifier {
     } catch (error) {
       debugPrint('Playback $label failed: $error');
       return false;
+    }
+  }
+
+  Future<void> _refreshNowPlayingCacheStatus(MediaItem? track) async {
+    if (track == null) {
+      final shouldNotify = _isNowPlayingCached || _isPreparingPlayback;
+      _isNowPlayingCached = false;
+      _isPreparingPlayback = false;
+      if (shouldNotify) {
+        notifyListeners();
+      }
+      return;
+    }
+    final cached = await _cacheStore.getCachedAudio(track);
+    final isCached = cached != null;
+    final nextPreparing = !isCached;
+    final shouldNotify = _isNowPlayingCached != isCached ||
+        _isPreparingPlayback != nextPreparing;
+    _isNowPlayingCached = isCached;
+    _isPreparingPlayback = nextPreparing;
+    if (shouldNotify) {
+      notifyListeners();
     }
   }
 }
