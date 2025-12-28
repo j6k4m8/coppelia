@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/color_tokens.dart';
@@ -32,7 +35,7 @@ class TrackRow extends StatelessWidget {
   /// Display order number.
   final int index;
 
-  /// Double-tap handler.
+  /// Play handler.
   final VoidCallback onTap;
 
   /// Indicates if this track is playing.
@@ -68,6 +71,8 @@ class TrackRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isActive = this.isActive;
+    final useSingleTap = !kIsWeb &&
+        (Platform.isIOS || Platform.isAndroid || Platform.isFuchsia);
     final baseColor =
         isActive ? ColorTokens.activeRow(context) : Colors.transparent;
     Widget buildArtworkFallback() => Container(
@@ -81,8 +86,8 @@ class TrackRow extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () {},
-        onDoubleTap: onTap,
+        onTap: useSingleTap ? onTap : null,
+        onDoubleTap: useSingleTap ? null : onTap,
         onSecondaryTapDown: (details) =>
             _showMenu(context, details.globalPosition),
         hoverColor: ColorTokens.hoverRow(context),

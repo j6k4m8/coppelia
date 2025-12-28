@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/media_item.dart';
@@ -25,6 +28,8 @@ class FeaturedTrackCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final useSingleTap = !kIsWeb &&
+        (Platform.isIOS || Platform.isAndroid || Platform.isFuchsia);
     Widget buildArtworkFallback({double? size}) => Container(
           width: size,
           height: size,
@@ -37,7 +42,8 @@ class FeaturedTrackCard extends StatelessWidget {
     final theme = Theme.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onDoubleTap: onTap,
+      onTap: useSingleTap ? onTap : null,
+      onDoubleTap: useSingleTap ? null : onTap,
       child: Container(
         width: 260,
         padding: const EdgeInsets.all(16),

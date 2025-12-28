@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -59,6 +61,27 @@ class _AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final hasSession = state.session != null;
+    final app = MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: CoppeliaTheme.lightTheme(
+        fontFamily: state.fontFamily,
+        fontScale: state.fontScale,
+      ),
+      darkTheme: CoppeliaTheme.darkTheme(
+        fontFamily: state.fontFamily,
+        fontScale: state.fontScale,
+      ),
+      themeMode: state.themeMode,
+      home: const _RootRouter(),
+      builder: (context, child) {
+        return PlaybackShortcuts(child: child ?? const SizedBox.shrink());
+      },
+    );
+
+    if (!Platform.isMacOS) {
+      return app;
+    }
+
     return PlatformMenuBar(
       menus: [
         PlatformMenu(
@@ -96,22 +119,7 @@ class _AppShell extends StatelessWidget {
           ],
         ),
       ],
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: CoppeliaTheme.lightTheme(
-          fontFamily: state.fontFamily,
-          fontScale: state.fontScale,
-        ),
-        darkTheme: CoppeliaTheme.darkTheme(
-          fontFamily: state.fontFamily,
-          fontScale: state.fontScale,
-        ),
-        themeMode: state.themeMode,
-        home: const _RootRouter(),
-        builder: (context, child) {
-          return PlaybackShortcuts(child: child ?? const SizedBox.shrink());
-        },
-      ),
+      child: app,
     );
   }
 }

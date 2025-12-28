@@ -18,7 +18,7 @@ class NowPlayingService {
     required VoidCallback onPrevious,
     required ValueChanged<Duration> onSeek,
   }) {
-    if (!Platform.isMacOS) {
+    if (!Platform.isMacOS && !Platform.isIOS) {
       return;
     }
     _channel.setMethodCallHandler((call) async {
@@ -56,7 +56,7 @@ class NowPlayingService {
     required Duration duration,
     required bool isPlaying,
   }) async {
-    if (!Platform.isMacOS) {
+    if (!Platform.isMacOS && !Platform.isIOS) {
       return;
     }
     final artist = track.artists.isNotEmpty
@@ -74,7 +74,7 @@ class NowPlayingService {
 
   /// Clears the system Now Playing metadata.
   Future<void> clear() async {
-    if (!Platform.isMacOS) {
+    if (!Platform.isMacOS && !Platform.isIOS) {
       return;
     }
     await _channel.invokeMethod('clear');

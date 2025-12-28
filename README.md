@@ -1,9 +1,14 @@
 <h1 align=center>Coppelia</h1>
 <p align="center">
-  A native macOS app for Jellyfin music libraries (Windows/Linux/iOS/Android coming soon).
+  A native macOS + iOS app for Jellyfin music libraries (Windows/Linux/Android coming soon).
+</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/Supported-000000?style=for-the-badge&logo=ios&logoColor=white" alt="iOS Supported"/>
+    <img src="https://img.shields.io/badge/Platform-macosOS-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Platform"/>
+  <img src="https://img.shields.io/badge/Framework-Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter Framework"/>
 </p>
 
-Coppelia is a cross-platform app designed for Jellyfin music libraries. macOS is the only supported platform right now, with other platforms coming soon. I built it because I couldn't find an app that was:
+Coppelia is a cross-platform app designed for Jellyfin music libraries. I built it because I couldn't find an app that was:
 
 -   native / low-resource
 -   beautiful
@@ -16,6 +21,10 @@ If you hold in your heart other bulletpoints than these, please share and help m
 | ![](./docs/Screenshot-Artist.jpg)   | ![](./docs/Screenshot-Queue.jpg)    |
 | ----------------------------------- | ----------------------------------- |
 | ![](./docs/Screenshot-Settings.jpg) | ![](./docs/Screenshot-Homepage.jpg) |
+
+|                           |                            |                           |                             |
+| ------------------------- | -------------------------- | ------------------------- | --------------------------- |
+| ![](docs/iPhone-Auth.png) | ![](docs/iPhone-Cache.png) | ![](docs/iPhone-Home.png) | ![](docs/iPhone-Tracks.png) |
 
 ## Features
 
@@ -42,18 +51,10 @@ If you hold in your heart other bulletpoints than these, please share and help m
 
 ---
 
-## Getting Started (Developer)
+## Developing
 
-1. Install Flutter 3.3+ with desktop support enabled.
-2. Run `flutter pub get`.
-3. Launch the macOS app with `flutter run -d macos`.
-
-Hot reload is available during `flutter run` as usual (`r` in the terminal or your IDE hot reload button).
-
-## Tests
-
--   Run unit tests with `flutter test`.
--   Run integration tests with `flutter test integration_test` on a macOS target.
+-   macOS: `docs/Developing-macOS.md`
+-   iOS (Simulator): `docs/Developing-iOS.md`
 
 ## Notes
 
