@@ -11,10 +11,13 @@ import '../../core/color_tokens.dart';
 /// Vertical navigation rail for playlists and actions.
 class SidebarNavigation extends StatefulWidget {
   /// Creates the sidebar navigation.
-  const SidebarNavigation({super.key, this.onCollapse});
+  const SidebarNavigation({super.key, this.onCollapse, this.onNavigate});
 
   /// Optional handler to collapse the sidebar.
   final VoidCallback? onCollapse;
+
+  /// Optional handler when a nav item is selected.
+  final VoidCallback? onNavigate;
 
   @override
   State<SidebarNavigation> createState() => _SidebarNavigationState();
@@ -25,6 +28,11 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
   bool _browseExpanded = true;
   bool _playbackExpanded = true;
   bool _playlistsExpanded = true;
+
+  void _handleNavigate(VoidCallback action) {
+    action();
+    widget.onNavigate?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +97,9 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
               label: 'Home',
               selected: state.selectedPlaylist == null &&
                   state.selectedView == LibraryView.home,
-              onTap: () => state.selectLibraryView(LibraryView.home),
+              onTap: () => _handleNavigate(
+                () => state.selectLibraryView(LibraryView.home),
+              ),
             ),
           if (state.isSidebarItemVisible(SidebarItem.settings))
             _NavTile(
@@ -97,7 +107,9 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
               label: 'Settings',
               selected: state.selectedPlaylist == null &&
                   state.selectedView == LibraryView.settings,
-              onTap: () => state.selectLibraryView(LibraryView.settings),
+              onTap: () => _handleNavigate(
+                () => state.selectLibraryView(LibraryView.settings),
+              ),
             ),
           const SizedBox(height: 20),
           if (showFavoritesSection) ...[
@@ -123,10 +135,11 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                             selected: state.selectedPlaylist == null &&
                                 state.selectedView ==
                                     LibraryView.favoritesAlbums,
-                            onTap: () => state
-                                .selectLibraryView(
-                                  LibraryView.favoritesAlbums,
-                                ),
+                            onTap: () => _handleNavigate(
+                              () => state.selectLibraryView(
+                                LibraryView.favoritesAlbums,
+                              ),
+                            ),
                           ),
                         if (state.isSidebarItemVisible(
                           SidebarItem.favoritesSongs,
@@ -137,10 +150,11 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                             selected: state.selectedPlaylist == null &&
                                 state.selectedView ==
                                     LibraryView.favoritesSongs,
-                            onTap: () => state
-                                .selectLibraryView(
-                                  LibraryView.favoritesSongs,
-                                ),
+                            onTap: () => _handleNavigate(
+                              () => state.selectLibraryView(
+                                LibraryView.favoritesSongs,
+                              ),
+                            ),
                           ),
                         if (state.isSidebarItemVisible(
                           SidebarItem.favoritesArtists,
@@ -151,10 +165,11 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                             selected: state.selectedPlaylist == null &&
                                 state.selectedView ==
                                     LibraryView.favoritesArtists,
-                            onTap: () => state
-                                .selectLibraryView(
-                                  LibraryView.favoritesArtists,
-                                ),
+                            onTap: () => _handleNavigate(
+                              () => state.selectLibraryView(
+                                LibraryView.favoritesArtists,
+                              ),
+                            ),
                           ),
                       ],
                     )
@@ -184,8 +199,10 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                             label: 'Albums',
                             selected: state.selectedPlaylist == null &&
                                 state.selectedView == LibraryView.albums,
-                            onTap: () =>
-                                state.selectLibraryView(LibraryView.albums),
+                            onTap: () => _handleNavigate(
+                              () =>
+                                  state.selectLibraryView(LibraryView.albums),
+                            ),
                           ),
                         if (state.isSidebarItemVisible(
                           SidebarItem.browseArtists,
@@ -195,8 +212,10 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                             label: 'Artists',
                             selected: state.selectedPlaylist == null &&
                                 state.selectedView == LibraryView.artists,
-                            onTap: () =>
-                                state.selectLibraryView(LibraryView.artists),
+                            onTap: () => _handleNavigate(
+                              () =>
+                                  state.selectLibraryView(LibraryView.artists),
+                            ),
                           ),
                         if (state.isSidebarItemVisible(
                           SidebarItem.browseGenres,
@@ -206,8 +225,10 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                             label: 'Genres',
                             selected: state.selectedPlaylist == null &&
                                 state.selectedView == LibraryView.genres,
-                            onTap: () =>
-                                state.selectLibraryView(LibraryView.genres),
+                            onTap: () => _handleNavigate(
+                              () =>
+                                  state.selectLibraryView(LibraryView.genres),
+                            ),
                           ),
                       ],
                     )
@@ -235,8 +256,10 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                             label: 'History',
                             selected: state.selectedPlaylist == null &&
                                 state.selectedView == LibraryView.history,
-                            onTap: () =>
-                                state.selectLibraryView(LibraryView.history),
+                            onTap: () => _handleNavigate(
+                              () =>
+                                  state.selectLibraryView(LibraryView.history),
+                            ),
                           ),
                         if (state.isSidebarItemVisible(SidebarItem.queue))
                           _NavTile(
@@ -244,8 +267,10 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                             label: 'Queue',
                             selected: state.selectedPlaylist == null &&
                                 state.selectedView == LibraryView.queue,
-                            onTap: () =>
-                                state.selectLibraryView(LibraryView.queue),
+                            onTap: () => _handleNavigate(
+                              () =>
+                                  state.selectLibraryView(LibraryView.queue),
+                            ),
                           ),
                       ],
                     )
@@ -274,7 +299,10 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                               playlist: playlist,
                               selected:
                                   state.selectedPlaylist?.id == playlist.id,
-                              onTap: () => state.selectPlaylist(playlist),
+                              onTap: () =>
+                                  _handleNavigate(() => state.selectPlaylist(
+                                        playlist,
+                                      )),
                             ),
                           ),
                         ),

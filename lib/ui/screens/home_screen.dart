@@ -58,13 +58,21 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _MainContent extends StatelessWidget {
+class _MainContent extends StatefulWidget {
   const _MainContent({required this.state});
 
   final AppState state;
 
   @override
+  State<_MainContent> createState() => _MainContentState();
+}
+
+class _MainContentState extends State<_MainContent> {
+  bool _sidebarOverlayOpen = false;
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
     final stats = state.libraryStats;
     final playlistCount = stats?.playlistCount ?? state.playlists.length;
     final int trackCount = stats?.trackCount ??
@@ -83,6 +91,17 @@ class _MainContent extends StatelessWidget {
         final effectiveCollapsed = autoCollapsed || state.isSidebarCollapsed;
         final currentWidth =
             effectiveCollapsed ? 0.0 : state.sidebarWidth;
+        final overlayWidth = state.sidebarWidth.clamp(220.0, 320.0);
+
+        if (!autoCollapsed && _sidebarOverlayOpen) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _sidebarOverlayOpen = false;
+              });
+            }
+          });
+        }
 
         final navigation = effectiveCollapsed
             ? const SizedBox.shrink()
@@ -95,32 +114,37 @@ class _MainContent extends StatelessWidget {
                 ),
               );
 
-        final handle = SidebarResizeHandle(
-          onDragUpdate: allowManual
-              ? (delta) {
-                  final nextWidth =
-                      (currentWidth + delta).clamp(0.0, 360.0);
-                  if (nextWidth < collapseThreshold) {
-                    state.setSidebarCollapsed(true, persist: false);
-                  } else {
-                    if (state.isSidebarCollapsed) {
-                      state.setSidebarCollapsed(false, persist: false);
-                    }
-                    state.setSidebarWidth(nextWidth, persist: false);
-                  }
-                }
-              : (_) {},
-          onDragEnd: allowManual
-              ? () {
-                  if (state.isSidebarCollapsed) {
-                    state.setSidebarCollapsed(true, persist: true);
-                  } else {
-                    state.setSidebarWidth(state.sidebarWidth, persist: true);
-                    state.setSidebarCollapsed(false, persist: true);
-                  }
-                }
-              : null,
-        );
+        final handle = autoCollapsed
+            ? const SizedBox.shrink()
+            : SidebarResizeHandle(
+                onDragUpdate: allowManual
+                    ? (delta) {
+                        final nextWidth =
+                            (currentWidth + delta).clamp(0.0, 360.0);
+                        if (nextWidth < collapseThreshold) {
+                          state.setSidebarCollapsed(true, persist: false);
+                        } else {
+                          if (state.isSidebarCollapsed) {
+                            state.setSidebarCollapsed(false, persist: false);
+                          }
+                          state.setSidebarWidth(nextWidth, persist: false);
+                        }
+                      }
+                    : (_) {},
+                onDragEnd: allowManual
+                    ? () {
+                        if (state.isSidebarCollapsed) {
+                          state.setSidebarCollapsed(true, persist: true);
+                        } else {
+                          state.setSidebarWidth(
+                            state.sidebarWidth,
+                            persist: true,
+                          );
+                          state.setSidebarCollapsed(false, persist: true);
+                        }
+                      }
+                    : null,
+              );
 
         final content = Expanded(
           child: Padding(
@@ -165,16 +189,80 @@ class _MainContent extends StatelessWidget {
           ],
         );
 
+        final overlayPanel = AnimatedPositioned(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          left: _sidebarOverlayOpen ? 0 : -overlayWidth - 12,
+          top: 0,
+          bottom: 0,
+          child: Material(
+            color: Colors.transparent,
+            elevation: 12,
+            child: SizedBox(
+              width: overlayWidth,
+              child: SidebarNavigation(
+                onCollapse: () => setState(() {
+                  _sidebarOverlayOpen = false;
+                }),
+                onNavigate: () => setState(() {
+                  _sidebarOverlayOpen = false;
+                }),
+              ),
+            ),
+          ),
+        );
+
         return Stack(
           children: [
             row,
+            if (autoCollapsed) ...[
+              Positioned.fill(
+                child: IgnorePointer(
+                  ignoring: !_sidebarOverlayOpen,
+                  child: AnimatedOpacity(
+                    opacity: _sidebarOverlayOpen ? 1 : 0,
+                    duration: const Duration(milliseconds: 180),
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => setState(() {
+                        _sidebarOverlayOpen = false;
+                      }),
+                      child: Container(
+                        color: Colors.black.withOpacity(0.15),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              overlayPanel,
+            ],
             if (allowManual && effectiveCollapsed)
               Positioned(
-                top: 24,
-                left: 12,
+                top: 28,
+                left: 4,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => state.setSidebarCollapsed(false),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: ColorTokens.cardFill(context, 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: ColorTokens.border(context)),
+                    ),
+                    child: const Icon(Icons.chevron_right, size: 18),
+                  ),
+                ),
+              ),
+            if (autoCollapsed && !_sidebarOverlayOpen)
+              Positioned(
+                top: 28,
+                left: 4,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() {
+                    _sidebarOverlayOpen = true;
+                  }),
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
@@ -381,26 +469,23 @@ class _HeaderState extends State<_Header> {
       ],
     );
 
-    final searchField = ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 200, maxWidth: 280),
-      child: TextField(
-        controller: _searchController,
-        onChanged: _onSearchChanged,
-        decoration: InputDecoration(
-          hintText: 'Search',
-          prefixIcon: const Icon(Icons.search, size: 18),
-          suffixIcon: _searchController.text.isEmpty
-              ? null
-              : IconButton(
-                  icon: const Icon(Icons.close, size: 18),
-                  onPressed: _clearSearch,
-                ),
-          filled: true,
-          fillColor: ColorTokens.cardFill(context, 0.06),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
+    final searchField = TextField(
+      controller: _searchController,
+      onChanged: _onSearchChanged,
+      decoration: InputDecoration(
+        hintText: 'Search',
+        prefixIcon: const Icon(Icons.search, size: 18),
+        suffixIcon: _searchController.text.isEmpty
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                onPressed: _clearSearch,
+              ),
+        filled: true,
+        fillColor: ColorTokens.cardFill(context, 0.06),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
         ),
       ),
     );
@@ -408,7 +493,13 @@ class _HeaderState extends State<_Header> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 560;
-        final controls = searchField;
+        final controls = isNarrow
+            ? SizedBox(width: double.infinity, child: searchField)
+            : ConstrainedBox(
+                constraints:
+                    const BoxConstraints(minWidth: 200, maxWidth: 280),
+                child: searchField,
+              );
         if (isNarrow) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
