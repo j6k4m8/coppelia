@@ -45,6 +45,7 @@ If you hold in your heart other bulletpoints than these, please share and help m
 -   A–Z track browsing with quick alphabet jump
 -   Shuffle playback for albums, artists, genres, and playlists
 -   Jump in random picks with auto-refresh
+-   Full-screen Now Playing view with immersive artwork
 -   Cached playlists/tracks/audio with size reporting and cache management
 -   Artwork fallbacks and rich detail views with context actions
 -   **NO ELECTRON 🫦**

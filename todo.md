@@ -19,5 +19,5 @@
     -   [x] shuffle
     -   [ ] repeat queue / playlist
     -   [ ] repeat track
--   [ ] "now playing" full-screen expanded view that showcases the album art if you click the album art in the mini player.
+-   [x] "now playing" full-screen expanded view that showcases the album art if you click the album art in the mini player.
 -   [x] add to the homepage a "Jump in" section that has cards for (independently) randomly selected album, artist, and track
