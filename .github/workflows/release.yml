@@ -1,4 +1,4 @@
-name: Release macOS
+name: Release macOS + iOS
 
 on:
   push:
@@ -45,3 +45,39 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: Coppelia-macos.zip
+
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS app (Simulator)
+        run: flutter build ios --simulator --no-codesign
+
+      - name: Package app
+        run: |
+          APP_PATH="build/ios/iphonesimulator/Runner.app"
+          ZIP_PATH="Coppelia-ios-simulator.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ZIP_PATH"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Coppelia-ios-simulator
+          path: Coppelia-ios-simulator.zip
+
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Coppelia-ios-simulator.zip
