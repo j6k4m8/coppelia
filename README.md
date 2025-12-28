@@ -1,6 +1,6 @@
 <h1 align=center>Coppelia</h1>
 <p align="center">
-  A native macOS + iOS app for Jellyfin music libraries (Windows/Linux/Android coming soon).
+  A native macOS, iOS, and Android app for Jellyfin music libraries (Windows/Linux coming soon).
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-macOS-333333?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Platform"/> &nbsp;
