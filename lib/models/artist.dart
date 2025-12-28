@@ -33,11 +33,32 @@ class Artist {
     final imageUrl = json['ImageTags']?['Primary'] != null
         ? '$serverUrl/Items/$id/Images/Primary?fillWidth=500&quality=90'
         : null;
+    int parseCount(dynamic value) {
+      if (value is int) {
+        return value;
+      }
+      if (value is num) {
+        return value.toInt();
+      }
+      if (value is String) {
+        return int.tryParse(value) ?? 0;
+      }
+      return 0;
+    }
+    final itemCounts = json['ItemCounts'] as Map<String, dynamic>?;
+    final albumCount = parseCount(json['AlbumCount']) != 0
+        ? parseCount(json['AlbumCount'])
+        : parseCount(itemCounts?['AlbumCount']) != 0
+            ? parseCount(itemCounts?['AlbumCount'])
+            : parseCount(json['ChildCount']);
+    final trackCount = parseCount(json['SongCount']) != 0
+        ? parseCount(json['SongCount'])
+        : parseCount(itemCounts?['SongCount']);
     return Artist(
       id: id,
       name: json['Name'] as String? ?? 'Unknown Artist',
-      albumCount: json['AlbumCount'] as int? ?? 0,
-      trackCount: json['SongCount'] as int? ?? 0,
+      albumCount: albumCount,
+      trackCount: trackCount,
       imageUrl: imageUrl,
     );
   }

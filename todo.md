@@ -1,6 +1,8 @@
 # TODO
 
 -   [ ] when you start loading a track (for playback), if it's not cached, do the "spinner" loading progress indicator on the track scrub bar. until it's ready to play. (still not working)
+-   [ ] remove "Offline only" filter chip (keep offline-only filtering behavior)
+-   [ ] add OS-level Android media session + notification controls (lockscreen/notification)
 -   [ ] UI thrash: scroll gets janky again during updates (investigate repaint storms)
 -   [ ] Android: generate app icons from `assets/logo_app_icon.svg`.
 -   [ ] Android: media session + notification controls (play/pause/next).

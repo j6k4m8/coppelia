@@ -184,7 +184,7 @@ class JellyfinClient {
       queryParameters: {
         'UserId': session.userId,
         'SortBy': 'SortName',
-        'Fields': 'ImageTags',
+        'Fields': 'ImageTags,SongCount,AlbumCount',
         'api_key': session.accessToken,
       },
     );
@@ -210,7 +210,7 @@ class JellyfinClient {
         'UserId': session.userId,
         'SortBy': 'SortName',
         'IncludeItemTypes': 'Audio',
-        'Fields': 'ImageTags',
+        'Fields': 'ImageTags,SongCount,AlbumCount',
         'api_key': session.accessToken,
       },
     );
@@ -392,7 +392,7 @@ class JellyfinClient {
         'Recursive': 'true',
         'Filters': 'IsFavorite',
         'SortBy': 'SortName',
-        'Fields': 'ImageTags',
+        'Fields': 'ImageTags,SongCount,AlbumCount',
         'api_key': session.accessToken,
       },
     );
@@ -533,7 +533,7 @@ class JellyfinClient {
         'Limit': '80',
         'Fields':
             'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
-                'ChildCount,AlbumArtist,AlbumArtists',
+                'ChildCount,AlbumArtist,AlbumArtists,SongCount,AlbumCount',
         'api_key': session.accessToken,
       },
     );
@@ -763,7 +763,7 @@ class JellyfinClient {
         'UserId': session.userId,
         'SortBy': 'Random',
         'Limit': '1',
-        'Fields': 'ImageTags',
+        'Fields': 'ImageTags,SongCount,AlbumCount',
         'api_key': session.accessToken,
       },
     );

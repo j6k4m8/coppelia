@@ -177,53 +177,36 @@ class _Header extends StatelessWidget {
     double space(double value) => value * densityScale;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
+    final cardRadius = clamped(26, min: 16, max: 30);
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 720;
         final theme = Theme.of(context);
-        Widget buildArtworkFallback({double? size}) => Container(
-              width: size,
-              height: size,
+        Widget buildArtworkFallback() => Container(
               color: ColorTokens.cardFillStrong(context),
-              child: Icon(
-                Icons.library_music,
-                size: size == null
-                    ? clamped(42, min: 32, max: 48)
-                    : clamped(36, min: 26, max: 42),
+              child: Center(
+                child: Icon(
+                  Icons.library_music,
+                  size: clamped(42, min: 30, max: 48),
+                ),
               ),
             );
-        final artworkSize = clamped(isNarrow ? 160 : 140, min: 110, max: 190);
-        final artwork = ClipRRect(
-          borderRadius: BorderRadius.circular(
-            clamped(20, min: 12, max: 24),
-          ),
-          child: ArtworkImage(
-            imageUrl: imageUrl,
-            width: artworkSize,
-            height: artworkSize,
-            fit: BoxFit.cover,
-            placeholder: buildArtworkFallback(size: artworkSize),
-          ),
-        );
-        Widget details({
-          TextStyle? titleStyle,
-          TextStyle? subtitleStyle,
-        }) {
+        final artworkExtent = clamped(isNarrow ? 240 : 200, min: 160, max: 260);
+        Widget details() {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: titleStyle ?? theme.textTheme.headlineMedium,
+                style: theme.textTheme.headlineMedium,
               ),
               SizedBox(height: space(8)),
               subtitleWidget ??
                   Text(
                     subtitle,
-                    style: subtitleStyle ??
-                        theme.textTheme.bodyMedium?.copyWith(
-                          color: ColorTokens.textSecondary(context),
-                        ),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: ColorTokens.textSecondary(context),
+                    ),
                   ),
               SizedBox(height: space(16)),
               Wrap(
@@ -250,31 +233,77 @@ class _Header extends StatelessWidget {
 
         return Container(
           width: double.infinity,
-          padding: EdgeInsets.all(space(24).clamp(14.0, 32.0)),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: ColorTokens.heroGradient(context),
             ),
-            borderRadius: BorderRadius.circular(
-              clamped(26, min: 16, max: 30),
-            ),
+            borderRadius: BorderRadius.circular(cardRadius),
             border: Border.all(color: ColorTokens.border(context)),
           ),
           child: isNarrow
               ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    artwork,
-                    SizedBox(height: space(20)),
-                    details(),
+                    ClipRRect(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(cardRadius),
+                        topRight: Radius.circular(cardRadius),
+                      ),
+                      child: SizedBox(
+                        height: artworkExtent,
+                        child: imageUrl == null
+                            ? buildArtworkFallback()
+                            : ArtworkImage(
+                                imageUrl: imageUrl,
+                                fit: BoxFit.cover,
+                                placeholder: buildArtworkFallback(),
+                              ),
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        space(22).clamp(14.0, 28.0),
+                        space(18).clamp(12.0, 24.0),
+                        space(22).clamp(14.0, 28.0),
+                        space(22).clamp(14.0, 28.0),
+                      ),
+                      child: details(),
+                    ),
                   ],
                 )
-              : Row(
-                  children: [
-                    artwork,
-                    SizedBox(width: space(24)),
-                    Expanded(child: details()),
-                  ],
+              : IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(cardRadius),
+                          bottomLeft: Radius.circular(cardRadius),
+                        ),
+                        child: SizedBox(
+                          width: artworkExtent,
+                          child: imageUrl == null
+                              ? buildArtworkFallback()
+                              : ArtworkImage(
+                                  imageUrl: imageUrl,
+                                  fit: BoxFit.cover,
+                                  placeholder: buildArtworkFallback(),
+                                ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            space(24).clamp(16.0, 30.0),
+                            space(20).clamp(12.0, 26.0),
+                            space(24).clamp(16.0, 30.0),
+                            space(20).clamp(12.0, 26.0),
+                          ),
+                          child: details(),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
         );
       },
