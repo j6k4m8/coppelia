@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -457,6 +459,19 @@ class _CacheSettingsState extends State<_CacheSettings> {
     });
   }
 
+  String _fileManagerLabel() {
+    if (Platform.isMacOS) {
+      return 'Show in Finder';
+    }
+    if (Platform.isWindows) {
+      return 'Show in File Explorer';
+    }
+    if (Platform.isLinux) {
+      return 'Show in Files';
+    }
+    return 'Show in folder';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -484,6 +499,15 @@ class _CacheSettingsState extends State<_CacheSettings> {
                 style: Theme.of(context).textTheme.bodyLarge,
               );
             },
+          ),
+        ),
+        const SizedBox(height: 12),
+        _SettingRow(
+          title: 'Cache location',
+          subtitle: 'Open cached media in your file manager.',
+          trailing: OutlinedButton(
+            onPressed: widget.state.showMediaCacheLocation,
+            child: Text(_fileManagerLabel()),
           ),
         ),
         const SizedBox(height: 12),
@@ -528,11 +552,83 @@ class _AccountSettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final session = state.session;
+    final stats = state.libraryStats;
+    final trackCount = stats?.trackCount ??
+        state.playlists.fold<int>(
+          0,
+          (total, playlist) => total + playlist.trackCount,
+        );
+    final albumCount = stats?.albumCount ?? state.albums.length;
+    final artistCount = stats?.artistCount ?? state.artists.length;
+    final playlistCount = stats?.playlistCount ?? state.playlists.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Account', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
+        if (session == null)
+          Text(
+            'No active session.',
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: ColorTokens.textSecondary(context)),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: ColorTokens.cardFill(context, 0.08),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: ColorTokens.border(context, 0.12)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Signed in as',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: ColorTokens.textSecondary(context)),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  session.userName,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 16),
+                _AccountMetaRow(label: 'Server', value: session.serverUrl),
+                const SizedBox(height: 8),
+                _AccountMetaRow(label: 'User ID', value: session.userId),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _AccountStatChip(
+                      label: 'Tracks',
+                      value: formatCount(trackCount),
+                    ),
+                    _AccountStatChip(
+                      label: 'Albums',
+                      value: formatCount(albumCount),
+                    ),
+                    _AccountStatChip(
+                      label: 'Artists',
+                      value: formatCount(artistCount),
+                    ),
+                    _AccountStatChip(
+                      label: 'Playlists',
+                      value: formatCount(playlistCount),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 16),
         _SettingRow(
           title: 'Sign out',
           subtitle: 'Disconnect from this Jellyfin account.',
@@ -615,6 +711,67 @@ class _SettingsSubheader extends StatelessWidget {
     );
   }
 }
+
+class _AccountMetaRow extends StatelessWidget {
+  const _AccountMetaRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 84,
+          child: Text(
+            label,
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: ColorTokens.textSecondary(context)),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            style: Theme.of(context).textTheme.bodyMedium,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AccountStatChip extends StatelessWidget {
+  const _AccountStatChip({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: ColorTokens.cardFill(context, 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: ColorTokens.border(context, 0.12)),
+      ),
+      child: Text(
+        '$value $label',
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+    );
+  }
+}
+
 
 class _FontChoice {
   const _FontChoice(this.label, this.family);

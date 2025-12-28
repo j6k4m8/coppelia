@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +8,7 @@ import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
 import '../../state/now_playing_layout.dart';
+import 'artwork_image.dart';
 
 /// Right-side panel for playback and queue control.
 class NowPlayingPanel extends StatelessWidget {
@@ -513,14 +513,11 @@ class _Artwork extends StatelessWidget {
       borderRadius: BorderRadius.circular(24),
       child: AspectRatio(
         aspectRatio: 1,
-        child: imageUrl == null
-            ? buildArtworkFallback()
-            : CachedNetworkImage(
-                imageUrl: imageUrl,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => buildArtworkFallback(),
-                errorWidget: (_, __, ___) => buildArtworkFallback(),
-              ),
+        child: ArtworkImage(
+          imageUrl: imageUrl,
+          fit: BoxFit.cover,
+          placeholder: buildArtworkFallback(),
+        ),
       ),
     );
   }
@@ -545,14 +542,11 @@ class _MiniArtwork extends StatelessWidget {
       child: SizedBox(
         width: 56,
         height: 56,
-        child: imageUrl == null
-            ? buildArtworkFallback()
-            : CachedNetworkImage(
-                imageUrl: imageUrl,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => buildArtworkFallback(),
-                errorWidget: (_, __, ___) => buildArtworkFallback(),
-              ),
+        child: ArtworkImage(
+          imageUrl: imageUrl,
+          fit: BoxFit.cover,
+          placeholder: buildArtworkFallback(),
+        ),
       ),
     );
   }

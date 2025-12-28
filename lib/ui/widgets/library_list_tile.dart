@@ -1,7 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/color_tokens.dart';
+import 'artwork_image.dart';
 
 /// Compact list tile for library items.
 class LibraryListTile extends StatelessWidget {
@@ -58,16 +58,13 @@ class LibraryListTile extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: imageUrl == null
-                  ? buildArtworkFallback()
-                  : CachedNetworkImage(
-                      imageUrl: imageUrl!,
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => buildArtworkFallback(),
-                      errorWidget: (_, __, ___) => buildArtworkFallback(),
-                    ),
+              child: ArtworkImage(
+                imageUrl: imageUrl,
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
+                placeholder: buildArtworkFallback(),
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(

@@ -1,7 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/color_tokens.dart';
+import 'artwork_image.dart';
 
 /// Card for album, artist, or genre tiles.
 class LibraryCard extends StatelessWidget {
@@ -58,14 +58,11 @@ class LibraryCard extends StatelessWidget {
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: imageUrl == null
-                    ? buildArtworkFallback()
-                    : CachedNetworkImage(
-                        imageUrl: imageUrl!,
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) => buildArtworkFallback(),
-                        errorWidget: (_, __, ___) => buildArtworkFallback(),
-                      ),
+                child: ArtworkImage(
+                  imageUrl: imageUrl,
+                  fit: BoxFit.cover,
+                  placeholder: buildArtworkFallback(),
+                ),
               ),
             ),
             const SizedBox(height: 12),

@@ -1,8 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/media_item.dart';
 import '../../core/color_tokens.dart';
+import 'artwork_image.dart';
 import 'track_row.dart';
 
 /// Generic detail view for albums, artists, or genres.
@@ -140,52 +140,47 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: ColorTokens.heroGradient(context),
-        ),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: ColorTokens.border(context)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 720;
-          Widget buildArtworkFallback() => Container(
-                width: isNarrow ? 160 : 140,
-                height: isNarrow ? 160 : 140,
-                color: ColorTokens.cardFillStrong(context),
-                child: const Icon(Icons.library_music, size: 36),
-              );
-          final artwork = ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: imageUrl == null
-                ? buildArtworkFallback()
-                : CachedNetworkImage(
-                    imageUrl: imageUrl!,
-                    width: isNarrow ? 160 : 140,
-                    height: isNarrow ? 160 : 140,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => buildArtworkFallback(),
-                    errorWidget: (_, __, ___) => buildArtworkFallback(),
-                  ),
-          );
-          final details = Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 720;
+        final theme = Theme.of(context);
+        Widget buildArtworkFallback({double? size}) => Container(
+              width: size,
+              height: size,
+              color: ColorTokens.cardFillStrong(context),
+              child: Icon(
+                Icons.library_music,
+                size: size == null ? 42 : 36,
+              ),
+            );
+        final artwork = ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: ArtworkImage(
+            imageUrl: imageUrl,
+            width: isNarrow ? 160 : 140,
+            height: isNarrow ? 160 : 140,
+            fit: BoxFit.cover,
+            placeholder: buildArtworkFallback(size: isNarrow ? 160 : 140),
+          ),
+        );
+        Widget details({
+          TextStyle? titleStyle,
+          TextStyle? subtitleStyle,
+        }) {
+          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: Theme.of(context).textTheme.headlineMedium,
+                style: titleStyle ?? theme.textTheme.headlineMedium,
               ),
               const SizedBox(height: 8),
               Text(
                 subtitle,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: ColorTokens.textSecondary(context)),
+                style: subtitleStyle ??
+                    theme.textTheme.bodyMedium?.copyWith(
+                      color: ColorTokens.textSecondary(context),
+                    ),
               ),
               const SizedBox(height: 16),
               Wrap(
@@ -201,25 +196,36 @@ class _Header extends StatelessWidget {
               ),
             ],
           );
-          if (isNarrow) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                artwork,
-                const SizedBox(height: 20),
-                details,
-              ],
-            );
-          }
-          return Row(
-            children: [
-              artwork,
-              const SizedBox(width: 24),
-              Expanded(child: details),
-            ],
-          );
-        },
-      ),
+        }
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: ColorTokens.heroGradient(context),
+            ),
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: ColorTokens.border(context)),
+          ),
+          child: isNarrow
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    artwork,
+                    const SizedBox(height: 20),
+                    details(),
+                  ],
+                )
+              : Row(
+                  children: [
+                    artwork,
+                    const SizedBox(width: 24),
+                    Expanded(child: details()),
+                  ],
+                ),
+        );
+      },
     );
   }
 }

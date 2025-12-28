@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/album.dart';
 import '../models/artist.dart';
+import '../models/cached_audio_entry.dart';
 import '../models/genre.dart';
 import '../models/library_stats.dart';
 import '../models/media_item.dart';
@@ -31,6 +33,7 @@ class CacheStore {
   static const _recentTracksKey = 'cached_recent_tracks';
   static const _playHistoryKey = 'cached_play_history';
   static const _libraryStatsKey = 'cached_library_stats';
+  static const _cachedAudioKey = 'cached_audio_entries';
 
   final DefaultCacheManager _audioCache = DefaultCacheManager();
 
@@ -330,7 +333,12 @@ class CacheStore {
 
   /// Downloads audio for offline-ready playback.
   Future<void> prefetchAudio(MediaItem item) async {
-    await _audioCache.downloadFile(item.streamUrl);
+    try {
+      await _audioCache.downloadFile(item.streamUrl);
+      await _rememberCachedAudio(item);
+    } catch (_) {
+      // Ignore failed prefetch attempts.
+    }
   }
 
   /// Clears cached metadata for library lists and tracks.
@@ -356,11 +364,95 @@ class CacheStore {
   /// Clears cached audio files.
   Future<void> clearAudioCache() async {
     await _audioCache.emptyCache();
+    await _saveCachedAudioEntries(const {});
   }
 
   /// Returns the approximate size of cached media on disk.
   Future<int> getMediaCacheBytes() async {
     return _audioCache.store.getCacheSize();
+  }
+
+  /// Returns a list of cached audio entries with metadata.
+  Future<List<CachedAudioEntry>> loadCachedAudioEntries() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_cachedAudioKey);
+    if (raw == null || raw.isEmpty) {
+      return [];
+    }
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    final entries = <CachedAudioEntry>[];
+    final toRemove = <String>[];
+
+    for (final entry in decoded.entries) {
+      final value = entry.value as Map<String, dynamic>?;
+      if (value == null) {
+        toRemove.add(entry.key);
+        continue;
+      }
+      final cacheInfo = await _audioCache.getFileFromCache(entry.key);
+      if (cacheInfo == null) {
+        toRemove.add(entry.key);
+        continue;
+      }
+      final bytes = await cacheInfo.file.length();
+      final artists = (value['artists'] as List<dynamic>? ?? const [])
+          .map((artist) => artist.toString())
+          .toList();
+      final cachedAt = DateTime.tryParse(
+            value['cachedAt']?.toString() ?? '',
+          ) ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      entries.add(
+        CachedAudioEntry(
+          streamUrl: entry.key,
+          title: value['title'] as String? ?? 'Unknown Track',
+          album: value['album'] as String? ?? 'Unknown Album',
+          artists: artists,
+          cachedAt: cachedAt,
+          bytes: bytes,
+        ),
+      );
+    }
+
+    if (toRemove.isNotEmpty) {
+      for (final key in toRemove) {
+        decoded.remove(key);
+      }
+      await _saveCachedAudioEntries(decoded);
+    }
+
+    entries.sort((a, b) => b.cachedAt.compareTo(a.cachedAt));
+    return entries;
+  }
+
+  /// Removes a cached audio entry and evicts the file.
+  Future<void> evictCachedAudio(String streamUrl) async {
+    await _audioCache.removeFile(streamUrl);
+    await _forgetCachedAudio(streamUrl);
+  }
+
+  /// Returns the directory used by the media cache.
+  Future<Directory> getMediaCacheDirectory() async {
+    final baseDir = await getTemporaryDirectory();
+    final cacheKey = _audioCache.config.cacheKey;
+    return Directory('${baseDir.path}${Platform.pathSeparator}$cacheKey');
+  }
+
+  /// Opens the cached media directory in the OS file manager.
+  Future<void> openMediaCacheLocation() async {
+    try {
+      final directory = await getMediaCacheDirectory();
+      await directory.create(recursive: true);
+      if (Platform.isMacOS) {
+        await Process.run('open', [directory.path]);
+      } else if (Platform.isWindows) {
+        await Process.run('explorer', [directory.path]);
+      } else if (Platform.isLinux) {
+        await Process.run('xdg-open', [directory.path]);
+      }
+    } catch (_) {
+      // Ignore failures to open system file manager.
+    }
   }
 
   Future<void> _saveTrackMap(
@@ -391,5 +483,36 @@ class CacheStore {
     return items
         .map((entry) => MediaItem.fromJson(entry as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<void> _rememberCachedAudio(MediaItem item) async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_cachedAudioKey);
+    final Map<String, dynamic> decoded = raw == null || raw.isEmpty
+        ? {}
+        : jsonDecode(raw) as Map<String, dynamic>;
+    decoded[item.streamUrl] = {
+      'title': item.title,
+      'album': item.album,
+      'artists': item.artists,
+      'cachedAt': DateTime.now().toIso8601String(),
+    };
+    await _saveCachedAudioEntries(decoded);
+  }
+
+  Future<void> _forgetCachedAudio(String streamUrl) async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_cachedAudioKey);
+    if (raw == null || raw.isEmpty) {
+      return;
+    }
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    decoded.remove(streamUrl);
+    await _saveCachedAudioEntries(decoded);
+  }
+
+  Future<void> _saveCachedAudioEntries(Map<String, dynamic> entries) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_cachedAudioKey, jsonEncode(entries));
   }
 }

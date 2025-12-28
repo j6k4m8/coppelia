@@ -22,10 +22,14 @@ class AlbumDetailView extends StatelessWidget {
     final canLinkArtist =
         artistName.isNotEmpty && artistName != 'Unknown Artist';
     final subtitle = '${album.trackCount} tracks • $artistName';
+    final headerImageUrl =
+        album.imageUrl ?? (state.albumTracks.isNotEmpty
+            ? state.albumTracks.first.imageUrl
+            : null);
     return CollectionDetailView(
       title: album.name,
       subtitle: subtitle,
-      imageUrl: album.imageUrl,
+      imageUrl: headerImageUrl,
       tracks: state.albumTracks,
       nowPlaying: state.nowPlaying,
       onPlayAll: state.albumTracks.isEmpty

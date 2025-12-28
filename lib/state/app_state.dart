@@ -7,6 +7,7 @@ import 'package:just_audio/just_audio.dart';
 import '../models/album.dart';
 import '../models/artist.dart';
 import '../models/auth_session.dart';
+import '../models/cached_audio_entry.dart';
 import '../models/genre.dart';
 import '../models/library_stats.dart';
 import '../models/media_item.dart';
@@ -978,6 +979,21 @@ class AppState extends ChangeNotifier {
   /// Returns the estimated cached media size in bytes.
   Future<int> getMediaCacheBytes() async {
     return _cacheStore.getMediaCacheBytes();
+  }
+
+  /// Returns cached audio entries for display.
+  Future<List<CachedAudioEntry>> getCachedAudioEntries() async {
+    return _cacheStore.loadCachedAudioEntries();
+  }
+
+  /// Opens the cached media location in the OS file manager.
+  Future<void> showMediaCacheLocation() async {
+    await _cacheStore.openMediaCacheLocation();
+  }
+
+  /// Removes a cached audio entry and its file.
+  Future<void> evictCachedAudio(String streamUrl) async {
+    await _cacheStore.evictCachedAudio(streamUrl);
   }
 
   /// Releases audio resources.

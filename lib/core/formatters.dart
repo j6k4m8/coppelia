@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 /// Formats a duration to mm:ss.
 String formatDuration(Duration duration) {
   final minutes = duration.inMinutes;
@@ -21,4 +23,10 @@ String formatBytes(int bytes) {
       ? value.toStringAsFixed(0)
       : value.toStringAsFixed(1);
   return '$formatted ${units[unitIndex]}';
+}
+
+/// Formats a count with locale separators.
+String formatCount(int value) {
+  final formatter = NumberFormat.decimalPattern();
+  return formatter.format(value);
 }

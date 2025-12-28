@@ -1,10 +1,10 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/playlist.dart';
 import '../../state/app_state.dart';
 import '../../core/color_tokens.dart';
+import 'artwork_image.dart';
 import 'track_row.dart';
 
 /// Playlist detail view with track listing.
@@ -91,16 +91,13 @@ class _PlaylistHeader extends StatelessWidget {
           final isNarrow = constraints.maxWidth < 720;
           final artwork = ClipRRect(
             borderRadius: BorderRadius.circular(20),
-            child: playlist.imageUrl == null
-                ? buildArtworkFallback(isNarrow)
-                : CachedNetworkImage(
-                    imageUrl: playlist.imageUrl!,
-                    width: isNarrow ? 160 : 140,
-                    height: isNarrow ? 160 : 140,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => buildArtworkFallback(isNarrow),
-                    errorWidget: (_, __, ___) => buildArtworkFallback(isNarrow),
-                  ),
+            child: ArtworkImage(
+              imageUrl: playlist.imageUrl,
+              width: isNarrow ? 160 : 140,
+              height: isNarrow ? 160 : 140,
+              fit: BoxFit.cover,
+              placeholder: buildArtworkFallback(isNarrow),
+            ),
           );
           final details = Column(
             crossAxisAlignment: CrossAxisAlignment.start,

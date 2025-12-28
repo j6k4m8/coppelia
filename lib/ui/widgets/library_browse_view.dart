@@ -299,7 +299,7 @@ class _AlphabetScroller extends StatelessWidget {
   }
 }
 
-class _AlphabetLetter extends StatefulWidget {
+class _AlphabetLetter extends StatelessWidget {
   const _AlphabetLetter({
     required this.letter,
     required this.onTap,
@@ -309,32 +309,29 @@ class _AlphabetLetter extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_AlphabetLetter> createState() => _AlphabetLetterState();
-}
-
-class _AlphabetLetterState extends State<_AlphabetLetter> {
-  bool _isHovering = false;
-
-  @override
   Widget build(BuildContext context) {
-    final color = _isHovering
-        ? ColorTokens.textPrimary(context)
-        : ColorTokens.textSecondary(context, 0.7);
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: Center(
-          child: Text(
-            widget.letter,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: color,
-                ),
-          ),
-        ),
+    final baseStyle = Theme.of(context).textTheme.labelSmall;
+    return TextButton(
+      onPressed: onTap,
+      style: ButtonStyle(
+        padding: MaterialStateProperty.all(EdgeInsets.zero),
+        minimumSize: MaterialStateProperty.all(const Size(20, 20)),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        foregroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.hovered)) {
+            return ColorTokens.textPrimary(context);
+          }
+          return ColorTokens.textSecondary(context, 0.7);
+        }),
+        textStyle: MaterialStateProperty.all(baseStyle),
+        overlayColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.hovered)) {
+            return ColorTokens.cardFill(context, 0.08);
+          }
+          return Colors.transparent;
+        }),
       ),
+      child: Text(letter),
     );
   }
 }

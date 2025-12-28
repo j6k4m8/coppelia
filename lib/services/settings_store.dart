@@ -186,4 +186,5 @@ class SettingsStore {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setDouble(_fontScaleKey, scale);
   }
+
 }

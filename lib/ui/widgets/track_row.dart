@@ -1,13 +1,13 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
 import '../../models/media_item.dart';
+import 'artwork_image.dart';
 import 'context_menu.dart';
 
 /// Row for a track listing.
-class TrackRow extends StatefulWidget {
+class TrackRow extends StatelessWidget {
   /// Creates a track row.
   const TrackRow({
     super.key,
@@ -54,47 +54,35 @@ class TrackRow extends StatefulWidget {
   final VoidCallback? onGoToArtist;
 
   @override
-  State<TrackRow> createState() => _TrackRowState();
-}
-
-class _TrackRowState extends State<TrackRow> {
-  bool _isHovering = false;
-
-  @override
   Widget build(BuildContext context) {
-    final isActive = widget.isActive;
-    final highlight = isActive
-        ? ColorTokens.activeRow(context)
-        : _isHovering
-            ? ColorTokens.hoverRow(context)
-            : null;
+    final isActive = this.isActive;
+    final baseColor =
+        isActive ? ColorTokens.activeRow(context) : Colors.transparent;
     Widget buildArtworkFallback() => Container(
           width: 44,
           height: 44,
           color: ColorTokens.cardFillStrong(context),
           child: const Icon(Icons.music_note, size: 18),
         );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onDoubleTap: widget.onTap,
-      onSecondaryTapDown: (details) =>
-          _showMenu(context, details.globalPosition),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovering = true),
-        onExit: (_) => setState(() => _isHovering = false),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
+    return Material(
+      color: baseColor,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {},
+        onDoubleTap: onTap,
+        onSecondaryTapDown: (details) =>
+            _showMenu(context, details.globalPosition),
+        hoverColor: ColorTokens.hoverRow(context),
+        splashColor: ColorTokens.hoverRow(context),
+        child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: highlight,
-            borderRadius: BorderRadius.circular(14),
-          ),
           child: Row(
             children: [
               SizedBox(
                 width: 32,
                 child: Text(
-                  '${widget.index + 1}'.padLeft(2, '0'),
+                  '${index + 1}'.padLeft(2, '0'),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: ColorTokens.textSecondary(context),
                       ),
@@ -103,15 +91,14 @@ class _TrackRowState extends State<TrackRow> {
               const SizedBox(width: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: widget.track.imageUrl == null
+                child: track.imageUrl == null
                     ? buildArtworkFallback()
-                    : CachedNetworkImage(
-                        imageUrl: widget.track.imageUrl!,
+                    : ArtworkImage(
+                        imageUrl: track.imageUrl,
                         width: 44,
                         height: 44,
                         fit: BoxFit.cover,
-                        placeholder: (_, __) => buildArtworkFallback(),
-                        errorWidget: (_, __, ___) => buildArtworkFallback(),
+                        placeholder: buildArtworkFallback(),
                       ),
               ),
               const SizedBox(width: 14),
@@ -120,26 +107,26 @@ class _TrackRowState extends State<TrackRow> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.track.title,
+                      track.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyLarge,
                     ),
                     const SizedBox(height: 2),
                     _TrackMetaRow(
-                      artistLabel: widget.track.artists.isNotEmpty
-                          ? widget.track.artists.join(', ')
+                      artistLabel: track.artists.isNotEmpty
+                          ? track.artists.join(', ')
                           : 'Unknown Artist',
-                      albumLabel: widget.track.album,
-                      onArtistTap: widget.onArtistTap,
-                      onAlbumTap: widget.onAlbumTap,
+                      albumLabel: track.album,
+                      onArtistTap: onArtistTap,
+                      onAlbumTap: onAlbumTap,
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 12),
               Text(
-                formatDuration(widget.track.duration),
+                formatDuration(track.duration),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: ColorTokens.textSecondary(context),
                     ),
@@ -152,10 +139,10 @@ class _TrackRowState extends State<TrackRow> {
   }
 
   Future<void> _showMenu(BuildContext context, Offset position) async {
-    if (widget.onPlayNext == null &&
-        widget.onAddToQueue == null &&
-        widget.onGoToAlbum == null &&
-        widget.onGoToArtist == null) {
+    if (onPlayNext == null &&
+        onAddToQueue == null &&
+        onGoToAlbum == null &&
+        onGoToArtist == null) {
       return;
     }
     final items = <PopupMenuEntry<_TrackMenuAction>>[
@@ -164,7 +151,7 @@ class _TrackRowState extends State<TrackRow> {
         child: Text('Play'),
       ),
     ];
-    if (widget.onPlayNext != null) {
+    if (onPlayNext != null) {
       items.add(
         const PopupMenuItem(
           value: _TrackMenuAction.playNext,
@@ -172,7 +159,7 @@ class _TrackRowState extends State<TrackRow> {
         ),
       );
     }
-    if (widget.onAddToQueue != null) {
+    if (onAddToQueue != null) {
       items.add(
         const PopupMenuItem(
           value: _TrackMenuAction.addToQueue,
@@ -180,7 +167,7 @@ class _TrackRowState extends State<TrackRow> {
         ),
       );
     }
-    if (widget.onGoToAlbum != null) {
+    if (onGoToAlbum != null) {
       items.add(
         const PopupMenuItem(
           value: _TrackMenuAction.goToAlbum,
@@ -188,7 +175,7 @@ class _TrackRowState extends State<TrackRow> {
         ),
       );
     }
-    if (widget.onGoToArtist != null) {
+    if (onGoToArtist != null) {
       items.add(
         const PopupMenuItem(
           value: _TrackMenuAction.goToArtist,
@@ -202,15 +189,15 @@ class _TrackRowState extends State<TrackRow> {
       items,
     );
     if (action == _TrackMenuAction.play) {
-      widget.onTap();
+      onTap();
     } else if (action == _TrackMenuAction.playNext) {
-      widget.onPlayNext?.call();
+      onPlayNext?.call();
     } else if (action == _TrackMenuAction.addToQueue) {
-      widget.onAddToQueue?.call();
+      onAddToQueue?.call();
     } else if (action == _TrackMenuAction.goToAlbum) {
-      widget.onGoToAlbum?.call();
+      onGoToAlbum?.call();
     } else if (action == _TrackMenuAction.goToArtist) {
-      widget.onGoToArtist?.call();
+      onGoToArtist?.call();
     }
   }
 }

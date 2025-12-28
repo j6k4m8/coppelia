@@ -1,8 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/playlist.dart';
 import '../../core/color_tokens.dart';
+import 'artwork_image.dart';
 
 /// Artwork tile for a playlist.
 class PlaylistCard extends StatelessWidget {
@@ -56,12 +56,10 @@ class PlaylistCard extends StatelessWidget {
                     children: [
                       playlist.imageUrl == null
                           ? buildArtworkFallback()
-                          : CachedNetworkImage(
-                              imageUrl: playlist.imageUrl!,
+                          : ArtworkImage(
+                              imageUrl: playlist.imageUrl,
                               fit: BoxFit.cover,
-                              placeholder: (_, __) => buildArtworkFallback(),
-                              errorWidget: (_, __, ___) =>
-                                  buildArtworkFallback(),
+                              placeholder: buildArtworkFallback(),
                             ),
                       if (onPlay != null)
                         Align(

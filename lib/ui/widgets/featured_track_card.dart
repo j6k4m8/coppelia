@@ -1,8 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/media_item.dart';
 import '../../core/color_tokens.dart';
+import 'artwork_image.dart';
 
 /// Prominent card for spotlight tracks.
 class FeaturedTrackCard extends StatelessWidget {
@@ -25,12 +25,16 @@ class FeaturedTrackCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget buildArtworkFallback() => Container(
-          width: 72,
-          height: 72,
+    Widget buildArtworkFallback({double? size}) => Container(
+          width: size,
+          height: size,
           color: ColorTokens.cardFillStrong(context),
-          child: const Icon(Icons.music_note),
+          child: Icon(
+            Icons.music_note,
+            size: size == null ? 24 : 20,
+          ),
         );
+    final theme = Theme.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onDoubleTap: onTap,
@@ -52,14 +56,13 @@ class FeaturedTrackCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: track.imageUrl == null
-                  ? buildArtworkFallback()
-                  : CachedNetworkImage(
-                      imageUrl: track.imageUrl!,
+                  ? buildArtworkFallback(size: 72)
+                  : ArtworkImage(
+                      imageUrl: track.imageUrl,
                       width: 72,
                       height: 72,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => buildArtworkFallback(),
-                      errorWidget: (_, __, ___) => buildArtworkFallback(),
+                      placeholder: buildArtworkFallback(size: 72),
                     ),
             ),
             const SizedBox(width: 16),
@@ -72,7 +75,7 @@ class FeaturedTrackCard extends StatelessWidget {
                     track.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: theme.textTheme.titleMedium,
                   ),
                   const SizedBox(height: 4),
                   MouseRegion(
@@ -86,13 +89,11 @@ class FeaturedTrackCard extends StatelessWidget {
                         track.subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: onArtistTap == null
-                                  ? ColorTokens.textSecondary(context)
-                                  : Theme.of(context)
-                                      .colorScheme
-                                      .primary,
-                            ),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: onArtistTap == null
+                              ? ColorTokens.textSecondary(context)
+                              : theme.colorScheme.primary,
+                        ),
                       ),
                     ),
                   ),
