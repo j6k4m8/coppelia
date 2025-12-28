@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:just_audio/just_audio.dart';
 
 import '../models/media_item.dart';
@@ -138,11 +136,12 @@ class PlaybackController {
     CacheStore? cacheStore,
     Map<String, String>? headers,
   ) async {
-    final file = cacheStore == null ? null : await cacheStore.getCachedAudio(item);
+    final file = cacheStore == null
+        ? null
+        : await cacheStore.getCachedAudio(item, touch: false);
     if (file != null) {
       return AudioSource.file(file.path, tag: item);
     }
-    unawaited(cacheStore?.prefetchAudio(item));
     return AudioSource.uri(
       Uri.parse(item.streamUrl),
       headers: headers,

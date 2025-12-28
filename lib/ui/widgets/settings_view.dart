@@ -685,6 +685,38 @@ class _CacheSettingsState extends State<_CacheSettings> {
     });
   }
 
+  Future<bool> _confirmCacheTrim({
+    required int currentBytes,
+    required int targetBytes,
+  }) async {
+    if (targetBytes == 0 || currentBytes <= targetBytes) {
+      return true;
+    }
+    final formattedCurrent = formatBytes(currentBytes);
+    final formattedTarget = formatBytes(targetBytes);
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Trim cache?'),
+        content: Text(
+          'Your cache uses $formattedCurrent. Reducing the limit to '
+          '$formattedTarget will evict older downloads.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Trim cache'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   String _fileManagerLabel() {
     if (Platform.isMacOS) {
       return 'Show in Finder';
@@ -737,6 +769,14 @@ class _CacheSettingsState extends State<_CacheSettings> {
             currentBytes: widget.state.cacheMaxBytes,
             options: _cacheLimitOptions,
             onChanged: (bytes) async {
+              final currentBytes = await widget.state.getMediaCacheBytes();
+              final shouldTrim = await _confirmCacheTrim(
+                currentBytes: currentBytes,
+                targetBytes: bytes,
+              );
+              if (!shouldTrim) {
+                return;
+              }
               await widget.state.setCacheMaxBytes(bytes);
               _refreshCacheUsage();
               if (context.mounted) {

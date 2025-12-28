@@ -1494,6 +1494,7 @@ class AppState extends ChangeNotifier {
       if (index != null && index >= 0 && index < _queue.length) {
         final next = _queue[index];
         _setNowPlaying(next, notify: false);
+        unawaited(_cacheStore.handlePlaybackAdvance(_queue, index));
       }
       notifyListeners();
     });
@@ -2133,8 +2134,7 @@ class AppState extends ChangeNotifier {
       }
       return;
     }
-    final cached = await _cacheStore.getCachedAudio(track);
-    final isCached = cached != null;
+    final isCached = await _cacheStore.isAudioCached(track);
     final nextPreparing = !isCached;
     final shouldNotify = _isNowPlayingCached != isCached ||
         _isPreparingPlayback != nextPreparing;

@@ -39,6 +39,7 @@ class CacheStore {
   static const _libraryStatsKey = 'cached_library_stats';
   static const _cachedAudioKey = 'cached_audio_entries';
   static const _cachedAudioLimitKey = 'cached_audio_limit_bytes';
+  static const _pinnedAudioKey = 'cached_audio_pins';
   static const _playbackResumeKey = 'cached_playback_resume';
 
   final DefaultCacheManager _audioCache = DefaultCacheManager();
@@ -357,12 +358,18 @@ class CacheStore {
   }
 
   /// Returns a cached audio file if present.
-  Future<File?> getCachedAudio(MediaItem item) async {
+  Future<File?> getCachedAudio(MediaItem item, {bool touch = false}) async {
     final cached = await _audioCache.getFileFromCache(item.streamUrl);
-    if (cached != null) {
-      _rememberCachedAudio(item);
+    if (touch && cached != null) {
+      await _rememberCachedAudio(item);
     }
     return cached?.file;
+  }
+
+  /// Returns true when the audio is cached on disk.
+  Future<bool> isAudioCached(MediaItem item) async {
+    final cached = await _audioCache.getFileFromCache(item.streamUrl);
+    return cached != null;
   }
 
   /// Downloads audio for offline-ready playback.
@@ -374,6 +381,44 @@ class CacheStore {
     } catch (_) {
       // Ignore failed prefetch attempts.
     }
+  }
+
+  /// Updates the LRU timestamp for a cached track.
+  Future<void> touchCachedAudio(MediaItem item) async {
+    final cached = await _audioCache.getFileFromCache(item.streamUrl);
+    if (cached == null) {
+      return;
+    }
+    await _rememberCachedAudio(item);
+  }
+
+  /// Prefetches the next track in the queue, when available.
+  Future<void> prefetchNextFromQueue(
+    List<MediaItem> queue,
+    int currentIndex,
+  ) async {
+    final nextIndex = currentIndex + 1;
+    if (nextIndex < 0 || nextIndex >= queue.length) {
+      return;
+    }
+    final next = queue[nextIndex];
+    if (await isAudioCached(next)) {
+      return;
+    }
+    await prefetchAudio(next);
+  }
+
+  /// Handles cache updates when playback advances.
+  Future<void> handlePlaybackAdvance(
+    List<MediaItem> queue,
+    int currentIndex,
+  ) async {
+    if (currentIndex < 0 || currentIndex >= queue.length) {
+      return;
+    }
+    final current = queue[currentIndex];
+    await touchCachedAudio(current);
+    await prefetchNextFromQueue(queue, currentIndex);
   }
 
   /// Clears cached metadata for library lists and tracks.
@@ -517,6 +562,7 @@ class CacheStore {
       return;
     }
     final entries = await loadCachedAudioEntries();
+    final pinned = await _loadPinnedAudio();
     if (entries.isEmpty) {
       return;
     }
@@ -527,6 +573,9 @@ class CacheStore {
     entries.sort((a, b) => a.cachedAt.compareTo(b.cachedAt));
     final toRemove = <CachedAudioEntry>[];
     for (final entry in entries) {
+      if (pinned.contains(entry.streamUrl)) {
+        continue;
+      }
       toRemove.add(entry);
       total -= entry.bytes;
       if (total <= limit) {
@@ -622,6 +671,35 @@ class CacheStore {
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
     decoded.remove(streamUrl);
     await _saveCachedAudioEntries(decoded);
+  }
+
+  Future<Set<String>> _loadPinnedAudio() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_pinnedAudioKey);
+    if (raw == null || raw.isEmpty) {
+      return {};
+    }
+    final decoded = jsonDecode(raw) as List<dynamic>;
+    return decoded.map((entry) => entry.toString()).toSet();
+  }
+
+  Future<void> _savePinnedAudio(Set<String> urls) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      _pinnedAudioKey,
+      jsonEncode(urls.toList()),
+    );
+  }
+
+  /// Pins or unpins a cached track for offline use.
+  Future<void> setPinnedAudio(String streamUrl, bool pinned) async {
+    final current = await _loadPinnedAudio();
+    if (pinned) {
+      current.add(streamUrl);
+    } else {
+      current.remove(streamUrl);
+    }
+    await _savePinnedAudio(current);
   }
 
   Future<void> _forgetCachedAudioEntries(Set<String> streamUrls) async {
