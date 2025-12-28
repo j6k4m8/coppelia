@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -55,6 +56,9 @@ class SettingsStore {
   Future<NowPlayingLayout> loadNowPlayingLayout() async {
     final preferences = await SharedPreferences.getInstance();
     final raw = preferences.getString(_layoutKey);
+    if (raw == null && defaultTargetPlatform == TargetPlatform.iOS) {
+      return NowPlayingLayout.bottom;
+    }
     return raw == 'bottom'
         ? NowPlayingLayout.bottom
         : NowPlayingLayout.side;
