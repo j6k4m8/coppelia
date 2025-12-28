@@ -21,6 +21,7 @@ class CollectionDetailView extends StatelessWidget {
     this.imageUrl,
     this.subtitleWidget,
     this.onPlayAll,
+    this.onShuffle,
     this.onPlayNext,
     this.onAddToQueue,
     this.onAlbumTap,
@@ -45,6 +46,9 @@ class CollectionDetailView extends StatelessWidget {
 
   /// Callback for playing all tracks.
   final VoidCallback? onPlayAll;
+
+  /// Callback for shuffling tracks.
+  final VoidCallback? onShuffle;
 
   /// Handler when a track is tapped.
   final ValueChanged<MediaItem> onTrackTap;
@@ -92,6 +96,7 @@ class CollectionDetailView extends StatelessWidget {
                   subtitleWidget: subtitleWidget,
                   imageUrl: imageUrl,
                   onPlayAll: onPlayAll,
+                  onShuffle: onShuffle,
                 );
               }
               if (headerFooter != null && index == 1) {
@@ -149,6 +154,7 @@ class _Header extends StatelessWidget {
     this.subtitleWidget,
     this.imageUrl,
     this.onPlayAll,
+    this.onShuffle,
   });
 
   final String title;
@@ -156,6 +162,7 @@ class _Header extends StatelessWidget {
   final Widget? subtitleWidget;
   final String? imageUrl;
   final VoidCallback? onPlayAll;
+  final VoidCallback? onShuffle;
 
   @override
   Widget build(BuildContext context) {
@@ -221,6 +228,12 @@ class _Header extends StatelessWidget {
                     icon: const Icon(Icons.play_arrow),
                     label: const Text('Play'),
                   ),
+                  if (onShuffle != null)
+                    FilledButton.tonalIcon(
+                      onPressed: onShuffle,
+                      icon: const Icon(Icons.shuffle),
+                      label: const Text('Shuffle'),
+                    ),
                 ],
               ),
             ],

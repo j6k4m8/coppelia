@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show ThemeMode;
@@ -107,6 +108,7 @@ class AppState extends ChangeNotifier {
       ValueNotifier(Duration.zero);
   final ValueNotifier<bool> _isPlayingNotifier = ValueNotifier(false);
   final ValueNotifier<bool> _isBufferingNotifier = ValueNotifier(false);
+  final Random _random = Random();
   ThemeMode _themeMode = ThemeMode.dark;
   String? _fontFamily = 'SF Pro Display';
   double _fontScale = 1.0;
@@ -129,6 +131,12 @@ class AppState extends ChangeNotifier {
   bool _sidebarCollapsed = false;
   final Map<LibraryView, BrowseLayout> _browseLayouts = {};
   final Map<String, double> _scrollOffsets = {};
+
+  MediaItem? _jumpInTrack;
+  Album? _jumpInAlbum;
+  Artist? _jumpInArtist;
+  bool _isLoadingJumpIn = false;
+  DateTime? _lastJumpInRefreshAt;
 
   StreamSubscription<Duration>? _positionSubscription;
   StreamSubscription<Duration?>? _durationSubscription;
@@ -341,6 +349,27 @@ class AppState extends ChangeNotifier {
   Map<HomeSection, bool> get homeSectionVisibility =>
       Map.unmodifiable(_homeSectionVisibility);
 
+  /// Random track for the Jump in shelf.
+  MediaItem? get jumpInTrack => _jumpInTrack;
+
+  /// Random album for the Jump in shelf.
+  Album? get jumpInAlbum => _jumpInAlbum;
+
+  /// Random artist for the Jump in shelf.
+  Artist? get jumpInArtist => _jumpInArtist;
+
+  /// True while Jump in picks are loading.
+  bool get isLoadingJumpIn => _isLoadingJumpIn;
+
+  /// True when Jump in should auto-refresh.
+  bool get shouldRefreshJumpIn {
+    final last = _lastJumpInRefreshAt;
+    if (last == null) {
+      return true;
+    }
+    return DateTime.now().difference(last) >= const Duration(minutes: 5);
+  }
+
   /// Sidebar item visibility settings.
   Map<SidebarItem, bool> get sidebarVisibility =>
       Map.unmodifiable(_sidebarVisibility);
@@ -377,6 +406,9 @@ class AppState extends ChangeNotifier {
     _homeSectionVisibility[section] = visible;
     await _settingsStore.saveHomeSectionVisibility(_homeSectionVisibility);
     notifyListeners();
+    if (section == HomeSection.jumpIn && visible) {
+      unawaited(loadJumpIn(force: true));
+    }
   }
 
   /// Updates the visibility of a sidebar item.
@@ -495,6 +527,11 @@ class AppState extends ChangeNotifier {
     _recentTracks = [];
     _playHistory = [];
     _libraryStats = null;
+    _jumpInTrack = null;
+    _jumpInAlbum = null;
+    _jumpInArtist = null;
+    _isLoadingJumpIn = false;
+    _lastJumpInRefreshAt = null;
     _queue = [];
     _nowPlaying = null;
     _playSessionId = null;
@@ -549,6 +586,9 @@ class AppState extends ChangeNotifier {
       await _loadFavoriteAlbums();
       await _loadFavoriteArtists();
       await _loadFavoriteTracks();
+      if (isHomeSectionVisible(HomeSection.jumpIn)) {
+        unawaited(loadJumpIn(force: true));
+      }
     } catch (_) {
       // Keep cached content if refresh fails.
     }
@@ -810,6 +850,92 @@ class AppState extends ChangeNotifier {
       _tracksLoadCompleter = null;
       notifyListeners();
     }
+  }
+
+  /// Returns a random track from the library when available.
+  Future<MediaItem?> getRandomTrack() async {
+    if (_session == null) {
+      return null;
+    }
+    try {
+      final track = await _client.fetchRandomTrack();
+      if (track != null) {
+        return track;
+      }
+    } catch (_) {}
+    return _randomFromList(
+          _featuredTracks.isNotEmpty ? _featuredTracks : _recentTracks,
+        ) ??
+        _randomFromList(_libraryTracks);
+  }
+
+  /// Returns a random album from the library when available.
+  Future<Album?> getRandomAlbum() async {
+    if (_session == null) {
+      return null;
+    }
+    try {
+      final album = await _client.fetchRandomAlbum();
+      if (album != null) {
+        return album;
+      }
+    } catch (_) {}
+    return _randomFromList(_albums.isNotEmpty ? _albums : _favoriteAlbums);
+  }
+
+  /// Returns a random artist from the library when available.
+  Future<Artist?> getRandomArtist() async {
+    if (_session == null) {
+      return null;
+    }
+    try {
+      final artist = await _client.fetchRandomArtist();
+      if (artist != null) {
+        return artist;
+      }
+    } catch (_) {}
+    return _randomFromList(_artists.isNotEmpty ? _artists : _favoriteArtists);
+  }
+
+  /// Loads the Jump in shelf picks.
+  Future<void> loadJumpIn({bool force = false}) async {
+    if (_session == null) {
+      return;
+    }
+    if (_isLoadingJumpIn) {
+      return;
+    }
+    if (!force &&
+        _jumpInTrack != null &&
+        _jumpInAlbum != null &&
+        _jumpInArtist != null) {
+      return;
+    }
+    _isLoadingJumpIn = true;
+    notifyListeners();
+    try {
+      final results = await Future.wait([
+        getRandomTrack(),
+        getRandomAlbum(),
+        getRandomArtist(),
+      ]);
+      _jumpInTrack = results[0] as MediaItem? ?? _jumpInTrack;
+      _jumpInAlbum = results[1] as Album? ?? _jumpInAlbum;
+      _jumpInArtist = results[2] as Artist? ?? _jumpInArtist;
+      _lastJumpInRefreshAt = DateTime.now();
+    } finally {
+      _isLoadingJumpIn = false;
+      notifyListeners();
+    }
+  }
+
+  /// Plays a shuffled copy of the provided tracks.
+  Future<void> playShuffledList(List<MediaItem> tracks) async {
+    if (tracks.isEmpty) {
+      return;
+    }
+    final shuffled = [...tracks]..shuffle(_random);
+    await _playFromList(shuffled, shuffled.first);
   }
 
   /// Loads favorite albums.
@@ -1852,6 +1978,13 @@ class AppState extends ChangeNotifier {
     if (notify) {
       notifyListeners();
     }
+  }
+
+  T? _randomFromList<T>(List<T> items) {
+    if (items.isEmpty) {
+      return null;
+    }
+    return items[_random.nextInt(items.length)];
   }
 
   Future<void> _playFromList(

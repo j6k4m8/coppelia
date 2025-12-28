@@ -25,6 +25,9 @@ class GenreDetailView extends StatelessWidget {
       onPlayAll: state.genreTracks.isEmpty
           ? null
           : () => state.playFromGenre(state.genreTracks.first),
+      onShuffle: state.genreTracks.isEmpty
+          ? null
+          : () => state.playShuffledList(state.genreTracks),
       onTrackTap: state.playFromGenre,
       onPlayNext: state.playNext,
       onAddToQueue: state.enqueueTrack,

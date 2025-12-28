@@ -8,6 +8,9 @@ enum HomeSection {
 
   /// Playlists shelf.
   playlists,
+
+  /// Random picks shelf.
+  jumpIn,
 }
 
 extension HomeSectionMetadata on HomeSection {
@@ -20,6 +23,8 @@ extension HomeSectionMetadata on HomeSection {
         return 'recent';
       case HomeSection.playlists:
         return 'playlists';
+      case HomeSection.jumpIn:
+        return 'jumpIn';
     }
   }
 
@@ -32,6 +37,8 @@ extension HomeSectionMetadata on HomeSection {
         return 'Recently played';
       case HomeSection.playlists:
         return 'Playlists';
+      case HomeSection.jumpIn:
+        return 'Jump in';
     }
   }
 
@@ -44,6 +51,8 @@ extension HomeSectionMetadata on HomeSection {
         return 'Show your recently played shelf.';
       case HomeSection.playlists:
         return 'Show playlists on Home.';
+      case HomeSection.jumpIn:
+        return 'Show random picks from your library.';
     }
   }
 }

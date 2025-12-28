@@ -44,6 +44,9 @@ class AlbumDetailView extends StatelessWidget {
       onPlayAll: state.albumTracks.isEmpty
           ? null
           : () => state.playFromAlbum(state.albumTracks.first),
+      onShuffle: state.albumTracks.isEmpty
+          ? null
+          : () => state.playShuffledList(state.albumTracks),
       onTrackTap: state.playFromAlbum,
       onPlayNext: state.playNext,
       onAddToQueue: state.enqueueTrack,

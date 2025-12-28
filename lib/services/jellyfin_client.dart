@@ -692,6 +692,96 @@ class JellyfinClient {
         .toList();
   }
 
+  /// Fetches a random track from the user's library.
+  Future<MediaItem?> fetchRandomTrack() async {
+    final session = _requireSession();
+    final uri = Uri.parse(
+      '${session.serverUrl}/Users/${session.userId}/Items',
+    ).replace(
+      queryParameters: {
+        'IncludeItemTypes': 'Audio',
+        'Recursive': 'true',
+        'SortBy': 'Random',
+        'Limit': '1',
+        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems',
+        'api_key': session.accessToken,
+      },
+    );
+    final response = await _httpClient.get(uri);
+    if (response.statusCode != 200) {
+      return null;
+    }
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = payload['Items'] as List<dynamic>? ?? [];
+    if (items.isEmpty) {
+      return null;
+    }
+    return MediaItem.fromJellyfin(
+      items.first as Map<String, dynamic>,
+      serverUrl: session.serverUrl,
+      token: session.accessToken,
+      userId: session.userId,
+      deviceId: _deviceId,
+    );
+  }
+
+  /// Fetches a random album from the user's library.
+  Future<Album?> fetchRandomAlbum() async {
+    final session = _requireSession();
+    final uri = Uri.parse(
+      '${session.serverUrl}/Users/${session.userId}/Items',
+    ).replace(
+      queryParameters: {
+        'IncludeItemTypes': 'MusicAlbum',
+        'Recursive': 'true',
+        'SortBy': 'Random',
+        'Limit': '1',
+        'Fields': 'ImageTags,ChildCount,AlbumArtist,AlbumArtists',
+        'api_key': session.accessToken,
+      },
+    );
+    final response = await _httpClient.get(uri);
+    if (response.statusCode != 200) {
+      return null;
+    }
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = payload['Items'] as List<dynamic>? ?? [];
+    if (items.isEmpty) {
+      return null;
+    }
+    return Album.fromJellyfin(
+      items.first as Map<String, dynamic>,
+      serverUrl: session.serverUrl,
+    );
+  }
+
+  /// Fetches a random artist from the user's library.
+  Future<Artist?> fetchRandomArtist() async {
+    final session = _requireSession();
+    final uri = Uri.parse('${session.serverUrl}/Artists').replace(
+      queryParameters: {
+        'UserId': session.userId,
+        'SortBy': 'Random',
+        'Limit': '1',
+        'Fields': 'ImageTags',
+        'api_key': session.accessToken,
+      },
+    );
+    final response = await _httpClient.get(uri);
+    if (response.statusCode != 200) {
+      return null;
+    }
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = payload['Items'] as List<dynamic>? ?? [];
+    if (items.isEmpty) {
+      return null;
+    }
+    return Artist.fromJellyfin(
+      items.first as Map<String, dynamic>,
+      serverUrl: session.serverUrl,
+    );
+  }
+
   /// Fetches library-wide counts for home stats.
   Future<LibraryStats> fetchLibraryStats() async {
     final session = _requireSession();

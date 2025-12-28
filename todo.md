@@ -16,8 +16,8 @@
 -   [ ] Android: generate app icons from `assets/logo_app_icon.svg`.
 -   [ ] Android: media session + notification controls (play/pause/next).
 -   [ ] play controls
-    -   [ ] shuffle
+    -   [x] shuffle
     -   [ ] repeat queue / playlist
     -   [ ] repeat track
 -   [ ] "now playing" full-screen expanded view that showcases the album art if you click the album art in the mini player.
--   [ ] add to the homepage a "Jump in" section that has cards for (independently) randomly selected album, artist, and track
+-   [x] add to the homepage a "Jump in" section that has cards for (independently) randomly selected album, artist, and track

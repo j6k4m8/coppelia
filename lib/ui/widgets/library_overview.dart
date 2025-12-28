@@ -7,6 +7,7 @@ import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
 import '../../core/color_tokens.dart';
 import 'featured_track_card.dart';
+import 'library_card.dart';
 import 'playlist_card.dart';
 import 'section_header.dart';
 
@@ -117,6 +118,126 @@ class LibraryOverview extends StatelessWidget {
       ]);
     }
 
+    if (state.isHomeSectionVisible(HomeSection.jumpIn)) {
+      final track = state.jumpInTrack;
+      final album = state.jumpInAlbum;
+      final artist = state.jumpInArtist;
+      if (!state.isLoadingJumpIn && state.shouldRefreshJumpIn) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            state.loadJumpIn(force: true);
+          }
+        });
+      }
+      final entries = <_JumpInEntry>[];
+      if (track != null) {
+        entries.add(
+          _JumpInEntry(
+            label: 'Track',
+            title: track.title,
+            subtitle: track.artists.isNotEmpty
+                ? track.artists.join(', ')
+                : track.album,
+            imageUrl: track.imageUrl,
+            icon: Icons.music_note,
+            onTap: () => state.playFromList([track], track),
+          ),
+        );
+      }
+      if (album != null) {
+        entries.add(
+          _JumpInEntry(
+            label: 'Album',
+            title: album.name,
+            subtitle: album.artistName,
+            imageUrl: album.imageUrl,
+            icon: Icons.album,
+            onTap: () => state.selectAlbum(album),
+          ),
+        );
+      }
+      if (artist != null) {
+        entries.add(
+          _JumpInEntry(
+            label: 'Artist',
+            title: artist.name,
+            subtitle: '${artist.trackCount} tracks',
+            imageUrl: artist.imageUrl,
+            icon: Icons.person,
+            onTap: () => state.selectArtist(artist),
+          ),
+        );
+      }
+      if (!state.isLoadingJumpIn &&
+          (track == null || album == null || artist == null)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            state.loadJumpIn();
+          }
+        });
+      }
+      addSection([
+        SectionHeader(
+          title: 'Jump in',
+          action: Row(
+            children: [
+              if (state.isLoadingJumpIn)
+                Text(
+                  'Refreshing...',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: ColorTokens.textSecondary(context)),
+                )
+              else
+                Text(
+                  '${entries.length} picks',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: ColorTokens.textSecondary(context)),
+                ),
+              SizedBox(width: space(12)),
+              _HeaderAction(
+                label: 'Refresh',
+                onTap: () => state.loadJumpIn(force: true),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: space(16)),
+        if (entries.isEmpty)
+          SizedBox(
+            height: space(120).clamp(96.0, 150.0),
+            child: const Center(child: CircularProgressIndicator()),
+          )
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final targetWidth = space(220).clamp(160.0, 260.0);
+              final columns =
+                  (constraints.maxWidth / targetWidth).floor().clamp(1, 3);
+              final spacing = space(16);
+              final width = (constraints.maxWidth -
+                      spacing * (columns - 1)) /
+                  columns;
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: entries
+                    .map(
+                      (entry) => SizedBox(
+                        width: width,
+                        child: _JumpInCard(entry: entry),
+                      ),
+                    )
+                    .toList(),
+              );
+            },
+          ),
+      ]);
+    }
+
     if (state.isHomeSectionVisible(HomeSection.playlists)) {
       addSection([
         SectionHeader(
@@ -189,6 +310,59 @@ class _HeaderAction extends StatelessWidget {
               ),
         ),
       ),
+    );
+  }
+}
+
+class _JumpInEntry {
+  const _JumpInEntry({
+    required this.label,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.imageUrl,
+    this.icon = Icons.music_note,
+  });
+
+  final String label;
+  final String title;
+  final String subtitle;
+  final String? imageUrl;
+  final IconData icon;
+  final VoidCallback onTap;
+}
+
+class _JumpInCard extends StatelessWidget {
+  const _JumpInCard({required this.entry});
+
+  final _JumpInEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          entry.label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: ColorTokens.textSecondary(context),
+                letterSpacing: 0.6,
+              ),
+        ),
+        SizedBox(height: space(8).clamp(6.0, 12.0)),
+        AspectRatio(
+          aspectRatio: 1.05,
+          child: LibraryCard(
+            title: entry.title,
+            subtitle: entry.subtitle,
+            imageUrl: entry.imageUrl,
+            icon: entry.icon,
+            onTap: entry.onTap,
+          ),
+        ),
+      ],
     );
   }
 }

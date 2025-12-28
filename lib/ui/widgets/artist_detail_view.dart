@@ -76,6 +76,9 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
                   onPlayAll: tracks.isEmpty
                       ? null
                       : () => state.playFromArtist(tracks.first),
+                  onShuffle: tracks.isEmpty
+                      ? null
+                      : () => state.playShuffledList(tracks),
                 );
               }
               if (hasAlbums && index == 1) {
@@ -186,12 +189,14 @@ class _ArtistHeader extends StatelessWidget {
     required this.subtitle,
     required this.imageUrl,
     required this.onPlayAll,
+    this.onShuffle,
   });
 
   final String title;
   final String subtitle;
   final String? imageUrl;
   final VoidCallback? onPlayAll;
+  final VoidCallback? onShuffle;
 
   @override
   Widget build(BuildContext context) {
@@ -256,6 +261,12 @@ class _ArtistHeader extends StatelessWidget {
                     icon: const Icon(Icons.play_arrow),
                     label: const Text('Play'),
                   ),
+                  if (onShuffle != null)
+                    FilledButton.tonalIcon(
+                      onPressed: onShuffle,
+                      icon: const Icon(Icons.shuffle),
+                      label: const Text('Shuffle'),
+                    ),
                 ],
               ),
             ],

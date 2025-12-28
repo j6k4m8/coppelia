@@ -154,6 +154,13 @@ class _PlaylistHeader extends StatelessWidget {
                     icon: const Icon(Icons.play_arrow),
                     label: const Text('Play'),
                   ),
+                  if (state.playlistTracks.isNotEmpty)
+                    FilledButton.tonalIcon(
+                      onPressed: () =>
+                          state.playShuffledList(state.playlistTracks),
+                      icon: const Icon(Icons.shuffle),
+                      label: const Text('Shuffle'),
+                    ),
                 ],
               ),
             ],
