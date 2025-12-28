@@ -11,6 +11,7 @@ import '../models/cached_audio_entry.dart';
 import '../models/genre.dart';
 import '../models/library_stats.dart';
 import '../models/media_item.dart';
+import '../models/playback_resume_state.dart';
 import '../models/playlist.dart';
 
 /// Manages cached metadata and audio assets.
@@ -34,6 +35,7 @@ class CacheStore {
   static const _playHistoryKey = 'cached_play_history';
   static const _libraryStatsKey = 'cached_library_stats';
   static const _cachedAudioKey = 'cached_audio_entries';
+  static const _playbackResumeKey = 'cached_playback_resume';
 
   final DefaultCacheManager _audioCache = DefaultCacheManager();
 
@@ -294,6 +296,31 @@ class CacheStore {
     await preferences.setString(_playHistoryKey, jsonEncode(payload));
   }
 
+  /// Persists the last known playback state for resume.
+  Future<void> savePlaybackResumeState(PlaybackResumeState? state) async {
+    final preferences = await SharedPreferences.getInstance();
+    if (state == null) {
+      await preferences.remove(_playbackResumeKey);
+      return;
+    }
+    await preferences.setString(
+      _playbackResumeKey,
+      jsonEncode(state.toJson()),
+    );
+  }
+
+  /// Loads the last known playback state for resume.
+  Future<PlaybackResumeState?> loadPlaybackResumeState() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_playbackResumeKey);
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return PlaybackResumeState.fromJson(
+      jsonDecode(raw) as Map<String, dynamic>,
+    );
+  }
+
   /// Loads cached playback history.
   Future<List<MediaItem>> loadPlayHistory() async {
     final preferences = await SharedPreferences.getInstance();
@@ -359,6 +386,7 @@ class CacheStore {
     await preferences.remove(_recentTracksKey);
     await preferences.remove(_playHistoryKey);
     await preferences.remove(_libraryStatsKey);
+    await preferences.remove(_playbackResumeKey);
   }
 
   /// Clears cached audio files.

@@ -11,6 +11,7 @@ import '../models/cached_audio_entry.dart';
 import '../models/genre.dart';
 import '../models/library_stats.dart';
 import '../models/media_item.dart';
+import '../models/playback_resume_state.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
 import '../services/cache_store.dart';
@@ -119,6 +120,8 @@ class AppState extends ChangeNotifier {
   String? _reportedStartSessionId;
   String? _reportedStopSessionId;
   DateTime? _lastProgressReportAt;
+  DateTime? _lastPlaybackPersistAt;
+  bool _activeSessionHasPlayed = false;
 
   /// Current authenticated session.
   AuthSession? get session => _session;
@@ -354,6 +357,7 @@ class AppState extends ChangeNotifier {
     _sidebarWidth = await _settingsStore.loadSidebarWidth();
     _sidebarCollapsed = await _settingsStore.loadSidebarCollapsed();
     await _loadCachedLibrary();
+    await _restorePlaybackResumeState();
     _isBootstrapping = false;
     notifyListeners();
 
@@ -390,6 +394,7 @@ class AppState extends ChangeNotifier {
 
   /// Signs out and clears cached state.
   Future<void> signOut() async {
+    await _cacheStore.savePlaybackResumeState(null);
     _session = null;
     _client.clearSession();
     _selectedPlaylist = null;
@@ -421,6 +426,8 @@ class AppState extends ChangeNotifier {
     _reportedStartSessionId = null;
     _reportedStopSessionId = null;
     _lastProgressReportAt = null;
+    _lastPlaybackPersistAt = null;
+    _activeSessionHasPlayed = false;
     _isBuffering = false;
     await _sessionStore.saveSession(null);
     notifyListeners();
@@ -928,6 +935,7 @@ class AppState extends ChangeNotifier {
       sessionId: _playSessionId,
       completed: false,
     );
+    await _cacheStore.savePlaybackResumeState(null);
     final currentIndex = _playback.currentIndex;
     if (_queue.isEmpty || currentIndex == null || currentIndex < 0) {
       await _playback.clearQueue(keepCurrent: false);
@@ -1096,6 +1104,7 @@ class AppState extends ChangeNotifier {
       _position = position;
       _positionNotifier.value = position;
       _maybeReportProgress();
+      _persistPlaybackResumeState();
     });
     _durationSubscription = _playback.durationStream.listen((duration) {
       _duration = duration ?? Duration.zero;
@@ -1109,6 +1118,9 @@ class AppState extends ChangeNotifier {
       final playingChanged = _isPlaying != nextPlaying;
       final bufferingChanged = _isBuffering != nextBuffering;
       _isPlaying = nextPlaying;
+      if (_isPlaying) {
+        _activeSessionHasPlayed = true;
+      }
       _isBuffering = nextBuffering;
       _isPlayingNotifier.value = _isPlaying;
       _isBufferingNotifier.value = _isBuffering;
@@ -1141,23 +1153,91 @@ class AppState extends ChangeNotifier {
     unawaited(_cacheStore.savePlayHistory(_playHistory));
   }
 
-  void _setNowPlaying(MediaItem track, {bool notify = true}) {
+  Future<void> _restorePlaybackResumeState() async {
+    if (_session == null) {
+      return;
+    }
+    final resume = await _cacheStore.loadPlaybackResumeState();
+    if (resume == null) {
+      return;
+    }
+    _queue = [resume.track];
+    _nowPlaying = resume.track;
+    _position = resume.position;
+    _duration = Duration.zero;
+    _positionNotifier.value = _position;
+    _durationNotifier.value = _duration;
+    _playSessionId = _buildPlaySessionId(resume.track);
+    _reportedStartSessionId = null;
+    _reportedStopSessionId = null;
+    _lastProgressReportAt = null;
+    _lastPlaybackPersistAt = DateTime.now();
+    _activeSessionHasPlayed = false;
+    try {
+      await _playback.setQueue(
+        _queue,
+        startIndex: 0,
+        cacheStore: _cacheStore,
+        headers: _playbackHeaders(),
+      );
+      await _playback.seek(_position);
+    } catch (_) {
+      // Ignore failures when restoring playback state.
+    }
+  }
+
+  void _persistPlaybackResumeState({bool force = false}) {
+    final track = _nowPlaying;
+    if (track == null) {
+      return;
+    }
+    final now = DateTime.now();
+    if (!force) {
+      final last = _lastPlaybackPersistAt;
+      if (last != null && now.difference(last) < const Duration(seconds: 5)) {
+        return;
+      }
+    }
+    _lastPlaybackPersistAt = now;
+    unawaited(
+      _cacheStore.savePlaybackResumeState(
+        PlaybackResumeState(track: track, position: _position),
+      ),
+    );
+  }
+
+  void _setNowPlaying(
+    MediaItem track, {
+    bool notify = true,
+    bool recordHistory = true,
+  }) {
     if (_nowPlaying?.id == track.id) {
       return;
     }
     final previousTrack = _nowPlaying;
     final previousSession = _playSessionId;
-    _maybeReportStoppedForSession(
-      track: previousTrack,
-      sessionId: previousSession,
-      completed: false,
-    );
+    if (_activeSessionHasPlayed) {
+      _maybeReportStoppedForSession(
+        track: previousTrack,
+        sessionId: previousSession,
+        completed: false,
+      );
+    }
     _nowPlaying = track;
-    _recordPlayHistory(track);
+    _position = Duration.zero;
+    _positionNotifier.value = _position;
+    if (recordHistory) {
+      _recordPlayHistory(track);
+    }
     _playSessionId = _buildPlaySessionId(track);
     _reportedStartSessionId = null;
     _reportedStopSessionId = null;
     _lastProgressReportAt = null;
+    _activeSessionHasPlayed = _isPlaying;
+    _persistPlaybackResumeState(force: true);
+    if (_isPlaying && _telemetryPlayback) {
+      _reportPlaybackStart();
+    }
     if (notify) {
       notifyListeners();
     }
