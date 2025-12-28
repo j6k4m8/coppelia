@@ -18,3 +18,7 @@
 -   [ ] Tracks browse should load alphabetically so pagination doesn't fetch items above the viewport (? need to repro)
 -   [ ] Tracks browse should include the alphabet scroller widget.
 -   [ ] sidebar settings for inclusion should be indented the same as the sidebar itself
+-   [ ] Android: generate app icons from `assets/logo_app_icon.svg`.
+-   [ ] Android: media session + notification controls (play/pause/next).
+-   [ ] Android: add CI build/release.
+-   [ ] Android: UI polish for small screens/safe areas.

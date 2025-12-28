@@ -108,7 +108,7 @@ class AppState extends ChangeNotifier {
   bool _telemetryPlayback = true;
   bool _telemetryProgress = true;
   bool _telemetryHistory = true;
-  NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.side;
+  NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.bottom;
   Map<HomeSection, bool> _homeSectionVisibility = {
     for (final section in HomeSection.values) section: true,
   };
