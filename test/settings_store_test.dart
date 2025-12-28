@@ -57,4 +57,33 @@ void main() {
     expect(visibility[SidebarItem.settings], isFalse);
     expect(visibility[SidebarItem.queue], isTrue);
   });
+
+  test('settings store defaults to SF Pro Display font family', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SettingsStore();
+
+    final family = await store.loadFontFamily();
+
+    expect(family, 'SF Pro Display');
+  });
+
+  test('settings store supports system font family', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SettingsStore();
+
+    await store.saveFontFamily(null);
+    final family = await store.loadFontFamily();
+
+    expect(family, isNull);
+  });
+
+  test('settings store saves font scale', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SettingsStore();
+
+    await store.saveFontScale(1.1);
+    final scale = await store.loadFontScale();
+
+    expect(scale, closeTo(1.1, 0.001));
+  });
 }

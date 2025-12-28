@@ -127,6 +127,14 @@ class _AppearanceSettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fontChoice = _fontChoices.firstWhere(
+      (choice) => choice.family == state.fontFamily,
+      orElse: () => _fontChoices.first,
+    );
+    final fontScale = _fontScaleChoices
+            .any((choice) => choice.scale == state.fontScale)
+        ? state.fontScale
+        : 1.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -154,6 +162,63 @@ class _AppearanceSettings extends StatelessWidget {
             onSelectionChanged: (selection) {
               final mode = selection.first;
               state.setThemeMode(mode);
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
+        _SettingRow(
+          title: 'Font family',
+          subtitle: 'Choose a display font for the app.',
+          trailing: SizedBox(
+            width: 220,
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: fontChoice.value,
+                isExpanded: true,
+                borderRadius: BorderRadius.circular(12),
+                items: _fontChoices
+                    .map(
+                      (choice) => DropdownMenuItem<String>(
+                        value: choice.value,
+                        child: Text(
+                          choice.label,
+                          style: choice.family == null
+                              ? null
+                              : TextStyle(fontFamily: choice.family),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  final selected = _fontChoices.firstWhere(
+                    (choice) => choice.value == value,
+                    orElse: () => _fontChoices.first,
+                  );
+                  state.setFontFamily(selected.family);
+                },
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _SettingRow(
+          title: 'Font size',
+          subtitle: 'Scale typography across the interface.',
+          trailing: SegmentedButton<double>(
+            segments: _fontScaleChoices
+                .map(
+                  (choice) => ButtonSegment(
+                    value: choice.scale,
+                    label: Text(
+                      choice.label,
+                      style: TextStyle(fontSize: 12 * choice.scale),
+                    ),
+                  ),
+                )
+                .toList(),
+            selected: {fontScale},
+            onSelectionChanged: (selection) {
+              state.setFontScale(selection.first);
             },
           ),
         ),
@@ -505,3 +570,36 @@ class _SettingsSubheader extends StatelessWidget {
     );
   }
 }
+
+class _FontChoice {
+  const _FontChoice(this.label, this.family);
+
+  final String label;
+  final String? family;
+
+  String get value => family ?? 'system';
+}
+
+class _FontScaleChoice {
+  const _FontScaleChoice(this.label, this.scale);
+
+  final String label;
+  final double scale;
+}
+
+const List<_FontChoice> _fontChoices = [
+  _FontChoice('SF Pro Display', 'SF Pro Display'),
+  _FontChoice('System', null),
+  _FontChoice('SF Pro Text', 'SF Pro Text'),
+  _FontChoice('Avenir Next', 'Avenir Next'),
+  _FontChoice('Helvetica Neue', 'Helvetica Neue'),
+  _FontChoice('Georgia', 'Georgia'),
+];
+
+const List<_FontScaleChoice> _fontScaleChoices = [
+  _FontScaleChoice('XS', 0.8),
+  _FontScaleChoice('S', 0.9),
+  _FontScaleChoice('M', 1.0),
+  _FontScaleChoice('L', 1.12),
+  _FontScaleChoice('XL', 1.3),
+];

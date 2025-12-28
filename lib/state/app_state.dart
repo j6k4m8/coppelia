@@ -89,6 +89,8 @@ class AppState extends ChangeNotifier {
   final ValueNotifier<bool> _isPlayingNotifier = ValueNotifier(false);
   final ValueNotifier<bool> _isBufferingNotifier = ValueNotifier(false);
   ThemeMode _themeMode = ThemeMode.dark;
+  String? _fontFamily = 'SF Pro Display';
+  double _fontScale = 1.0;
   NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.side;
   Map<HomeSection, bool> _homeSectionVisibility = {
     for (final section in HomeSection.values) section: true,
@@ -220,6 +222,12 @@ class AppState extends ChangeNotifier {
   /// Active theme mode.
   ThemeMode get themeMode => _themeMode;
 
+  /// Preferred font family.
+  String? get fontFamily => _fontFamily;
+
+  /// Preferred font scale.
+  double get fontScale => _fontScale;
+
   /// Preferred layout for now playing.
   NowPlayingLayout get nowPlayingLayout => _nowPlayingLayout;
 
@@ -290,6 +298,8 @@ class AppState extends ChangeNotifier {
       _client.updateSession(_session!);
     }
     _themeMode = await _settingsStore.loadThemeMode();
+    _fontFamily = await _settingsStore.loadFontFamily();
+    _fontScale = await _settingsStore.loadFontScale();
     _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
     _homeSectionVisibility = await _settingsStore.loadHomeSectionVisibility();
     _sidebarVisibility = await _settingsStore.loadSidebarVisibility();
@@ -905,6 +915,20 @@ class AppState extends ChangeNotifier {
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeMode = mode;
     await _settingsStore.saveThemeMode(mode);
+    notifyListeners();
+  }
+
+  /// Updates the font family preference.
+  Future<void> setFontFamily(String? family) async {
+    _fontFamily = family;
+    await _settingsStore.saveFontFamily(family);
+    notifyListeners();
+  }
+
+  /// Updates the font scale preference.
+  Future<void> setFontScale(double scale) async {
+    _fontScale = scale;
+    await _settingsStore.saveFontScale(scale);
     notifyListeners();
   }
 

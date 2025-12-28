@@ -18,6 +18,8 @@ class SettingsStore {
   static const _sidebarCollapsedKey = 'settings_sidebar_collapsed';
   static const _homeSectionKey = 'settings_home_sections';
   static const _sidebarVisibilityKey = 'settings_sidebar_visibility';
+  static const _fontFamilyKey = 'settings_font_family';
+  static const _fontScaleKey = 'settings_font_scale';
 
   /// Loads the preferred theme mode.
   Future<ThemeMode> loadThemeMode() async {
@@ -148,5 +150,40 @@ class SettingsStore {
         item.storageKey: visibility[item] ?? true,
     };
     await preferences.setString(_sidebarVisibilityKey, jsonEncode(payload));
+  }
+
+  /// Loads the preferred font family.
+  Future<String?> loadFontFamily() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_fontFamilyKey);
+    if (raw == null) {
+      return 'SF Pro Display';
+    }
+    if (raw == 'system') {
+      return null;
+    }
+    return raw;
+  }
+
+  /// Saves the preferred font family.
+  Future<void> saveFontFamily(String? family) async {
+    final preferences = await SharedPreferences.getInstance();
+    final value = (family == null || family.trim().isEmpty)
+        ? 'system'
+        : family.trim();
+    await preferences.setString(_fontFamilyKey, value);
+  }
+
+  /// Loads the preferred font scale.
+  Future<double> loadFontScale() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getDouble(_fontScaleKey);
+    return raw ?? 1.0;
+  }
+
+  /// Saves the preferred font scale.
+  Future<void> saveFontScale(double scale) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setDouble(_fontScaleKey, scale);
   }
 }

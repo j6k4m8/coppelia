@@ -97,8 +97,14 @@ class _AppShell extends StatelessWidget {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        theme: CoppeliaTheme.lightTheme,
-        darkTheme: CoppeliaTheme.darkTheme,
+        theme: CoppeliaTheme.lightTheme(
+          fontFamily: state.fontFamily,
+          fontScale: state.fontScale,
+        ),
+        darkTheme: CoppeliaTheme.darkTheme(
+          fontFamily: state.fontFamily,
+          fontScale: state.fontScale,
+        ),
         themeMode: state.themeMode,
         home: const _RootRouter(),
       ),
