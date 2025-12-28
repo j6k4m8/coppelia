@@ -102,6 +102,9 @@ class SearchResultsView extends StatelessWidget {
                   imageUrl: album.imageUrl,
                   icon: Icons.album,
                   onTap: () => state.selectAlbum(album),
+                  onSubtitleTap: _canLinkArtist(album)
+                      ? () => state.selectArtistByName(album.artistName)
+                      : null,
                   onContextMenu: (position) => _showAlbumMenu(
                     context,
                     position,
@@ -166,8 +169,7 @@ class SearchResultsView extends StatelessWidget {
     AppState state,
   ) async {
     final albumArtist = album.artistName;
-    final canGoToArtist =
-        albumArtist.isNotEmpty && albumArtist != 'Unknown Artist';
+    final canGoToArtist = _canLinkArtist(album);
     final isFavorite = state.isFavoriteAlbum(album.id);
     final selection = await showContextMenu<_AlbumAction>(
       context,
@@ -246,6 +248,11 @@ class SearchResultsView extends StatelessWidget {
 enum _AlbumAction { play, open, favorite, goToArtist }
 
 enum _ArtistAction { play, open, favorite }
+
+bool _canLinkArtist(Album album) {
+  final artist = album.artistName;
+  return artist.isNotEmpty && artist != 'Unknown Artist';
+}
 
 class _CardGrid extends StatelessWidget {
   const _CardGrid({required this.itemCount, required this.itemBuilder});

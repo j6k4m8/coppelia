@@ -14,6 +14,7 @@ class LibraryListTile extends StatelessWidget {
     this.imageUrl,
     this.icon = Icons.library_music,
     this.onContextMenu,
+    this.onSubtitleTap,
   });
 
   /// Primary title.
@@ -33,6 +34,9 @@ class LibraryListTile extends StatelessWidget {
 
   /// Optional context menu handler.
   final ValueChanged<Offset>? onContextMenu;
+
+  /// Optional handler for tapping the subtitle text.
+  final VoidCallback? onSubtitleTap;
 
   @override
   Widget build(BuildContext context) {
@@ -78,14 +82,9 @@ class LibraryListTile extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: ColorTokens.textSecondary(context)),
+                  _Subtitle(
+                    subtitle: subtitle,
+                    onTap: onSubtitleTap,
                   ),
                 ],
               ),
@@ -97,6 +96,46 @@ class LibraryListTile extends StatelessWidget {
               color: ColorTokens.textSecondary(context, 0.55),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Subtitle extends StatelessWidget {
+  const _Subtitle({required this.subtitle, this.onTap});
+
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = Theme.of(context)
+        .textTheme
+        .bodySmall
+        ?.copyWith(color: ColorTokens.textSecondary(context));
+    final linkStyle = baseStyle?.copyWith(
+      color: Theme.of(context).colorScheme.primary,
+      fontWeight: FontWeight.w600,
+    );
+    if (onTap == null) {
+      return Text(
+        subtitle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: baseStyle,
+      );
+    }
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Text(
+          subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: linkStyle,
         ),
       ),
     );

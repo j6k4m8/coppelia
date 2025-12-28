@@ -281,6 +281,7 @@ class _HeaderState extends State<_Header> {
 
     String title;
     String? subtitle;
+    Widget? subtitleWidget;
     TextStyle? titleStyle;
 
     if (isSearch) {
@@ -299,6 +300,15 @@ class _HeaderState extends State<_Header> {
       title = album.name;
       subtitle = '${album.trackCount} tracks • ${album.artistName}';
       titleStyle = theme.textTheme.headlineMedium;
+      final artistName = album.artistName;
+      final canLinkArtist =
+          artistName.isNotEmpty && artistName != 'Unknown Artist';
+      subtitleWidget = _AlbumHeaderSubtitle(
+        trackCount: album.trackCount,
+        artistName: artistName,
+        onArtistTap:
+            canLinkArtist ? () => state.selectArtistByName(artistName) : null,
+      );
     } else if (state.selectedArtist != null) {
       final artist = state.selectedArtist!;
       title = artist.name;
@@ -356,7 +366,10 @@ class _HeaderState extends State<_Header> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         titleRow,
-        if (subtitle != null) ...[
+        if (subtitleWidget != null) ...[
+          const SizedBox(height: 4),
+          subtitleWidget!,
+        ] else if (subtitle != null) ...[
           const SizedBox(height: 4),
           Text(
             subtitle!,
@@ -472,6 +485,64 @@ class _BackButton extends StatelessWidget {
           child: Icon(Icons.chevron_left),
         ),
       ),
+    );
+  }
+}
+
+class _AlbumHeaderSubtitle extends StatelessWidget {
+  const _AlbumHeaderSubtitle({
+    required this.trackCount,
+    required this.artistName,
+    this.onArtistTap,
+  });
+
+  final int trackCount;
+  final String artistName;
+  final VoidCallback? onArtistTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: ColorTokens.textSecondary(context, 0.7),
+        );
+    final linkStyle = baseStyle?.copyWith(
+      color: Theme.of(context).colorScheme.primary,
+      fontWeight: FontWeight.w600,
+    );
+    return Row(
+      children: [
+        Text('$trackCount tracks', style: baseStyle),
+        const SizedBox(width: 6),
+        Text(
+          '•',
+          style: TextStyle(
+            color: ColorTokens.textSecondary(context, 0.4),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Flexible(
+          child: onArtistTap == null
+              ? Text(
+                  artistName,
+                  style: baseStyle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                )
+              : MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: onArtistTap,
+                    child: Text(
+                      artistName,
+                      style: linkStyle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }

@@ -18,6 +18,7 @@ class CollectionDetailView extends StatelessWidget {
     required this.onTrackTap,
     required this.nowPlaying,
     this.imageUrl,
+    this.subtitleWidget,
     this.onPlayAll,
     this.onPlayNext,
     this.onAddToQueue,
@@ -37,6 +38,9 @@ class CollectionDetailView extends StatelessWidget {
 
   /// Artwork for the collection.
   final String? imageUrl;
+
+  /// Optional custom subtitle widget.
+  final Widget? subtitleWidget;
 
   /// Callback for playing all tracks.
   final VoidCallback? onPlayAll;
@@ -82,6 +86,7 @@ class CollectionDetailView extends StatelessWidget {
                 return _Header(
                   title: title,
                   subtitle: subtitle,
+                  subtitleWidget: subtitleWidget,
                   imageUrl: imageUrl,
                   onPlayAll: onPlayAll,
                 );
@@ -138,12 +143,14 @@ class _Header extends StatelessWidget {
   const _Header({
     required this.title,
     required this.subtitle,
+    this.subtitleWidget,
     this.imageUrl,
     this.onPlayAll,
   });
 
   final String title;
   final String subtitle;
+  final Widget? subtitleWidget;
   final String? imageUrl;
   final VoidCallback? onPlayAll;
 
@@ -184,13 +191,14 @@ class _Header extends StatelessWidget {
                 style: titleStyle ?? theme.textTheme.headlineMedium,
               ),
               const SizedBox(height: 8),
-              Text(
-                subtitle,
-                style: subtitleStyle ??
-                    theme.textTheme.bodyMedium?.copyWith(
-                      color: ColorTokens.textSecondary(context),
-                    ),
-              ),
+              subtitleWidget ??
+                  Text(
+                    subtitle,
+                    style: subtitleStyle ??
+                        theme.textTheme.bodyMedium?.copyWith(
+                          color: ColorTokens.textSecondary(context),
+                        ),
+                  ),
               const SizedBox(height: 16),
               Wrap(
                 spacing: 12,

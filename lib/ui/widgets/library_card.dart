@@ -14,6 +14,7 @@ class LibraryCard extends StatelessWidget {
     this.imageUrl,
     this.icon = Icons.library_music,
     this.onContextMenu,
+    this.onSubtitleTap,
   });
 
   /// Primary title.
@@ -33,6 +34,9 @@ class LibraryCard extends StatelessWidget {
 
   /// Context menu trigger.
   final ValueChanged<Offset>? onContextMenu;
+
+  /// Optional handler for tapping the subtitle text.
+  final VoidCallback? onSubtitleTap;
 
   @override
   Widget build(BuildContext context) {
@@ -73,16 +77,51 @@ class LibraryCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: ColorTokens.textSecondary(context)),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            _Subtitle(
+              subtitle: subtitle,
+              onTap: onSubtitleTap,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Subtitle extends StatelessWidget {
+  const _Subtitle({required this.subtitle, this.onTap});
+
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = Theme.of(context)
+        .textTheme
+        .bodySmall
+        ?.copyWith(color: ColorTokens.textSecondary(context));
+    final linkStyle = baseStyle?.copyWith(
+      color: Theme.of(context).colorScheme.primary,
+      fontWeight: FontWeight.w600,
+    );
+    if (onTap == null) {
+      return Text(
+        subtitle,
+        style: baseStyle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Text(
+          subtitle,
+          style: linkStyle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     );

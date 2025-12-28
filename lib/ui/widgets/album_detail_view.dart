@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/color_tokens.dart';
 import '../../models/album.dart';
 import '../../state/app_state.dart';
 import 'collection_detail_view.dart';
@@ -22,6 +23,12 @@ class AlbumDetailView extends StatelessWidget {
     final canLinkArtist =
         artistName.isNotEmpty && artistName != 'Unknown Artist';
     final subtitle = '${album.trackCount} tracks • $artistName';
+    final subtitleWidget = _AlbumSubtitle(
+      trackCount: album.trackCount,
+      artistName: artistName,
+      onArtistTap:
+          canLinkArtist ? () => state.selectArtistByName(artistName) : null,
+    );
     final headerImageUrl =
         album.imageUrl ?? (state.albumTracks.isNotEmpty
             ? state.albumTracks.first.imageUrl
@@ -29,6 +36,7 @@ class AlbumDetailView extends StatelessWidget {
     return CollectionDetailView(
       title: album.name,
       subtitle: subtitle,
+      subtitleWidget: subtitleWidget,
       imageUrl: headerImageUrl,
       tracks: state.albumTracks,
       nowPlaying: state.nowPlaying,
@@ -88,6 +96,68 @@ class _ArtistInlineLink extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AlbumSubtitle extends StatelessWidget {
+  const _AlbumSubtitle({
+    required this.trackCount,
+    required this.artistName,
+    this.onArtistTap,
+  });
+
+  final int trackCount;
+  final String artistName;
+  final VoidCallback? onArtistTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = Theme.of(context)
+        .textTheme
+        .bodyMedium
+        ?.copyWith(color: ColorTokens.textSecondary(context));
+    final linkStyle = baseStyle?.copyWith(
+      color: Theme.of(context).colorScheme.primary,
+      fontWeight: FontWeight.w600,
+    );
+    return Row(
+      children: [
+        Text(
+          '$trackCount tracks',
+          style: baseStyle,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          '•',
+          style: TextStyle(
+            color: ColorTokens.textSecondary(context, 0.4),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Flexible(
+          child: onArtistTap == null
+              ? Text(
+                  artistName,
+                  style: baseStyle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                )
+              : MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: onArtistTap,
+                    child: Text(
+                      artistName,
+                      style: linkStyle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }

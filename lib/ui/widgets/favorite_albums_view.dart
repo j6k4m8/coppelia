@@ -29,6 +29,9 @@ class FavoriteAlbumsView extends StatelessWidget {
         imageUrl: album.imageUrl,
         icon: Icons.album,
         onTap: () => state.selectAlbum(album),
+        onSubtitleTap: _canLinkArtist(album)
+            ? () => state.selectArtistByName(album.artistName)
+            : null,
         onContextMenu: (position) => _showAlbumMenu(
           context,
           position,
@@ -42,6 +45,9 @@ class FavoriteAlbumsView extends StatelessWidget {
         imageUrl: album.imageUrl,
         icon: Icons.album,
         onTap: () => state.selectAlbum(album),
+        onSubtitleTap: _canLinkArtist(album)
+            ? () => state.selectArtistByName(album.artistName)
+            : null,
         onContextMenu: (position) => _showAlbumMenu(
           context,
           position,
@@ -58,8 +64,7 @@ class FavoriteAlbumsView extends StatelessWidget {
     Album album,
     AppState state,
   ) async {
-    final canGoToArtist =
-        album.artistName.isNotEmpty && album.artistName != 'Unknown Artist';
+    final canGoToArtist = _canLinkArtist(album);
     final isFavorite = state.isFavoriteAlbum(album.id);
     final selection = await showContextMenu<_AlbumAction>(
       context,
@@ -100,3 +105,8 @@ class FavoriteAlbumsView extends StatelessWidget {
 }
 
 enum _AlbumAction { play, open, favorite, goToArtist }
+
+bool _canLinkArtist(Album album) {
+  final artist = album.artistName;
+  return artist.isNotEmpty && artist != 'Unknown Artist';
+}
