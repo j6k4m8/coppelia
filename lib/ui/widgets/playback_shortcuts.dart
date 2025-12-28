@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
+import '../../state/library_view.dart';
 
 /// Registers playback shortcuts for media keys.
 class PlaybackShortcuts extends StatelessWidget {
@@ -14,17 +15,20 @@ class PlaybackShortcuts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.read<AppState>();
+    final state = context.watch<AppState>();
+    final shortcuts = <ShortcutActivator, Intent>{
+      LogicalKeySet(LogicalKeyboardKey.mediaPlayPause):
+          TogglePlaybackIntent(),
+      LogicalKeySet(LogicalKeyboardKey.mediaTrackNext): NextTrackIntent(),
+      LogicalKeySet(LogicalKeyboardKey.mediaTrackPrevious):
+          PreviousTrackIntent(),
+      LogicalKeySet(LogicalKeyboardKey.space): TogglePlaybackWithSpaceIntent(),
+    };
+    if (state.settingsShortcutEnabled) {
+      shortcuts[state.settingsShortcut.toKeySet()] = OpenSettingsIntent();
+    }
     return Shortcuts(
-      shortcuts: {
-        LogicalKeySet(LogicalKeyboardKey.mediaPlayPause):
-            TogglePlaybackIntent(),
-        LogicalKeySet(LogicalKeyboardKey.mediaTrackNext): NextTrackIntent(),
-        LogicalKeySet(LogicalKeyboardKey.mediaTrackPrevious):
-            PreviousTrackIntent(),
-        LogicalKeySet(LogicalKeyboardKey.space):
-            TogglePlaybackWithSpaceIntent(),
-      },
+      shortcuts: shortcuts,
       child: Actions(
         actions: {
           TogglePlaybackIntent: CallbackAction<TogglePlaybackIntent>(
@@ -44,6 +48,14 @@ class PlaybackShortcuts extends StatelessWidget {
           ),
           PreviousTrackIntent: CallbackAction<PreviousTrackIntent>(
             onInvoke: (_) => state.previousTrack(),
+          ),
+          OpenSettingsIntent: CallbackAction<OpenSettingsIntent>(
+            onInvoke: (_) {
+              if (state.session == null) {
+                return null;
+              }
+              return state.selectLibraryView(LibraryView.settings);
+            },
           ),
         },
         child: Focus(
@@ -90,4 +102,10 @@ class NextTrackIntent extends Intent {
 class PreviousTrackIntent extends Intent {
   /// Creates a previous track intent.
   const PreviousTrackIntent();
+}
+
+/// Intent to open the settings view.
+class OpenSettingsIntent extends Intent {
+  /// Creates an open settings intent.
+  const OpenSettingsIntent();
 }

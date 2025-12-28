@@ -1,11 +1,13 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/formatters.dart';
 import '../../state/app_state.dart';
 import '../../state/home_section.dart';
+import '../../state/keyboard_shortcut.dart';
 import '../../state/now_playing_layout.dart';
 import '../../state/sidebar_item.dart';
 import '../../core/color_tokens.dart';
@@ -21,7 +23,7 @@ class SettingsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -37,6 +39,9 @@ class SettingsView extends StatelessWidget {
                 ),
                 _SettingsTab(
                   child: _LayoutSettings(state: state),
+                ),
+                _SettingsTab(
+                  child: _KeyboardSettings(state: state),
                 ),
                 _SettingsTab(
                   child: _CacheSettings(
@@ -85,6 +90,7 @@ class _SettingsTabBar extends StatelessWidget {
         tabs: const [
           _SettingsTabLabel(text: 'Appearance'),
           _SettingsTabLabel(text: 'Layout'),
+          _SettingsTabLabel(text: 'Keyboard'),
           _SettingsTabLabel(text: 'Cache'),
           _SettingsTabLabel(text: 'Account'),
         ],
@@ -516,6 +522,43 @@ class _LayoutSettings extends StatelessWidget {
   }
 }
 
+class _KeyboardSettings extends StatelessWidget {
+  const _KeyboardSettings({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Keyboard', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 12),
+        _SettingRow(
+          title: 'Open settings',
+          subtitle: 'Enable a global shortcut for Settings.',
+          forceInline: true,
+          trailing: Switch(
+            value: state.settingsShortcutEnabled,
+            onChanged: (value) => state.setSettingsShortcutEnabled(value),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _SettingRow(
+          title: 'Shortcut',
+          subtitle: 'Include Cmd/Ctrl/Alt plus a key.',
+          forceInline: true,
+          trailing: _ShortcutRecorder(
+            shortcut: state.settingsShortcut,
+            enabled: state.settingsShortcutEnabled,
+            onChanged: (shortcut) => state.setSettingsShortcut(shortcut),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _CacheSettings extends StatefulWidget {
   const _CacheSettings({
     required this.state,
@@ -626,6 +669,113 @@ class _CacheSettingsState extends State<_CacheSettings> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ShortcutRecorder extends StatefulWidget {
+  const _ShortcutRecorder({
+    required this.shortcut,
+    required this.onChanged,
+    required this.enabled,
+  });
+
+  final KeyboardShortcut shortcut;
+  final ValueChanged<KeyboardShortcut> onChanged;
+  final bool enabled;
+
+  @override
+  State<_ShortcutRecorder> createState() => _ShortcutRecorderState();
+}
+
+class _ShortcutRecorderState extends State<_ShortcutRecorder> {
+  final FocusNode _focusNode = FocusNode(debugLabel: 'ShortcutRecorder');
+  bool _isRecording = false;
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ShortcutRecorder oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.enabled && _isRecording) {
+      _stopRecording();
+    }
+  }
+
+  void _startRecording() {
+    if (!widget.enabled) {
+      return;
+    }
+    setState(() {
+      _isRecording = true;
+    });
+    _focusNode.requestFocus();
+  }
+
+  void _stopRecording() {
+    setState(() {
+      _isRecording = false;
+    });
+    _focusNode.unfocus();
+  }
+
+  void _handleKey(RawKeyEvent event) {
+    if (!_isRecording || event is! RawKeyDownEvent) {
+      return;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      _stopRecording();
+      return;
+    }
+    if (_isModifierKey(event.logicalKey)) {
+      return;
+    }
+    final shortcut = KeyboardShortcut(
+      key: event.logicalKey,
+      meta: event.isMetaPressed,
+      control: event.isControlPressed,
+      alt: event.isAltPressed,
+      shift: event.isShiftPressed,
+    );
+    if (!shortcut.hasPrimaryModifier) {
+      return;
+    }
+    widget.onChanged(shortcut);
+    _stopRecording();
+  }
+
+  bool _isModifierKey(LogicalKeyboardKey key) {
+    return key == LogicalKeyboardKey.shiftLeft ||
+        key == LogicalKeyboardKey.shiftRight ||
+        key == LogicalKeyboardKey.shift ||
+        key == LogicalKeyboardKey.controlLeft ||
+        key == LogicalKeyboardKey.controlRight ||
+        key == LogicalKeyboardKey.control ||
+        key == LogicalKeyboardKey.altLeft ||
+        key == LogicalKeyboardKey.altRight ||
+        key == LogicalKeyboardKey.alt ||
+        key == LogicalKeyboardKey.metaLeft ||
+        key == LogicalKeyboardKey.metaRight ||
+        key == LogicalKeyboardKey.meta;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label =
+        _isRecording ? 'Press shortcut...' : widget.shortcut.label();
+    return RawKeyboardListener(
+      focusNode: _focusNode,
+      onKey: _handleKey,
+      child: OutlinedButton(
+        onPressed: widget.enabled
+            ? (_isRecording ? _stopRecording : _startRecording)
+            : null,
+        child: Text(label),
+      ),
     );
   }
 }

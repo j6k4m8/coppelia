@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../state/now_playing_layout.dart';
 import '../state/home_section.dart';
+import '../state/keyboard_shortcut.dart';
 import '../state/sidebar_item.dart';
 
 /// Persists user preferences for the app.
@@ -25,6 +26,9 @@ class SettingsStore {
   static const _telemetryPlaybackKey = 'settings_telemetry_playback';
   static const _telemetryProgressKey = 'settings_telemetry_progress';
   static const _telemetryHistoryKey = 'settings_telemetry_history';
+  static const _settingsShortcutEnabledKey =
+      'settings_shortcut_settings_enabled';
+  static const _settingsShortcutKey = 'settings_shortcut_settings';
   static const _deviceIdKey = 'settings_device_id';
 
   /// Loads the preferred theme mode.
@@ -52,6 +56,32 @@ class SettingsStore {
       ThemeMode.dark => 'dark',
     };
     await preferences.setString(_themeKey, value);
+  }
+
+  /// Loads whether the settings shortcut is enabled.
+  Future<bool> loadSettingsShortcutEnabled() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_settingsShortcutEnabledKey) ?? true;
+  }
+
+  /// Saves whether the settings shortcut is enabled.
+  Future<void> saveSettingsShortcutEnabled(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_settingsShortcutEnabledKey, enabled);
+  }
+
+  /// Loads the settings shortcut.
+  Future<KeyboardShortcut> loadSettingsShortcut() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_settingsShortcutKey);
+    return KeyboardShortcut.tryParse(raw) ??
+        KeyboardShortcut.defaultForPlatform();
+  }
+
+  /// Saves the settings shortcut.
+  Future<void> saveSettingsShortcut(KeyboardShortcut shortcut) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_settingsShortcutKey, shortcut.serialize());
   }
 
   /// Loads or generates a unique device identifier.

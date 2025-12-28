@@ -20,5 +20,8 @@
 -   [ ] sidebar settings for inclusion should be indented the same as the sidebar itself
 -   [ ] Android: generate app icons from `assets/logo_app_icon.svg`.
 -   [ ] Android: media session + notification controls (play/pause/next).
--   [ ] Android: add CI build/release.
--   [ ] Android: UI polish for small screens/safe areas.
+-   [ ] play controls
+    -   [ ] shuffle
+    -   [ ] repeat queue / playlist
+    -   [ ] repeat track
+-   [ ] "now playing" full-screen expanded view that showcases the album art if you click the album art in the mini player.

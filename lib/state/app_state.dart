@@ -22,6 +22,7 @@ import '../services/settings_store.dart';
 import '../services/session_store.dart';
 import 'browse_layout.dart';
 import 'home_section.dart';
+import 'keyboard_shortcut.dart';
 import 'library_view.dart';
 import 'now_playing_layout.dart';
 import 'sidebar_item.dart';
@@ -108,6 +109,8 @@ class AppState extends ChangeNotifier {
   bool _telemetryPlayback = true;
   bool _telemetryProgress = true;
   bool _telemetryHistory = true;
+  bool _settingsShortcutEnabled = true;
+  KeyboardShortcut _settingsShortcut = KeyboardShortcut.defaultForPlatform();
   NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.bottom;
   Map<HomeSection, bool> _homeSectionVisibility = {
     for (final section in HomeSection.values) section: true,
@@ -294,6 +297,12 @@ class AppState extends ChangeNotifier {
   /// Preferred font scale.
   double get fontScale => _fontScale;
 
+  /// True when the settings shortcut is enabled.
+  bool get settingsShortcutEnabled => _settingsShortcutEnabled;
+
+  /// Preferred keyboard shortcut for opening settings.
+  KeyboardShortcut get settingsShortcut => _settingsShortcut;
+
   /// True when playback telemetry is enabled.
   bool get telemetryPlaybackEnabled => _telemetryPlayback;
 
@@ -383,6 +392,9 @@ class AppState extends ChangeNotifier {
     _telemetryPlayback = await _settingsStore.loadPlaybackTelemetry();
     _telemetryProgress = await _settingsStore.loadProgressTelemetry();
     _telemetryHistory = await _settingsStore.loadHistoryTelemetry();
+    _settingsShortcutEnabled =
+        await _settingsStore.loadSettingsShortcutEnabled();
+    _settingsShortcut = await _settingsStore.loadSettingsShortcut();
     _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
     _homeSectionVisibility = await _settingsStore.loadHomeSectionVisibility();
     _sidebarVisibility = await _settingsStore.loadSidebarVisibility();
@@ -1088,6 +1100,20 @@ class AppState extends ChangeNotifier {
   Future<void> setFontScale(double scale) async {
     _fontScale = scale;
     await _settingsStore.saveFontScale(scale);
+    notifyListeners();
+  }
+
+  /// Updates the settings shortcut enabled preference.
+  Future<void> setSettingsShortcutEnabled(bool enabled) async {
+    _settingsShortcutEnabled = enabled;
+    await _settingsStore.saveSettingsShortcutEnabled(enabled);
+    notifyListeners();
+  }
+
+  /// Updates the settings shortcut preference.
+  Future<void> setSettingsShortcut(KeyboardShortcut shortcut) async {
+    _settingsShortcut = shortcut;
+    await _settingsStore.saveSettingsShortcut(shortcut);
     notifyListeners();
   }
 
