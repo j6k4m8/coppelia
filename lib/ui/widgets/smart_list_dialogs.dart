@@ -689,6 +689,7 @@ class _SmartListTemplates {
             direction: SmartListSortDirection.asc,
           ),
         ],
+        showOnHome: false,
       );
 
   static List<_SmartListTemplate> all() => [
@@ -707,6 +708,7 @@ class _SmartListTemplates {
               ),
             ],
             limit: null,
+            showOnHome: draft.showOnHome,
           ),
         ),
         _SmartListTemplate(
@@ -735,6 +737,7 @@ class _SmartListTemplates {
               ),
             ],
             limit: 100,
+            showOnHome: draft.showOnHome,
           ),
         ),
         _SmartListTemplate(
@@ -763,6 +766,7 @@ class _SmartListTemplates {
               ),
             ],
             limit: 200,
+            showOnHome: draft.showOnHome,
           ),
         ),
         _SmartListTemplate(
@@ -790,6 +794,7 @@ class _SmartListTemplates {
                 direction: SmartListSortDirection.asc,
               ),
             ],
+            showOnHome: draft.showOnHome,
           ),
         ),
         _SmartListTemplate(
@@ -817,6 +822,7 @@ class _SmartListTemplates {
                 direction: SmartListSortDirection.asc,
               ),
             ],
+            showOnHome: draft.showOnHome,
           ),
         ),
       ];

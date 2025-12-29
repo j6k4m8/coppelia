@@ -87,26 +87,32 @@ I am not sure! I don't have a linux machine handy. If you do, and you can get st
 -   Album/artist header actions for favorites and offline pinning
 -   Optional auto-download of favorited items for offline playback (Wi-Fi only toggle)
 -   Artwork fallbacks and rich detail views with context actions
+-   Smart Lists (self-updating local playlists)
 -   **NO ELECTRON 🫦**
 
 ## Keyboard Shortcuts
 
 All shortcuts are configurable in the Settings screen. `^` indicates the Cmd key on macOS, and the Ctrl key on Windows/Linux.
 
-| Action               | Keyboard Shortcut        |
-| -------------------- | ------------------------ |
-| Play / Pause         | Media Play/Pause Key     |
-| Next Track           | Media Next Track Key     |
-| Previous Track       | Media Previous Track Key |
-| Focus Search Field   | `^` + `K`                |
-| Clear Search Field   | `Esc`                    |
-| Open Settings Screen | `^` + `,`                |
+| Action               | Keyboard Shortcut             |
+| -------------------- | ----------------------------- |
+| Play / Pause         | Media Play/Pause Key/Spacebar |
+| Next Track           | Media Next Track Key          |
+| Previous Track       | Media Previous Track Key      |
+| Focus Search Field   | `^` + `K`                     |
+| Clear Search Field   | `Esc`                         |
+| Open Settings Screen | `^` + `,`                     |
 
 ## Roadmap
 
--   Windows support (can you help??)
+-   Windows support (**can you help test**??)
 -   AirPlay and Chromecast support
 -   Your idea here?
+
+## Smart Lists
+
+Smart Lists are self-updating, local playlists powered by rules.
+See [`docs/Smart-Lists.md`](docs/Smart-Lists.md) for the full guide and query language.
 
 ---
 

@@ -11,6 +11,7 @@ import 'featured_track_card.dart';
 import 'media_card.dart';
 import 'playlist_card.dart';
 import 'section_header.dart';
+import 'smart_list_card.dart';
 
 /// Displays featured content and playlists.
 class LibraryOverview extends StatelessWidget {
@@ -32,6 +33,7 @@ class LibraryOverview extends StatelessWidget {
     final recent = state.playHistory.isNotEmpty
         ? state.playHistory.take(12).toList()
         : state.recentTracks;
+    final smartLists = state.smartListsOnHome;
     final children = <Widget>[];
 
     void addSection(List<Widget> section) {
@@ -266,6 +268,60 @@ class LibraryOverview extends StatelessWidget {
               },
             ),
           ),
+      ]);
+    }
+
+    if (state.isHomeSectionVisible(HomeSection.smartLists) &&
+        smartLists.isNotEmpty) {
+      addSection([
+        Padding(
+          padding: sectionPadding(),
+          child: SectionHeader(
+            title: 'Smart Lists',
+            action: Row(
+              children: [
+                Text(
+                  '${smartLists.length} lists',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: ColorTokens.textSecondary(context)),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: space(16)),
+        Padding(
+          padding: sectionPadding(),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final targetWidth = space(220).clamp(160.0, 260.0);
+              final crossAxisCount =
+                  (constraints.maxWidth / targetWidth).floor();
+              final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  crossAxisSpacing: space(16),
+                  mainAxisSpacing: space(16),
+                  childAspectRatio: 1.1,
+                ),
+                itemCount: smartLists.length,
+                itemBuilder: (context, index) {
+                  final list = smartLists[index];
+                  return SmartListCard(
+                    smartList: list,
+                    onTap: () => state.selectSmartList(list),
+                    onPlay: () => state.playSmartList(list),
+                  );
+                },
+              );
+            },
+          ),
+        ),
       ]);
     }
 

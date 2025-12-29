@@ -58,16 +58,39 @@ class SmartListDetailView extends StatelessWidget {
               onSelected: (value) {
                 if (value == _SmartListAction.edit) {
                   _editSmartList(context, smartList);
+                } else if (value == _SmartListAction.rename) {
+                  _renameSmartList(context, smartList);
+                } else if (value == _SmartListAction.duplicate) {
+                  _duplicateSmartList(context, smartList);
                 } else if (value == _SmartListAction.delete) {
                   _deleteSmartList(context, smartList);
+                } else if (value == _SmartListAction.toggleHome) {
+                  final updated = smartList.copyWith(
+                    showOnHome: !smartList.showOnHome,
+                  );
+                  state.updateSmartList(updated);
                 }
               },
-              itemBuilder: (context) => const [
-                PopupMenuItem(
+              itemBuilder: (context) => [
+                const PopupMenuItem(
                   value: _SmartListAction.edit,
                   child: Text('Edit rules'),
                 ),
+                const PopupMenuItem(
+                  value: _SmartListAction.rename,
+                  child: Text('Rename'),
+                ),
+                const PopupMenuItem(
+                  value: _SmartListAction.duplicate,
+                  child: Text('Duplicate'),
+                ),
                 PopupMenuItem(
+                  value: _SmartListAction.toggleHome,
+                  child: Text(
+                    smartList.showOnHome ? 'Remove from Home' : 'Add to Home',
+                  ),
+                ),
+                const PopupMenuItem(
                   value: _SmartListAction.delete,
                   child: Text('Delete'),
                 ),
@@ -137,6 +160,66 @@ class SmartListDetailView extends StatelessWidget {
     await context.read<AppState>().updateSmartList(updated);
   }
 
+  Future<void> _renameSmartList(
+    BuildContext context,
+    SmartList smartList,
+  ) async {
+    final controller = TextEditingController(text: smartList.name);
+    String value = controller.text;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Rename smart list'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            onChanged: (text) => setState(() {
+              value = text;
+            }),
+            onSubmitted: (_) => Navigator.of(context).pop(value),
+            decoration: const InputDecoration(hintText: 'Smart list name'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: value.trim().isEmpty
+                  ? null
+                  : () => Navigator.of(context).pop(value),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    final trimmed = result?.trim();
+    if (!context.mounted || trimmed == null || trimmed.isEmpty) {
+      return;
+    }
+    await context
+        .read<AppState>()
+        .updateSmartList(smartList.copyWith(name: trimmed));
+  }
+
+  Future<void> _duplicateSmartList(
+    BuildContext context,
+    SmartList smartList,
+  ) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final copy = smartList.copyWith(
+      id: 'smart-$now',
+      name: '${smartList.name} Copy',
+    );
+    final created = await context.read<AppState>().createSmartList(copy);
+    if (context.mounted) {
+      await context.read<AppState>().selectSmartList(created);
+    }
+  }
+
   Future<void> _deleteSmartList(
     BuildContext context,
     SmartList smartList,
@@ -195,5 +278,8 @@ class _EmptySmartListView extends StatelessWidget {
 
 enum _SmartListAction {
   edit,
+  rename,
+  duplicate,
+  toggleHome,
   delete,
 }

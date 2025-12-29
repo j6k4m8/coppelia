@@ -253,6 +253,10 @@ class AppState extends ChangeNotifier {
   /// All Smart Lists.
   List<SmartList> get smartLists => List.unmodifiable(_smartLists);
 
+  /// Smart Lists marked to appear on Home.
+  List<SmartList> get smartListsOnHome =>
+      _smartLists.where((list) => list.showOnHome).toList();
+
   /// Selected Smart List when viewing its results.
   SmartList? get selectedSmartList => _selectedSmartList;
 
@@ -786,6 +790,16 @@ class AppState extends ChangeNotifier {
     } catch (_) {
       tracks = await _cacheStore.loadPlaylistTracks(playlist.id);
     }
+    if (tracks.isEmpty) {
+      return;
+    }
+    await _playFromList(tracks, tracks.first);
+  }
+
+  /// Builds and plays a Smart List without navigating.
+  Future<void> playSmartList(SmartList list) async {
+    await _ensureSmartListSourceLoaded();
+    final tracks = _buildSmartListTracks(list);
     if (tracks.isEmpty) {
       return;
     }

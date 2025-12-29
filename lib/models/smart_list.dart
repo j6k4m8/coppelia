@@ -470,6 +470,7 @@ class SmartList {
     required this.group,
     this.sorts = const [],
     this.limit,
+    this.showOnHome = false,
   });
 
   /// Unique identifier.
@@ -490,6 +491,9 @@ class SmartList {
   /// Max items to return.
   final int? limit;
 
+  /// Whether this Smart List should appear on Home.
+  final bool showOnHome;
+
   /// Serializes for persistence.
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -498,6 +502,7 @@ class SmartList {
         'group': group.toJson(),
         'sorts': sorts.map((sort) => sort.toJson()).toList(),
         if (limit != null) 'limit': limit,
+        'showOnHome': showOnHome,
       };
 
   /// Restores from persisted JSON.
@@ -516,6 +521,7 @@ class SmartList {
             .map(SmartListSort.fromJson)
             .toList(),
         limit: json['limit'] is num ? (json['limit'] as num).toInt() : null,
+        showOnHome: json['showOnHome'] == true,
       );
 
   /// Creates a copy with changes.
@@ -526,6 +532,7 @@ class SmartList {
     SmartListGroup? group,
     List<SmartListSort>? sorts,
     int? limit,
+    bool? showOnHome,
   }) {
     return SmartList(
       id: id ?? this.id,
@@ -534,6 +541,7 @@ class SmartList {
       group: group ?? this.group,
       sorts: sorts ?? this.sorts,
       limit: limit ?? this.limit,
+      showOnHome: showOnHome ?? this.showOnHome,
     );
   }
 
@@ -545,5 +553,6 @@ class SmartList {
         group: group.copy(),
         sorts: sorts.map((sort) => sort.copyWith()).toList(),
         limit: limit,
+        showOnHome: showOnHome,
       );
 }
