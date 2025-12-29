@@ -1,11 +1,12 @@
 <h1 align=center>Coppelia</h1>
 <p align="center">
-  A native macOS, iOS, and Android app for Jellyfin music libraries (Windows/Linux coming soon).
+  A native macOS, iOS, Android, and Linux app for Jellyfin music libraries (Windows coming soon).
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-macOS-333333?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Platform"/> &nbsp;
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android Platform"/> &nbsp;
   <img src="https://img.shields.io/badge/Platform-iOS-000000?style=for-the-badge&logo=ios&logoColor=white" alt="iOS Platform"/> &nbsp;
+  <img src="https://img.shields.io/badge/Platform-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Linux Platform"/> &nbsp;
   <img src="https://img.shields.io/badge/Framework-Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter Framework"/>
 </p>
 
@@ -39,6 +40,10 @@ F-Droid listing coming soon!
 
 You will need to sideload the app using Xcode or a tool like AltStore for now...
 
+### Linux
+
+I am not sure! I don't have a linux machine handy. If you do, and you can get stuff to run, please let me know!
+
 ## Screenshots
 
 ### macOS
@@ -63,6 +68,7 @@ You will need to sideload the app using Xcode or a tool like AltStore for now...
     -   macOS Now Playing integration + media key shortcuts
 -   Repeat playback (track or queue)
 -   Android lockscreen + notification media controls with artwork
+-   Linux desktop support (GTK)
 -   Favorite and unfavorite tracks/albums/artists
 -   Playback resume that restores your last track and position when you reopen the app
 -   Configurable home shelves, sidebar sections, and layout choices
@@ -97,8 +103,8 @@ All shortcuts are configurable in the Settings screen. `^` indicates the Cmd key
 
 ## Roadmap
 
--   Windows and Linux support (can you help??)
--   More playback features (shuffle, repeat, etc)
+-   Windows support (can you help??)
+-   AirPlay and Chromecast support
 -   Your idea here?
 
 ---
@@ -108,6 +114,7 @@ All shortcuts are configurable in the Settings screen. `^` indicates the Cmd key
 -   macOS: `docs/Developing-macOS.md`
 -   iOS (Simulator): `docs/Developing-iOS.md`
 -   Android (Emulator/Device): `docs/Developing-Android.md`
+-   Linux: `docs/Developing-Linux.md`
 
 ## Notes
 

@@ -1,4 +1,4 @@
-name: Release macOS + iOS + Android
+name: Release macOS + iOS + Android + Linux
 
 on:
   push:
@@ -120,3 +120,48 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: Coppelia-android.apk
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libgtk-3-dev \
+            liblzma-dev
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Linux bundle
+        run: flutter build linux --release
+
+      - name: Package bundle
+        run: |
+          tar -czf Coppelia-linux.tar.gz -C build/linux/x64/release/bundle .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Coppelia-linux
+          path: Coppelia-linux.tar.gz
+
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Coppelia-linux.tar.gz
