@@ -119,6 +119,11 @@ class PlaybackController {
     await _player.seekToPrevious();
   }
 
+  /// Sets the playback loop mode.
+  Future<void> setLoopMode(LoopMode mode) async {
+    await _player.setLoopMode(mode);
+  }
+
   /// Stops playback and releases resources.
   Future<void> dispose() async {
     await _player.dispose();

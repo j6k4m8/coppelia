@@ -68,6 +68,7 @@ class AppState extends ChangeNotifier {
   bool _isSearching = false;
   SearchResults? _searchResults;
   int _searchFocusRequest = 0;
+  LoopMode _repeatMode = LoopMode.off;
 
   List<Playlist> _playlists = [];
   List<MediaItem> _playlistTracks = [];
@@ -285,6 +286,9 @@ class AppState extends ChangeNotifier {
 
   /// Currently playing track.
   MediaItem? get nowPlaying => _nowPlaying;
+
+  /// Current repeat mode for playback.
+  LoopMode get repeatMode => _repeatMode;
 
   /// Current playback position.
   Duration get position => _position;
@@ -849,6 +853,23 @@ class AppState extends ChangeNotifier {
     if (notify) {
       notifyListeners();
     }
+  }
+
+  /// Cycles between repeat off, repeat all, and repeat one.
+  Future<void> toggleRepeatMode() async {
+    switch (_repeatMode) {
+      case LoopMode.off:
+        _repeatMode = LoopMode.all;
+        break;
+      case LoopMode.all:
+        _repeatMode = LoopMode.one;
+        break;
+      case LoopMode.one:
+        _repeatMode = LoopMode.off;
+        break;
+    }
+    await _playback.setLoopMode(_repeatMode);
+    notifyListeners();
   }
 
   /// Updates the track browse letter highlight.

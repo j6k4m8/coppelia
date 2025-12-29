@@ -8,8 +8,8 @@
 -   [x] Android: media session + notification controls (play/pause/next).
 -   [ ] play controls
     -   [x] shuffle
-    -   [ ] repeat queue / playlist
-    -   [ ] repeat track
+    -   [x] repeat queue / playlist
+    -   [x] repeat track
 -   [x] on homepage, make all the cards have a no-margin art, NOT full bleed, but rather:
     -   [x] for side-by-side, the card art should be full height, with text to the right (with margin)
     -   [x] for cards where the art is above the text, art is full width (no margin), no bottom border radius, text below with margin. ditto playlists.

@@ -38,6 +38,7 @@ If you hold in your heart other bulletpoints than these, please share and help m
 -   Fast library browsing and search (albums, artists, genres, playlists)
 -   Audio playback with queue controls, play-next, and clear-queue
     -   macOS Now Playing integration + media key shortcuts
+-   Repeat playback (track or queue)
 -   Android lockscreen + notification media controls with artwork
 -   Favorite and unfavorite tracks/albums/artists
 -   Playback resume that restores your last track and position when you reopen the app

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:just_audio/just_audio.dart';
 
 import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
@@ -205,6 +206,11 @@ class _BottomBar extends StatelessWidget {
                         isFavorite: isFavorite,
                         isUpdating: isUpdating,
                       ),
+                    if (track != null)
+                      _RepeatButton(
+                        mode: state.repeatMode,
+                        onTap: state.toggleRepeatMode,
+                      ),
                     IconButton(
                       icon: const Icon(Icons.queue_music),
                       onPressed: () =>
@@ -259,6 +265,11 @@ class _BottomBar extends StatelessWidget {
                       track: track,
                       isFavorite: isFavorite,
                       isUpdating: isUpdating,
+                    ),
+                  if (track != null)
+                    _RepeatButton(
+                      mode: state.repeatMode,
+                      onTap: state.toggleRepeatMode,
                     ),
                   IconButton(
                     icon: const Icon(Icons.queue_music),
@@ -778,6 +789,41 @@ class _Controls extends StatelessWidget {
   }
 }
 
+class _RepeatButton extends StatelessWidget {
+  const _RepeatButton({
+    required this.mode,
+    required this.onTap,
+  });
+
+  final LoopMode mode;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
+    final isActive = mode != LoopMode.off;
+    final icon = mode == LoopMode.one
+        ? Icons.repeat_one
+        : Icons.repeat;
+    final color = isActive
+        ? Theme.of(context).colorScheme.primary
+        : ColorTokens.textSecondary(context, 0.6);
+    return IconButton(
+      icon: Icon(icon, color: color),
+      iconSize: clamped(20, min: 16, max: 24),
+      onPressed: onTap,
+      tooltip: mode == LoopMode.one
+          ? 'Repeat one'
+          : mode == LoopMode.all
+              ? 'Repeat all'
+              : 'Repeat off',
+    );
+  }
+}
+
 void _openExpandedNowPlaying(BuildContext context) {
   showGeneralDialog<void>(
     context: context,
@@ -906,6 +952,11 @@ class _NowPlayingExpandedView extends StatelessWidget {
                       track: track,
                       isFavorite: isFavorite,
                       isUpdating: isUpdating,
+                    ),
+                  if (track != null)
+                    _RepeatButton(
+                      mode: state.repeatMode,
+                      onTap: state.toggleRepeatMode,
                     ),
                   Expanded(
                     child: Align(
