@@ -1,12 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:async';
 
 import '../../models/playlist.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../core/color_tokens.dart';
+import 'app_snack.dart';
 import 'artwork_image.dart';
 import 'playlist_dialogs.dart';
 import 'track_row.dart';
@@ -218,12 +220,12 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
     List<MediaItem> tracks,
   ) {
     unawaited(() async {
-      final error = await context
-          .read<AppState>()
-          .reorderPlaylistTracks(playlist, tracks);
-      if (error != null && mounted) {
-        _showSnack(context, error);
-      }
+      await runWithSnack(
+        context,
+        () => context
+            .read<AppState>()
+            .reorderPlaylistTracks(playlist, tracks),
+      );
     }());
   }
 
@@ -237,13 +239,10 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
     if (name == null) {
       return;
     }
-    final error = await context.read<AppState>().renamePlaylist(
-          playlist,
-          name,
-        );
-    if (error != null && context.mounted) {
-      _showSnack(context, error);
-    }
+    await runWithSnack(
+      context,
+      () => context.read<AppState>().renamePlaylist(playlist, name),
+    );
   }
 
   Future<void> _handleDelete(BuildContext context, Playlist playlist) async {
@@ -251,16 +250,9 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
     if (!confirmed) {
       return;
     }
-    final error =
-        await context.read<AppState>().deletePlaylist(playlist);
-    if (error != null && context.mounted) {
-      _showSnack(context, error);
-    }
-  }
-
-  void _showSnack(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+    await runWithSnack(
+      context,
+      () => context.read<AppState>().deletePlaylist(playlist),
     );
   }
 }

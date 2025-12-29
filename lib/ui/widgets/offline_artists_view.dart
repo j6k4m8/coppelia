@@ -5,6 +5,7 @@ import '../../models/artist.dart';
 import '../../core/formatters.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
+import 'app_snack.dart';
 import 'context_menu.dart';
 import 'library_browse_view.dart';
 import 'library_cover_card.dart';
@@ -134,7 +135,10 @@ class OfflineArtistsView extends StatelessWidget {
       await state.selectArtist(artist);
     }
     if (selection == _ArtistAction.favorite) {
-      await state.setArtistFavorite(artist, !isFavorite);
+      await runWithSnack(
+        context,
+        () => state.setArtistFavorite(artist, !isFavorite),
+      );
     }
     if (selection == _ArtistAction.makeAvailableOffline) {
       await state.makeArtistAvailableOffline(artist);

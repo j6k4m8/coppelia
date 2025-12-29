@@ -700,30 +700,67 @@ class JellyfinClient {
   /// Fetches favorited artists from Jellyfin.
   Future<List<Artist>> fetchFavoriteArtists() async {
     final session = _requireSession();
-    final uri = Uri.parse(
-      '${session.serverUrl}/Users/${session.userId}/Items',
-    ).replace(
-      queryParameters: {
-        'IncludeItemTypes': 'MusicArtist',
-        'Recursive': 'true',
-        'Filters': 'IsFavorite',
-        'SortBy': 'SortName',
-        'Fields': 'ImageTags,SongCount,AlbumCount',
-        'api_key': session.accessToken,
-      },
-    );
-    final response = await _httpClient.get(uri);
-    if (response.statusCode != 200) {
-      throw Exception('Unable to load favorite artists.');
+    final favorites = <Artist>[];
+    final seen = <String>{};
+    var startIndex = 0;
+    const pageSize = 200;
+    var hadSuccess = false;
+
+    while (true) {
+      final uri = Uri.parse(
+        '${session.serverUrl}/Users/${session.userId}/Items',
+      ).replace(
+        queryParameters: {
+          'IncludeItemTypes': 'MusicArtist,Artist,Person',
+          'Recursive': 'true',
+          'SortBy': 'SortName',
+          'StartIndex': '$startIndex',
+          'Limit': '$pageSize',
+          'Fields': 'ImageTags,SongCount,AlbumCount,UserData',
+          'api_key': session.accessToken,
+        },
+      );
+      final response = await _httpClient.get(uri);
+      if (response.statusCode != 200) {
+        if (hadSuccess) {
+          break;
+        }
+        throw Exception('Unable to load favorite artists.');
+      }
+      hadSuccess = true;
+      final payload =
+          jsonDecode(response.body) as Map<String, dynamic>;
+      final items = payload['Items'] as List<dynamic>? ?? [];
+      for (final entry in items) {
+        if (entry is! Map<String, dynamic>) {
+          continue;
+        }
+        final userData = entry['UserData'];
+        final isFavorite = userData is Map<String, dynamic>
+            ? userData['IsFavorite'] == true
+            : false;
+        if (!isFavorite) {
+          continue;
+        }
+        final id = entry['Id']?.toString();
+        if (id == null || seen.contains(id)) {
+          continue;
+        }
+        seen.add(id);
+        favorites.add(
+          Artist.fromJellyfin(
+            entry,
+            serverUrl: session.serverUrl,
+          ),
+        );
+      }
+      final total = payload['TotalRecordCount'] as int?;
+      startIndex += items.length;
+      if (items.isEmpty || total == null || startIndex >= total) {
+        break;
+      }
     }
-    final payload = jsonDecode(response.body) as Map<String, dynamic>;
-    final items = payload['Items'] as List<dynamic>? ?? [];
-    return items
-        .map((item) => Artist.fromJellyfin(
-              item as Map<String, dynamic>,
-              serverUrl: session.serverUrl,
-            ))
-        .toList();
+    return favorites;
   }
 
   /// Fetches favorited tracks from Jellyfin.
@@ -765,6 +802,11 @@ class JellyfinClient {
     required bool isFavorite,
   }) async {
     final session = _requireSession();
+    final headers = {
+      'Content-Type': 'application/json; charset=utf-8',
+      'X-Emby-Authorization': _authorizationHeader(),
+      'X-Emby-Token': session.accessToken,
+    };
     final uri = Uri.parse(
       '${session.serverUrl}/Users/${session.userId}/FavoriteItems/$itemId',
     ).replace(
@@ -773,11 +815,60 @@ class JellyfinClient {
       },
     );
     final response = isFavorite
-        ? await _httpClient.post(uri)
-        : await _httpClient.delete(uri);
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Unable to update favorite (${response.statusCode}).');
+        ? await _httpClient.post(uri, headers: headers)
+        : await _httpClient.delete(uri, headers: headers);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
     }
+    final userDataUri = Uri.parse(
+      '${session.serverUrl}/Users/${session.userId}/Items/$itemId/UserData',
+    ).replace(
+      queryParameters: {
+        'api_key': session.accessToken,
+      },
+    );
+    final userDataResponse = await _httpClient.post(
+      userDataUri,
+      headers: headers,
+      body: jsonEncode({'IsFavorite': isFavorite}),
+    );
+    if (userDataResponse.statusCode < 200 ||
+        userDataResponse.statusCode >= 300) {
+      throw JellyfinRequestException(
+        _errorMessage(
+          userDataResponse,
+          fallback: 'Unable to update favorite.',
+        ),
+      );
+    }
+  }
+
+  /// Reads the favorite state for an item, when available.
+  Future<bool?> fetchFavoriteState(String itemId) async {
+    final session = _requireSession();
+    final uri = Uri.parse(
+      '${session.serverUrl}/Users/${session.userId}/Items/$itemId/UserData',
+    ).replace(
+      queryParameters: {
+        'api_key': session.accessToken,
+      },
+    );
+    final response = await _httpClient.get(
+      uri,
+      headers: {
+        'X-Emby-Authorization': _authorizationHeader(),
+        'X-Emby-Token': session.accessToken,
+      },
+    );
+    if (response.statusCode != 200) {
+      return null;
+    }
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    final isFavorite = payload['IsFavorite'];
+    if (isFavorite is bool) {
+      return isFavorite;
+    }
+    return null;
   }
 
   /// Reports that playback has started for an item.

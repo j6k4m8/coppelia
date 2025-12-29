@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/album.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
+import 'app_snack.dart';
 import 'context_menu.dart';
 import 'library_browse_view.dart';
 import 'library_cover_card.dart';
@@ -125,7 +126,10 @@ class FavoriteAlbumsView extends StatelessWidget {
       await state.selectArtistByName(album.artistName);
     }
     if (selection == _AlbumAction.favorite) {
-      await state.setAlbumFavorite(album, !isFavorite);
+      await runWithSnack(
+        context,
+        () => state.setAlbumFavorite(album, !isFavorite),
+      );
     }
     if (selection == _AlbumAction.makeAvailableOffline) {
       await state.makeAlbumAvailableOffline(album);

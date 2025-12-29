@@ -12,6 +12,7 @@ import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
 import '../../state/now_playing_layout.dart';
+import 'app_snack.dart';
 import 'artwork_image.dart';
 
 /// Right-side panel for playback and queue control.
@@ -541,7 +542,10 @@ class _FavoriteButton extends StatelessWidget {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => state.setTrackFavorite(track, !isFavorite),
+        onTap: () => runWithSnack(
+          context,
+          () => state.setTrackFavorite(track, !isFavorite),
+        ),
         child: SizedBox(
           width: clamped(24, min: 18, max: 30),
           height: clamped(24, min: 18, max: 30),

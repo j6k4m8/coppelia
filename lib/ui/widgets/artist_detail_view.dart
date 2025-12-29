@@ -6,6 +6,7 @@ import '../../models/album.dart';
 import '../../core/formatters.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
+import 'app_snack.dart';
 import 'artwork_image.dart';
 import 'context_menu.dart';
 import 'library_cover_card.dart';
@@ -100,9 +101,12 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
                     OutlinedButton.icon(
                       onPressed: state.isFavoriteArtistUpdating(artist.id)
                           ? null
-                          : () => state.setArtistFavorite(
-                                artist,
-                                !state.isFavoriteArtist(artist.id),
+                          : () => runWithSnack(
+                                context,
+                                () => state.setArtistFavorite(
+                                      artist,
+                                      !state.isFavoriteArtist(artist.id),
+                                    ),
                               ),
                       icon: state.isFavoriteArtistUpdating(artist.id)
                           ? SizedBox(
@@ -287,7 +291,10 @@ Future<void> _showAlbumMenu(
     await state.selectArtistByName(album.artistName);
   }
   if (selection == _AlbumAction.favorite) {
-    await state.setAlbumFavorite(album, !isFavorite);
+    await runWithSnack(
+      context,
+      () => state.setAlbumFavorite(album, !isFavorite),
+    );
   }
   if (selection == _AlbumAction.makeAvailableOffline) {
     await state.makeAlbumAvailableOffline(album);

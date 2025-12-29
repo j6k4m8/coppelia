@@ -8,6 +8,7 @@ import '../../models/artist.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../models/playlist.dart';
+import 'app_snack.dart';
 import 'context_menu.dart';
 import 'library_card.dart';
 import 'library_cover_card.dart';
@@ -258,7 +259,10 @@ class SearchResultsView extends StatelessWidget {
       await state.selectArtistByName(albumArtist);
     }
     if (selection == _AlbumAction.favorite) {
-      await state.setAlbumFavorite(album, !isFavorite);
+      await runWithSnack(
+        context,
+        () => state.setAlbumFavorite(album, !isFavorite),
+      );
     }
     if (selection == _AlbumAction.makeAvailableOffline) {
       await state.makeAlbumAvailableOffline(album);
@@ -326,7 +330,10 @@ class SearchResultsView extends StatelessWidget {
       await state.selectArtist(artist);
     }
     if (selection == _ArtistAction.favorite) {
-      await state.setArtistFavorite(artist, !isFavorite);
+      await runWithSnack(
+        context,
+        () => state.setArtistFavorite(artist, !isFavorite),
+      );
     }
     if (selection == _ArtistAction.makeAvailableOffline) {
       await state.makeArtistAvailableOffline(artist);

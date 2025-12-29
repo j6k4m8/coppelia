@@ -5,6 +5,7 @@ import '../../core/color_tokens.dart';
 import '../../models/album.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
+import 'app_snack.dart';
 import 'collection_detail_view.dart';
 import 'section_header.dart';
 
@@ -80,7 +81,10 @@ class AlbumDetailView extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: isFavoriteUpdating
               ? null
-              : () => state.setAlbumFavorite(album, !isFavorite),
+              : () => runWithSnack(
+                    context,
+                    () => state.setAlbumFavorite(album, !isFavorite),
+                  ),
           icon: isFavoriteUpdating
               ? SizedBox(
                   width: 16,

@@ -842,7 +842,7 @@ class AppState extends ChangeNotifier {
       _playlists = previous;
       await _cacheStore.savePlaylists(_playlists);
       notifyListeners();
-      return _playlistErrorMessage(
+      return _requestErrorMessage(
         error,
         fallback: 'Unable to rename playlist.',
       );
@@ -871,7 +871,7 @@ class AppState extends ChangeNotifier {
       await _cacheStore.savePlaylists(_playlists);
       _updatePlaylistStats(1);
       notifyListeners();
-      return _playlistErrorMessage(
+      return _requestErrorMessage(
         error,
         fallback: 'Unable to delete playlist.',
       );
@@ -908,7 +908,7 @@ class AppState extends ChangeNotifier {
       _updatePlaylistTrackCount(playlist, tracks.length);
       return null;
     } catch (error) {
-      return _playlistErrorMessage(
+      return _requestErrorMessage(
         error,
         fallback: 'Unable to add to playlist.',
       );
@@ -952,7 +952,7 @@ class AppState extends ChangeNotifier {
       _updatePlaylistTrackCount(playlist, -1);
       return null;
     } catch (error) {
-      return _playlistErrorMessage(
+      return _requestErrorMessage(
         error,
         fallback: 'Unable to remove from playlist.',
       );
@@ -1060,7 +1060,7 @@ class AppState extends ChangeNotifier {
     return a.name.toLowerCase().compareTo(b.name.toLowerCase());
   }
 
-  String _playlistErrorMessage(Object error, {required String fallback}) {
+  String _requestErrorMessage(Object error, {required String fallback}) {
     if (error is JellyfinRequestException) {
       return error.message;
     }
@@ -1081,7 +1081,7 @@ class AppState extends ChangeNotifier {
     Object error,
   ) async {
     if (!_isPlaylistOrderUnsupported(error)) {
-      return _playlistErrorMessage(
+      return _requestErrorMessage(
         error,
         fallback: 'Unable to reorder playlist.',
       );
@@ -1108,7 +1108,7 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (fallbackError) {
-      return _playlistErrorMessage(
+      return _requestErrorMessage(
         fallbackError,
         fallback: 'Unable to reorder playlist.',
       );
@@ -3066,8 +3066,10 @@ class AppState extends ChangeNotifier {
       _isLoadingLibrary = true;
       notifyListeners();
       final artists = await _client.fetchFavoriteArtists();
-      _favoriteArtists = artists;
-      await _cacheStore.saveFavoriteArtists(artists);
+      if (artists.isNotEmpty || _favoriteArtists.isEmpty) {
+        _favoriteArtists = artists;
+        await _cacheStore.saveFavoriteArtists(artists);
+      }
     } catch (_) {
       // Use cached results when available.
     } finally {
@@ -3188,13 +3190,13 @@ class AppState extends ChangeNotifier {
   }
 
   /// Updates the favorite status for an album.
-  Future<void> setAlbumFavorite(Album album, bool isFavorite) async {
+  Future<String?> setAlbumFavorite(Album album, bool isFavorite) async {
     if (_favoriteAlbumUpdatesInFlight.contains(album.id)) {
-      return;
+      return null;
     }
     final wasFavorite = isFavoriteAlbum(album.id);
     if (wasFavorite == isFavorite) {
-      return;
+      return null;
     }
     _favoriteAlbumUpdatesInFlight.add(album.id);
     _applyAlbumFavoriteLocal(album, isFavorite);
@@ -3203,15 +3205,20 @@ class AppState extends ChangeNotifier {
       await _cacheStore.saveFavoriteAlbums(_favoriteAlbums);
       _favoriteAlbumUpdatesInFlight.remove(album.id);
       notifyListeners();
-      return;
+      return null;
     }
     try {
       await _client.setFavorite(itemId: album.id, isFavorite: isFavorite);
       await _cacheStore.saveFavoriteAlbums(_favoriteAlbums);
       unawaited(_syncAlbumFavoriteOffline(album, isFavorite));
-    } catch (_) {
+      return null;
+    } catch (error) {
       _applyAlbumFavoriteLocal(album, wasFavorite);
       await _cacheStore.saveFavoriteAlbums(_favoriteAlbums);
+      return _requestErrorMessage(
+        error,
+        fallback: 'Unable to update album favorite.',
+      );
     } finally {
       _favoriteAlbumUpdatesInFlight.remove(album.id);
       notifyListeners();
@@ -3219,13 +3226,13 @@ class AppState extends ChangeNotifier {
   }
 
   /// Updates the favorite status for an artist.
-  Future<void> setArtistFavorite(Artist artist, bool isFavorite) async {
+  Future<String?> setArtistFavorite(Artist artist, bool isFavorite) async {
     if (_favoriteArtistUpdatesInFlight.contains(artist.id)) {
-      return;
+      return null;
     }
     final wasFavorite = isFavoriteArtist(artist.id);
     if (wasFavorite == isFavorite) {
-      return;
+      return null;
     }
     _favoriteArtistUpdatesInFlight.add(artist.id);
     _applyArtistFavoriteLocal(artist, isFavorite);
@@ -3234,15 +3241,27 @@ class AppState extends ChangeNotifier {
       await _cacheStore.saveFavoriteArtists(_favoriteArtists);
       _favoriteArtistUpdatesInFlight.remove(artist.id);
       notifyListeners();
-      return;
+      return null;
     }
     try {
       await _client.setFavorite(itemId: artist.id, isFavorite: isFavorite);
       await _cacheStore.saveFavoriteArtists(_favoriteArtists);
       unawaited(_syncArtistFavoriteOffline(artist, isFavorite));
-    } catch (_) {
+      final confirmed = await _client.fetchFavoriteState(artist.id);
+      if (confirmed != null && confirmed != isFavorite) {
+        _applyArtistFavoriteLocal(artist, wasFavorite);
+        await _cacheStore.saveFavoriteArtists(_favoriteArtists);
+        notifyListeners();
+        return 'Server did not update artist favorite.';
+      }
+      return null;
+    } catch (error) {
       _applyArtistFavoriteLocal(artist, wasFavorite);
       await _cacheStore.saveFavoriteArtists(_favoriteArtists);
+      return _requestErrorMessage(
+        error,
+        fallback: 'Unable to update artist favorite.',
+      );
     } finally {
       _favoriteArtistUpdatesInFlight.remove(artist.id);
       notifyListeners();
@@ -3250,13 +3269,13 @@ class AppState extends ChangeNotifier {
   }
 
   /// Updates the favorite status for a track.
-  Future<void> setTrackFavorite(MediaItem track, bool isFavorite) async {
+  Future<String?> setTrackFavorite(MediaItem track, bool isFavorite) async {
     if (_favoriteTrackUpdatesInFlight.contains(track.id)) {
-      return;
+      return null;
     }
     final wasFavorite = isFavoriteTrack(track.id);
     if (wasFavorite == isFavorite) {
-      return;
+      return null;
     }
     _favoriteTrackUpdatesInFlight.add(track.id);
     _applyTrackFavoriteLocal(track, isFavorite);
@@ -3265,15 +3284,20 @@ class AppState extends ChangeNotifier {
       await _cacheStore.saveFavoriteTracks(_favoriteTracks);
       _favoriteTrackUpdatesInFlight.remove(track.id);
       notifyListeners();
-      return;
+      return null;
     }
     try {
       await _client.setFavorite(itemId: track.id, isFavorite: isFavorite);
       await _cacheStore.saveFavoriteTracks(_favoriteTracks);
       unawaited(_syncTrackFavoriteOffline(track, isFavorite));
-    } catch (_) {
+      return null;
+    } catch (error) {
       _applyTrackFavoriteLocal(track, wasFavorite);
       await _cacheStore.saveFavoriteTracks(_favoriteTracks);
+      return _requestErrorMessage(
+        error,
+        fallback: 'Unable to update track favorite.',
+      );
     } finally {
       _favoriteTrackUpdatesInFlight.remove(track.id);
       notifyListeners();

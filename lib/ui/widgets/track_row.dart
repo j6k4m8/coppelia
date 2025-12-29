@@ -9,6 +9,7 @@ import '../../core/formatters.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
+import 'app_snack.dart';
 import 'artwork_image.dart';
 import 'context_menu.dart';
 import 'playlist_dialogs.dart';
@@ -55,7 +56,7 @@ class TrackRow extends StatelessWidget {
   final VoidCallback? onAddToQueue;
 
   /// Optional handler to toggle favorite state.
-  final Future<void> Function()? onToggleFavorite;
+  final Future<String?> Function()? onToggleFavorite;
 
   /// Indicates if this track is favorited.
   final bool isFavorite;
@@ -339,34 +340,28 @@ class TrackRow extends StatelessWidget {
         return;
       }
       if (!result.isNew) {
-        final error =
-            await state.addTrackToPlaylist(track, result.playlist);
-        if (error != null && context.mounted) {
-          _showSnack(context, error);
-        }
+        await runWithSnack(
+          context,
+          () => state.addTrackToPlaylist(track, result.playlist),
+        );
       }
     } else if (action == _TrackMenuAction.favorite) {
-      await onToggleFavorite?.call();
+      if (onToggleFavorite != null) {
+        await runWithSnack(context, () => onToggleFavorite!.call());
+      }
     } else if (action == _TrackMenuAction.makeAvailableOffline) {
       await state.makeTrackAvailableOffline(track);
     } else if (action == _TrackMenuAction.unpinOffline) {
       await state.unpinTrackOffline(track);
     } else if (action == _TrackMenuAction.removeFromPlaylist) {
-      final error = await onRemoveFromPlaylist?.call();
-      if (error != null && context.mounted) {
-        _showSnack(context, error);
+      if (onRemoveFromPlaylist != null) {
+        await runWithSnack(context, () => onRemoveFromPlaylist!.call());
       }
     } else if (action == _TrackMenuAction.goToAlbum) {
       onGoToAlbum?.call();
     } else if (action == _TrackMenuAction.goToArtist) {
       onGoToArtist?.call();
     }
-  }
-
-  void _showSnack(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
   }
 }
 
