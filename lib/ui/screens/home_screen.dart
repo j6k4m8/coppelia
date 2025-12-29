@@ -95,6 +95,12 @@ class _MainContentState extends State<_MainContent> {
     final state = widget.state;
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final leftGutter =
+        (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter =
+        (24 * densityScale).clamp(12.0, 32.0).toDouble();
+    final topGutter =
+        (24 * densityScale).clamp(12.0, 32.0).toDouble();
     final stats = state.libraryStats;
     final playlistCount = stats?.playlistCount ?? state.playlists.length;
     final int trackCount = stats?.trackCount ??
@@ -167,38 +173,43 @@ class _MainContentState extends State<_MainContent> {
               );
 
         final content = Expanded(
-          child: Padding(
-            padding:
-                const EdgeInsets.fromLTRB(32, 24, 24, 24).scale(densityScale),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _Header(
-                  userName: state.session?.userName ?? 'Listener',
-                  playlistCount: playlistCount,
-                  trackCount: trackCount,
-                  albumCount: albumCount,
-                  artistCount: artistCount,
-                  state: state,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding:
+                    EdgeInsets.fromLTRB(leftGutter, topGutter, rightGutter, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _Header(
+                      userName: state.session?.userName ?? 'Listener',
+                      playlistCount: playlistCount,
+                      trackCount: trackCount,
+                      albumCount: albumCount,
+                      artistCount: artistCount,
+                      state: state,
+                    ),
+                    SizedBox(height: space(24)),
+                    SizedBox(
+                      height: 6,
+                      child: AnimatedOpacity(
+                        opacity: state.isLoadingLibrary ? 1 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: const LinearProgressIndicator(minHeight: 2),
+                      ),
+                    ),
+                    SizedBox(height: space(12)),
+                  ],
                 ),
-                SizedBox(height: space(24)),
-                SizedBox(
-                  height: 6,
-                  child: AnimatedOpacity(
-                    opacity: state.isLoadingLibrary ? 1 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: const LinearProgressIndicator(minHeight: 2),
-                  ),
+              ),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 350),
+                  child: _LibraryContent(state: state),
                 ),
-                SizedBox(height: space(12)),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 350),
-                    child: _LibraryContent(state: state),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
 

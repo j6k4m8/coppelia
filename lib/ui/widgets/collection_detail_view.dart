@@ -80,12 +80,17 @@ class CollectionDetailView extends StatelessWidget {
     final state = context.read<AppState>();
     final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final leftGutter =
+        (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter =
+        (24 * densityScale).clamp(12.0, 32.0).toDouble();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: ListView.separated(
             itemCount: tracks.length + 1 + (headerFooter == null ? 0 : 1),
+            padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
             separatorBuilder: (_, index) {
               if (index == 0 || (headerFooter != null && index == 1)) {
                 return SizedBox(height: space(24));

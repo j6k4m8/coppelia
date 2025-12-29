@@ -19,6 +19,10 @@ class PlaylistDetailView extends StatelessWidget {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final leftGutter =
+        (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter =
+        (24 * densityScale).clamp(12.0, 32.0).toDouble();
     final playlist = state.selectedPlaylist;
     if (playlist == null) {
       return const SizedBox.shrink();
@@ -36,6 +40,7 @@ class PlaylistDetailView extends StatelessWidget {
         Expanded(
           child: ListView.separated(
             itemCount: displayTracks.length + 1,
+            padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
             separatorBuilder: (_, index) {
               return SizedBox(
                 height: index == 0

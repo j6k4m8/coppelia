@@ -129,17 +129,12 @@ class _SidePanel extends StatelessWidget {
             animation: Listenable.merge([
               state.positionListenable,
               state.durationListenable,
-              state.isBufferingListenable,
             ]),
             builder: (context, _) {
-              final shouldPulse = track != null &&
-                  !state.isNowPlayingCached &&
-                  (state.isBuffering || state.isPreparingPlayback);
               return _ProgressScrubber(
                 position: state.position,
                 duration: state.duration,
                 onSeek: state.seek,
-                isBuffering: shouldPulse,
               );
             },
           ),
@@ -278,18 +273,13 @@ class _BottomBar extends StatelessWidget {
                       animation: Listenable.merge([
                         state.positionListenable,
                         state.durationListenable,
-                        state.isBufferingListenable,
                       ]),
                       builder: (context, _) {
-                        final shouldPulse = track != null &&
-                            !state.isNowPlayingCached &&
-                            (state.isBuffering || state.isPreparingPlayback);
                         return _ProgressScrubber(
                           position: state.position,
                           duration: state.duration,
                           onSeek: state.seek,
                           compact: true,
-                          isBuffering: shouldPulse,
                         );
                       },
                     ),
@@ -356,18 +346,13 @@ class _BottomBar extends StatelessWidget {
                     animation: Listenable.merge([
                       state.positionListenable,
                       state.durationListenable,
-                      state.isBufferingListenable,
                     ]),
                     builder: (context, _) {
-                      final shouldPulse = track != null &&
-                          !state.isNowPlayingCached &&
-                          (state.isBuffering || state.isPreparingPlayback);
                       return _ProgressScrubber(
                         position: state.position,
                         duration: state.duration,
                         onSeek: state.seek,
                         compact: true,
-                        isBuffering: shouldPulse,
                       );
                     },
                   ),
@@ -575,118 +560,60 @@ class _FavoriteButton extends StatelessWidget {
   }
 }
 
-class _ProgressScrubber extends StatefulWidget {
+class _ProgressScrubber extends StatelessWidget {
   const _ProgressScrubber({
     required this.position,
     required this.duration,
     required this.onSeek,
-    required this.isBuffering,
     this.compact = false,
   });
 
   final Duration position;
   final Duration duration;
   final ValueChanged<Duration> onSeek;
-  final bool isBuffering;
   final bool compact;
 
   @override
-  State<_ProgressScrubber> createState() => _ProgressScrubberState();
-}
-
-class _ProgressScrubberState extends State<_ProgressScrubber>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    );
-    if (widget.isBuffering) {
-      _controller.repeat(reverse: true);
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _ProgressScrubber oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isBuffering && !_controller.isAnimating) {
-      _controller.repeat(reverse: true);
-    } else if (!widget.isBuffering && _controller.isAnimating) {
-      _controller
-        ..stop()
-        ..value = 0.0;
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final totalMs = widget.duration.inMilliseconds;
-    final currentMs = widget.position.inMilliseconds.clamp(0, totalMs);
+    final totalMs = duration.inMilliseconds;
+    final currentMs = position.inMilliseconds.clamp(0, totalMs);
     final value = totalMs > 0 ? currentMs / totalMs : 0.0;
     final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     final height =
-        ((widget.compact ? 32.0 : 40.0) * densityScale).clamp(24.0, 52.0);
+        ((compact ? 32.0 : 40.0) * densityScale).clamp(24.0, 52.0);
     final trackHeight =
-        ((widget.compact ? 4.0 : 6.0) * densityScale).clamp(2.0, 8.0);
+        ((compact ? 4.0 : 6.0) * densityScale).clamp(2.0, 8.0);
     final thumbRadius =
-        ((widget.compact ? 6.0 : 8.0) * densityScale).clamp(4.0, 10.0);
+        ((compact ? 6.0 : 8.0) * densityScale).clamp(4.0, 10.0);
     final overlayRadius =
-        ((widget.compact ? 10.0 : 12.0) * densityScale).clamp(6.0, 14.0);
+        ((compact ? 10.0 : 12.0) * densityScale).clamp(6.0, 14.0);
     final primary = Theme.of(context).colorScheme.primary;
 
     return Column(
       children: [
         SizedBox(
           height: height,
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, _) {
-              final pulse = widget.isBuffering ? _controller.value : 0.0;
-              final activeColor = Color.lerp(
-                    primary.withOpacity(0.6),
-                    primary,
-                    pulse,
-                  ) ??
-                  primary;
-              final inactiveColor = Color.lerp(
-                    primary.withOpacity(0.14),
-                    primary.withOpacity(0.28),
-                    pulse,
-                  ) ??
-                  primary.withOpacity(0.2);
-              return SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  trackHeight: trackHeight,
-                  activeTrackColor: activeColor,
-                  inactiveTrackColor: inactiveColor,
-                  thumbColor: activeColor,
-                  overlayColor: activeColor.withOpacity(0.15),
-                  thumbShape:
-                      RoundSliderThumbShape(enabledThumbRadius: thumbRadius),
-                  overlayShape:
-                      RoundSliderOverlayShape(overlayRadius: overlayRadius),
-                ),
-                child: Slider(
-                  value: value,
-                  onChanged: totalMs <= 0
-                      ? null
-                      : (newValue) {
-                          final targetMs = (totalMs * newValue).round();
-                          widget.onSeek(Duration(milliseconds: targetMs));
-                        },
-                ),
-              );
-            },
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: trackHeight,
+              activeTrackColor: primary,
+              inactiveTrackColor: primary.withOpacity(0.2),
+              thumbColor: primary,
+              overlayColor: primary.withOpacity(0.15),
+              thumbShape:
+                  RoundSliderThumbShape(enabledThumbRadius: thumbRadius),
+              overlayShape:
+                  RoundSliderOverlayShape(overlayRadius: overlayRadius),
+            ),
+            child: Slider(
+              value: value,
+              onChanged: totalMs <= 0
+                  ? null
+                  : (newValue) {
+                      final targetMs = (totalMs * newValue).round();
+                      onSeek(Duration(milliseconds: targetMs));
+                    },
+            ),
           ),
         ),
         SizedBox(
@@ -696,14 +623,14 @@ class _ProgressScrubberState extends State<_ProgressScrubber>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              formatDuration(widget.position),
+              formatDuration(position),
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
                   ?.copyWith(color: ColorTokens.textSecondary(context)),
             ),
             Text(
-              formatDuration(widget.duration),
+              formatDuration(duration),
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
@@ -1214,17 +1141,12 @@ class _NowPlayingExpandedView extends StatelessWidget {
                 animation: Listenable.merge([
                   state.positionListenable,
                   state.durationListenable,
-                  state.isBufferingListenable,
                 ]),
                 builder: (context, _) {
-                  final shouldPulse = track != null &&
-                      !state.isNowPlayingCached &&
-                      (state.isBuffering || state.isPreparingPlayback);
                   return _ProgressScrubber(
                     position: state.position,
                     duration: state.duration,
                     onSeek: state.seek,
-                    isBuffering: shouldPulse,
                   );
                 },
               ),

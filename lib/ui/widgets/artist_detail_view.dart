@@ -41,6 +41,10 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final leftGutter =
+        (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter =
+        (24 * densityScale).clamp(12.0, 32.0).toDouble();
     final artist = state.selectedArtist;
     if (artist == null) {
       return const SizedBox.shrink();
@@ -67,6 +71,7 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
         Expanded(
           child: ListView.separated(
             itemCount: trackStartIndex + displayTracks.length,
+            padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
             separatorBuilder: (_, index) {
               if (index == 0 || (hasAlbums && index == 1)) {
                 return SizedBox(height: space(24));

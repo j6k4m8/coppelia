@@ -107,6 +107,10 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
     final layout = context
         .select((AppState state) => state.browseLayoutFor(widget.view));
     double space(double value) => value * densityScale;
+    final leftGutter =
+        (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter =
+        (24 * densityScale).clamp(12.0, 32.0).toDouble();
     final itemCount = widget.items.length;
     final letterIndex = _buildLetterIndex(widget.items);
     final letters = letterIndex.keys.toList(growable: false);
@@ -130,39 +134,51 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
     final listItemExtent =
         math.max(contentHeight + verticalPadding * 2, 28).toDouble();
 
+    final contentPadding =
+        EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0);
+    final listPadding = EdgeInsets.fromLTRB(
+      leftGutter,
+      0,
+      rightGutter + contentRightPadding,
+      0,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(
-          title: widget.title,
-          action: Row(
-            children: [
-              Text(
-                '$itemCount items',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: ColorTokens.textSecondary(context)),
-              ),
-              const SizedBox(width: 16),
-              SegmentedButton<BrowseLayout>(
-                segments: BrowseLayout.values
-                    .map(
-                      (mode) => ButtonSegment(
-                        value: mode,
-                        label: Text(mode.label),
-                        icon: Icon(mode.icon, size: 16),
-                      ),
-                    )
-                    .toList(),
-                selected: {layout},
-                onSelectionChanged: (selection) {
-                  context
-                      .read<AppState>()
-                      .setBrowseLayout(widget.view, selection.first);
-                },
-              ),
-            ],
+        Padding(
+          padding: contentPadding,
+          child: SectionHeader(
+            title: widget.title,
+            action: Row(
+              children: [
+                Text(
+                  '$itemCount items',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: ColorTokens.textSecondary(context)),
+                ),
+                const SizedBox(width: 16),
+                SegmentedButton<BrowseLayout>(
+                  segments: BrowseLayout.values
+                      .map(
+                        (mode) => ButtonSegment(
+                          value: mode,
+                          label: Text(mode.label),
+                          icon: Icon(mode.icon, size: 16),
+                        ),
+                      )
+                      .toList(),
+                  selected: {layout},
+                  onSelectionChanged: (selection) {
+                    context
+                        .read<AppState>()
+                        .setBrowseLayout(widget.view, selection.first);
+                  },
+                ),
+              ],
+            ),
           ),
         ),
         SizedBox(height: space(16)),
@@ -180,7 +196,7 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                   layout == BrowseLayout.grid
                       ? GridView.builder(
                           controller: _controller,
-                          padding: EdgeInsets.only(right: contentRightPadding),
+                          padding: listPadding,
                           itemCount: widget.items.length,
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
@@ -196,7 +212,7 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                         )
                       : ListView.separated(
                           controller: _controller,
-                          padding: EdgeInsets.only(right: contentRightPadding),
+                          padding: listPadding,
                           itemCount: widget.items.length,
                           separatorBuilder: (_, __) =>
                               SizedBox(height: space(6).clamp(4.0, 10.0)),

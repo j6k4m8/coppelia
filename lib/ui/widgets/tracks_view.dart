@@ -171,6 +171,10 @@ class _TracksViewState extends State<TracksView> {
     final density = state.layoutDensity;
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final leftGutter =
+        (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter =
+        (24 * densityScale).clamp(12.0, 32.0).toDouble();
     final gap = (6 * densityScale).clamp(4.0, 10.0);
     final rowExtent = _rowExtent(
       density: density,
@@ -183,8 +187,15 @@ class _TracksViewState extends State<TracksView> {
     final activeLetter = state.trackBrowseLetter;
     final baseLabel = total > 0 ? '$count of $total tracks' : '$count tracks';
     final label = baseLabel;
-    final contentRightPadding =
-        space(48).clamp(32.0, 64.0);
+    final contentRightPadding = space(48).clamp(32.0, 64.0);
+    final headerPadding =
+        EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0);
+    final listPadding = EdgeInsets.fromLTRB(
+      leftGutter,
+      0,
+      rightGutter + contentRightPadding,
+      0,
+    );
 
     if (count == 0 && state.isLoadingTracks) {
       return const Center(child: CircularProgressIndicator());
@@ -193,32 +204,35 @@ class _TracksViewState extends State<TracksView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(
-          title: 'Tracks',
-          action: Row(
-            children: [
-              Text(
-                label,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: ColorTokens.textSecondary(context)),
-              ),
-              if (activeLetter != null) ...[
-                SizedBox(width: space(12)),
+        Padding(
+          padding: headerPadding,
+          child: SectionHeader(
+            title: 'Tracks',
+            action: Row(
+              children: [
                 Text(
-                  'Jump: $activeLetter',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: ColorTokens.textSecondary(context),
-                      ),
+                  label,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: ColorTokens.textSecondary(context)),
                 ),
-                SizedBox(width: space(10)),
-                _HeaderAction(
-                  label: 'Clear',
-                  onTap: () => state.setTrackBrowseLetter(null),
-                ),
-              ]
-            ],
+                if (activeLetter != null) ...[
+                  SizedBox(width: space(12)),
+                  Text(
+                    'Jump: $activeLetter',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: ColorTokens.textSecondary(context),
+                        ),
+                  ),
+                  SizedBox(width: space(10)),
+                  _HeaderAction(
+                    label: 'Clear',
+                    onTap: () => state.setTrackBrowseLetter(null),
+                  ),
+                ]
+              ],
+            ),
           ),
         ),
         SizedBox(height: space(16)),
@@ -227,7 +241,7 @@ class _TracksViewState extends State<TracksView> {
             children: [
               ListView.separated(
                 controller: _controller,
-                padding: EdgeInsets.only(right: contentRightPadding),
+                padding: listPadding,
                 itemCount: count + (state.hasMoreTracks ? 1 : 0),
                 separatorBuilder: (_, __) => SizedBox(height: gap),
                 itemBuilder: (context, index) {

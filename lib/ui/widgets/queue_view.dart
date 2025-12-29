@@ -17,6 +17,10 @@ class QueueView extends StatelessWidget {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final leftGutter =
+        (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter =
+        (24 * densityScale).clamp(12.0, 32.0).toDouble();
     final queue = state.queue;
     if (queue.isEmpty) {
       return Center(
@@ -32,28 +36,32 @@ class QueueView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(
-          title: 'Queue',
-          action: Row(
-            children: [
-              Text(
-                '${queue.length} tracks',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: ColorTokens.textSecondary(context)),
-              ),
-              const SizedBox(width: 8),
-              _HeaderAction(
-                label: 'Clear',
-                onTap: state.clearQueue,
-              ),
-            ],
+        Padding(
+          padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
+          child: SectionHeader(
+            title: 'Queue',
+            action: Row(
+              children: [
+                Text(
+                  '${queue.length} tracks',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: ColorTokens.textSecondary(context)),
+                ),
+                const SizedBox(width: 8),
+                _HeaderAction(
+                  label: 'Clear',
+                  onTap: state.clearQueue,
+                ),
+              ],
+            ),
           ),
         ),
         SizedBox(height: space(16)),
         Expanded(
           child: ListView.separated(
+            padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
             itemCount: queue.length,
             separatorBuilder: (_, __) =>
                 SizedBox(height: space(6).clamp(4.0, 10.0)),

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
+import '../../state/layout_density.dart';
 import 'offline_empty_view.dart';
 import 'track_row.dart';
 
@@ -15,6 +16,11 @@ class OfflineTracksView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
+    final leftGutter =
+        (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter =
+        (24 * densityScale).clamp(12.0, 32.0).toDouble();
     return FutureBuilder<List<MediaItem>>(
       future: state.loadOfflineTracks(),
       builder: (context, snapshot) {
@@ -31,7 +37,7 @@ class OfflineTracksView extends StatelessWidget {
         }
         return ListView.separated(
           itemCount: tracks.length,
-          padding: const EdgeInsets.only(bottom: 32),
+          padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 32),
           separatorBuilder: (_, __) => const SizedBox(height: 6),
           itemBuilder: (context, index) {
             final track = tracks[index];

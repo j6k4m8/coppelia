@@ -25,40 +25,47 @@ class SettingsView extends StatelessWidget {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
-    return DefaultTabController(
-      length: 5,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionHeader(title: 'Settings'),
-          SizedBox(height: space(12)),
-          _SettingsTabBar(),
-          SizedBox(height: space(16)),
-          Expanded(
-            child: TabBarView(
-              children: [
-                _SettingsTab(
-                  child: _AppearanceSettings(state: state),
-                ),
-                _SettingsTab(
-                  child: _LayoutSettings(state: state),
-                ),
-                _SettingsTab(
-                  child: _KeyboardSettings(state: state),
-                ),
-                _SettingsTab(
-                  child: _CacheSettings(
-                    state: state,
-                    onSnack: (message) => _showSnack(context, message),
+    final leftGutter =
+        (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter =
+        (24 * densityScale).clamp(12.0, 32.0).toDouble();
+    return Padding(
+      padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
+      child: DefaultTabController(
+        length: 5,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionHeader(title: 'Settings'),
+            SizedBox(height: space(12)),
+            _SettingsTabBar(),
+            SizedBox(height: space(16)),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _SettingsTab(
+                    child: _AppearanceSettings(state: state),
                   ),
-                ),
-                _SettingsTab(
-                  child: _AccountSettings(state: state),
-                ),
-              ],
+                  _SettingsTab(
+                    child: _LayoutSettings(state: state),
+                  ),
+                  _SettingsTab(
+                    child: _KeyboardSettings(state: state),
+                  ),
+                  _SettingsTab(
+                    child: _CacheSettings(
+                      state: state,
+                      onSnack: (message) => _showSnack(context, message),
+                    ),
+                  ),
+                  _SettingsTab(
+                    child: _AccountSettings(state: state),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
