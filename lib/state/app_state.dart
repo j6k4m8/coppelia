@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show ThemeMode;
+import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:palette_generator/palette_generator.dart';
 
+import '../core/app_palette.dart';
 import '../models/album.dart';
 import '../models/artist.dart';
 import '../models/auth_session.dart';
@@ -23,12 +26,14 @@ import '../services/playback_controller.dart';
 import '../services/settings_store.dart';
 import '../services/session_store.dart';
 import 'browse_layout.dart';
+import 'accent_color_source.dart';
 import 'home_section.dart';
 import 'keyboard_shortcut.dart';
 import 'layout_density.dart';
 import 'library_view.dart';
 import 'now_playing_layout.dart';
 import 'sidebar_item.dart';
+import 'theme_palette_source.dart';
 
 /// Central application state and Jellyfin coordination.
 class AppState extends ChangeNotifier {
@@ -115,6 +120,9 @@ class AppState extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.dark;
   String? _fontFamily = 'SF Pro Display';
   double _fontScale = 1.0;
+  int _accentColorValue = 0xFF6F7BFF;
+  AccentColorSource _accentColorSource = AccentColorSource.preset;
+  ThemePaletteSource _themePaletteSource = ThemePaletteSource.defaultPalette;
   bool _telemetryPlayback = true;
   bool _telemetryProgress = true;
   bool _telemetryHistory = true;
@@ -163,6 +171,8 @@ class AppState extends ChangeNotifier {
   DateTime? _lastPlaybackPersistAt;
   bool _activeSessionHasPlayed = false;
   DateTime? _lastNowPlayingUpdateAt;
+  NowPlayingPalette? _nowPlayingPalette;
+  final Map<String, NowPlayingPalette> _paletteCache = {};
 
   /// Current authenticated session.
   AuthSession? get session => _session;
@@ -335,6 +345,30 @@ class AppState extends ChangeNotifier {
   /// Preferred font scale.
   double get fontScale => _fontScale;
 
+  /// Selected accent color source.
+  AccentColorSource get accentColorSource => _accentColorSource;
+
+  /// Selected theme palette source.
+  ThemePaletteSource get themePaletteSource => _themePaletteSource;
+
+  /// Raw accent color value.
+  int get accentColorValue => _accentColorValue;
+
+  /// Current accent color for the theme.
+  Color get accentColor {
+    if (_accentColorSource == AccentColorSource.nowPlaying) {
+      return _nowPlayingPalette?.primary ?? Color(_accentColorValue);
+    }
+    return Color(_accentColorValue);
+  }
+
+  /// Now playing palette, when available.
+  NowPlayingPalette? get nowPlayingPalette => _nowPlayingPalette;
+
+  /// True when using the now playing palette for the theme.
+  bool get useNowPlayingPalette =>
+      _themePaletteSource == ThemePaletteSource.nowPlaying;
+
   /// True when the settings shortcut is enabled.
   bool get settingsShortcutEnabled => _settingsShortcutEnabled;
 
@@ -484,6 +518,9 @@ class AppState extends ChangeNotifier {
     _themeMode = await _settingsStore.loadThemeMode();
     _fontFamily = await _settingsStore.loadFontFamily();
     _fontScale = await _settingsStore.loadFontScale();
+    _accentColorValue = await _settingsStore.loadAccentColorValue();
+    _accentColorSource = await _settingsStore.loadAccentColorSource();
+    _themePaletteSource = await _settingsStore.loadThemePaletteSource();
     _telemetryPlayback = await _settingsStore.loadPlaybackTelemetry();
     _telemetryProgress = await _settingsStore.loadProgressTelemetry();
     _telemetryHistory = await _settingsStore.loadHistoryTelemetry();
@@ -512,6 +549,7 @@ class AppState extends ChangeNotifier {
     _pinnedAudio = await _cacheStore.loadPinnedAudio();
     await _loadCachedLibrary();
     await _restorePlaybackResumeState();
+    unawaited(_maybeUpdateNowPlayingPalette(_nowPlaying));
     _isBootstrapping = false;
     notifyListeners();
 
@@ -588,6 +626,7 @@ class AppState extends ChangeNotifier {
     _lastJumpInRefreshAt = null;
     _queue = [];
     _nowPlaying = null;
+    unawaited(_maybeUpdateNowPlayingPalette(null));
     _playSessionId = null;
     _reportedStartSessionId = null;
     _reportedStopSessionId = null;
@@ -1315,6 +1354,7 @@ class AppState extends ChangeNotifier {
       await _playback.clearQueue(keepCurrent: false);
       _queue = [];
       _nowPlaying = null;
+      unawaited(_maybeUpdateNowPlayingPalette(null));
       _position = Duration.zero;
       _duration = Duration.zero;
       _positionNotifier.value = _position;
@@ -1444,6 +1484,33 @@ class AppState extends ChangeNotifier {
     _fontScale = scale;
     await _settingsStore.saveFontScale(scale);
     notifyListeners();
+  }
+
+  /// Updates the accent color preference.
+  Future<void> setAccentColor(Color color) async {
+    _accentColorValue = color.value;
+    await _settingsStore.saveAccentColorValue(color.value);
+    notifyListeners();
+  }
+
+  /// Updates the accent color source preference.
+  Future<void> setAccentColorSource(AccentColorSource source) async {
+    _accentColorSource = source;
+    await _settingsStore.saveAccentColorSource(source);
+    notifyListeners();
+    if (source == AccentColorSource.nowPlaying) {
+      unawaited(_maybeUpdateNowPlayingPalette(_nowPlaying));
+    }
+  }
+
+  /// Updates the theme palette source preference.
+  Future<void> setThemePaletteSource(ThemePaletteSource source) async {
+    _themePaletteSource = source;
+    await _settingsStore.saveThemePaletteSource(source);
+    notifyListeners();
+    if (source == ThemePaletteSource.nowPlaying) {
+      unawaited(_maybeUpdateNowPlayingPalette(_nowPlaying));
+    }
   }
 
   /// Updates the settings shortcut enabled preference.
@@ -2038,6 +2105,7 @@ class AppState extends ChangeNotifier {
     _position = Duration.zero;
     _positionNotifier.value = _position;
     unawaited(_refreshNowPlayingCacheStatus(track));
+    unawaited(_maybeUpdateNowPlayingPalette(track));
     if (recordHistory) {
       _recordPlayHistory(track);
     }
@@ -2083,6 +2151,63 @@ class AppState extends ChangeNotifier {
         duration: duration,
         isPlaying: _isPlaying,
       ),
+    );
+  }
+
+  bool _needsNowPlayingPalette() {
+    return _accentColorSource == AccentColorSource.nowPlaying ||
+        _themePaletteSource == ThemePaletteSource.nowPlaying;
+  }
+
+  Future<void> _maybeUpdateNowPlayingPalette(MediaItem? track) async {
+    if (!_needsNowPlayingPalette()) {
+      return;
+    }
+    final imageUrl = track?.imageUrl;
+    if (imageUrl == null || imageUrl.isEmpty) {
+      if (_nowPlayingPalette != null) {
+        _nowPlayingPalette = null;
+        notifyListeners();
+      }
+      return;
+    }
+    final cached = _paletteCache[imageUrl];
+    if (cached != null) {
+      if (_nowPlayingPalette != cached) {
+        _nowPlayingPalette = cached;
+        notifyListeners();
+      }
+      return;
+    }
+    try {
+      final generator = await PaletteGenerator.fromImageProvider(
+        CachedNetworkImageProvider(imageUrl),
+        size: const Size(160, 160),
+        maximumColorCount: 12,
+      );
+      final palette = _buildNowPlayingPalette(generator);
+      _paletteCache[imageUrl] = palette;
+      _nowPlayingPalette = palette;
+      notifyListeners();
+    } catch (_) {
+      // Ignore palette extraction failures.
+    }
+  }
+
+  NowPlayingPalette _buildNowPlayingPalette(PaletteGenerator generator) {
+    final dominant =
+        generator.vibrantColor?.color ?? generator.dominantColor?.color;
+    final secondary = generator.darkMutedColor?.color ??
+        generator.mutedColor?.color ??
+        generator.lightMutedColor?.color;
+    final tertiary = generator.lightVibrantColor?.color ??
+        generator.darkVibrantColor?.color ??
+        generator.lightMutedColor?.color;
+    final fallback = Color(_accentColorValue);
+    return NowPlayingPalette(
+      primary: dominant ?? fallback,
+      secondary: secondary ?? dominant ?? fallback,
+      tertiary: tertiary ?? secondary ?? dominant ?? fallback,
     );
   }
 

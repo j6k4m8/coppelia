@@ -44,6 +44,7 @@ If you hold in your heart other bulletpoints than these, please share and help m
 -   Playback resume that restores your last track and position when you reopen the app
 -   Configurable home shelves, sidebar sections, and layout choices
 -   Appearance controls: theme mode, font family, font scale, and layout density
+-   Accent color presets, custom hex, and now playing palette theming
 -   A–Z track browsing with quick alphabet jump
 -   Shuffle playback for albums, artists, genres, and playlists
 -   Jump in random picks with auto-refresh

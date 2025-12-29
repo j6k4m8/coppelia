@@ -10,6 +10,8 @@ import '../state/home_section.dart';
 import '../state/keyboard_shortcut.dart';
 import '../state/layout_density.dart';
 import '../state/sidebar_item.dart';
+import '../state/accent_color_source.dart';
+import '../state/theme_palette_source.dart';
 
 /// Persists user preferences for the app.
 class SettingsStore {
@@ -24,6 +26,9 @@ class SettingsStore {
   static const _sidebarVisibilityKey = 'settings_sidebar_visibility';
   static const _fontFamilyKey = 'settings_font_family';
   static const _fontScaleKey = 'settings_font_scale';
+  static const _accentColorKey = 'settings_accent_color';
+  static const _accentSourceKey = 'settings_accent_source';
+  static const _themePaletteSourceKey = 'settings_theme_palette_source';
   static const _telemetryPlaybackKey = 'settings_telemetry_playback';
   static const _telemetryProgressKey = 'settings_telemetry_progress';
   static const _telemetryHistoryKey = 'settings_telemetry_history';
@@ -45,6 +50,7 @@ class SettingsStore {
   static const _searchShortcutKey = 'settings_shortcut_search';
   static const _layoutDensityKey = 'settings_layout_density';
   static const _deviceIdKey = 'settings_device_id';
+  static const int _defaultAccentValue = 0xFF6F7BFF;
 
   /// Loads the preferred theme mode.
   Future<ThemeMode> loadThemeMode() async {
@@ -292,6 +298,44 @@ class SettingsStore {
     final preferences = await SharedPreferences.getInstance();
     final raw = preferences.getDouble(_fontScaleKey);
     return raw ?? 1.0;
+  }
+
+  /// Loads the preferred accent color value.
+  Future<int> loadAccentColorValue() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getInt(_accentColorKey) ?? _defaultAccentValue;
+  }
+
+  /// Saves the preferred accent color value.
+  Future<void> saveAccentColorValue(int value) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setInt(_accentColorKey, value);
+  }
+
+  /// Loads the preferred accent source.
+  Future<AccentColorSource> loadAccentColorSource() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_accentSourceKey);
+    return AccentColorSourceMeta.fromStorage(raw);
+  }
+
+  /// Saves the preferred accent source.
+  Future<void> saveAccentColorSource(AccentColorSource source) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_accentSourceKey, source.storageKey);
+  }
+
+  /// Loads the preferred theme palette source.
+  Future<ThemePaletteSource> loadThemePaletteSource() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_themePaletteSourceKey);
+    return ThemePaletteSourceMeta.fromStorage(raw);
+  }
+
+  /// Saves the preferred theme palette source.
+  Future<void> saveThemePaletteSource(ThemePaletteSource source) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_themePaletteSourceKey, source.storageKey);
   }
 
   /// Loads the preferred layout density.

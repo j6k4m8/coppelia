@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 
+import 'app_palette.dart';
+
 /// Shared color helpers for light/dark surfaces.
 class ColorTokens {
   /// Gradient colors for the app background.
   static List<Color> backgroundGradient(BuildContext context) {
+    final palette = Theme.of(context).extension<CoppeliaPalette>();
+    if (palette != null) {
+      return palette.backgroundGradient;
+    }
     if (Theme.of(context).brightness == Brightness.dark) {
       return const [
         Color(0xFF11131A),
@@ -20,6 +26,11 @@ class ColorTokens {
 
   /// Background for app side panels.
   static Color panelBackground(BuildContext context) {
+    final palette = Theme.of(context).extension<CoppeliaPalette>();
+    if (palette != null && palette.backgroundGradient.isNotEmpty) {
+      final gradient = palette.backgroundGradient;
+      return gradient.length > 1 ? gradient[1] : gradient.first;
+    }
     return Theme.of(context).brightness == Brightness.dark
         ? const Color(0xFF0F1218)
         : const Color(0xFFF4F5FA);
@@ -74,6 +85,10 @@ class ColorTokens {
 
   /// Section header background gradient.
   static List<Color> heroGradient(BuildContext context) {
+    final palette = Theme.of(context).extension<CoppeliaPalette>();
+    if (palette != null) {
+      return palette.heroGradient;
+    }
     final brightness = Theme.of(context).brightness;
     if (brightness == Brightness.dark) {
       return [

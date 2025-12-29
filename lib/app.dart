@@ -63,17 +63,30 @@ class _AppShell extends StatelessWidget {
     final themeMode = context.select((AppState s) => s.themeMode);
     final fontFamily = context.select((AppState s) => s.fontFamily);
     final fontScale = context.select((AppState s) => s.fontScale);
+    final accentColor = context.select((AppState s) => s.accentColor);
+    final useNowPlayingPalette =
+        context.select((AppState s) => s.useNowPlayingPalette);
+    final nowPlayingPalette =
+        context.select((AppState s) => s.nowPlayingPalette);
     final hasSession = context.select((AppState s) => s.session != null);
     final isPlaying = context.select((AppState s) => s.isPlaying);
     final app = MaterialApp(
       debugShowCheckedModeBanner: false,
+      themeAnimationDuration: const Duration(milliseconds: 600),
+      themeAnimationCurve: Curves.easeOutCubic,
       theme: CoppeliaTheme.lightTheme(
         fontFamily: fontFamily,
         fontScale: fontScale,
+        accentColor: accentColor,
+        nowPlayingPalette:
+            useNowPlayingPalette ? nowPlayingPalette : null,
       ),
       darkTheme: CoppeliaTheme.darkTheme(
         fontFamily: fontFamily,
         fontScale: fontScale,
+        accentColor: accentColor,
+        nowPlayingPalette:
+            useNowPlayingPalette ? nowPlayingPalette : null,
       ),
       themeMode: themeMode,
       home: const _RootRouter(),

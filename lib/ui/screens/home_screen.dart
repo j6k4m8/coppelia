@@ -46,22 +46,9 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final densityScale = state.layoutDensity.scaleDouble;
-    final content = _MainContent(state: state);
     return Scaffold(
       body: GradientBackground(
-        child: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(
-              top: (14 * densityScale).clamp(12.0, 20.0),
-            ),
-            child: Column(
-              children: [
-                Expanded(child: content),
-              ],
-            ),
-          ),
-        ),
+        child: _MainContent(state: state),
       ),
     );
   }
@@ -95,12 +82,17 @@ class _MainContentState extends State<_MainContent> {
     final state = widget.state;
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final safeTop = MediaQuery.of(context).padding.top;
+    final chromeInset = (14 * densityScale).clamp(12.0, 20.0).toDouble();
+    final topInset = safeTop + chromeInset;
     final leftGutter =
         (32 * densityScale).clamp(16.0, 40.0).toDouble();
     final rightGutter =
         (24 * densityScale).clamp(12.0, 32.0).toDouble();
     final topGutter =
-        (24 * densityScale).clamp(12.0, 32.0).toDouble();
+        (24 * densityScale).clamp(12.0, 32.0).toDouble() + topInset;
+    final overlayButtonTop =
+        (28 * densityScale).clamp(20.0, 34.0).toDouble() + topInset;
     final stats = state.libraryStats;
     final playlistCount = stats?.playlistCount ?? state.playlists.length;
     final int trackCount = stats?.trackCount ??
@@ -313,7 +305,7 @@ class _MainContentState extends State<_MainContent> {
             ],
             if (allowManual && effectiveCollapsed)
               Positioned(
-                top: 28,
+                top: overlayButtonTop,
                 left: -10,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
@@ -331,7 +323,7 @@ class _MainContentState extends State<_MainContent> {
               ),
             if (autoCollapsed && !_sidebarOverlayOpen)
               Positioned(
-                top: 28,
+                top: overlayButtonTop,
                 left: -10,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,

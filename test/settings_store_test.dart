@@ -3,8 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:coppelia/services/settings_store.dart';
+import 'package:coppelia/state/accent_color_source.dart';
 import 'package:coppelia/state/home_section.dart';
 import 'package:coppelia/state/sidebar_item.dart';
+import 'package:coppelia/state/theme_palette_source.dart';
 
 void main() {
   test('settings store defaults to dark theme', () async {
@@ -85,6 +87,38 @@ void main() {
     final scale = await store.loadFontScale();
 
     expect(scale, closeTo(1.1, 0.001));
+  });
+
+  test('settings store defaults accent color and sources', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SettingsStore();
+
+    final colorValue = await store.loadAccentColorValue();
+    final source = await store.loadAccentColorSource();
+    final paletteSource = await store.loadThemePaletteSource();
+
+    expect(colorValue, 0xFF6F7BFF);
+    expect(source, AccentColorSource.preset);
+    expect(paletteSource, ThemePaletteSource.defaultPalette);
+  });
+
+  test('settings store saves accent color and sources', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SettingsStore();
+
+    await store.saveAccentColorValue(0xFF123456);
+    await store.saveAccentColorSource(AccentColorSource.custom);
+    await store.saveThemePaletteSource(ThemePaletteSource.nowPlaying);
+
+    expect(await store.loadAccentColorValue(), 0xFF123456);
+    expect(
+      await store.loadAccentColorSource(),
+      AccentColorSource.custom,
+    );
+    expect(
+      await store.loadThemePaletteSource(),
+      ThemePaletteSource.nowPlaying,
+    );
   });
 
   test('settings store defaults telemetry toggles to true', () async {

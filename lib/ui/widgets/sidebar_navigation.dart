@@ -63,9 +63,18 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
         state.isSidebarItemVisible(SidebarItem.playlists);
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final safeTop = MediaQuery.of(context).padding.top;
+    final chromeInset = (14 * densityScale).clamp(12.0, 20.0).toDouble();
+    final topInset = safeTop + chromeInset;
+    final horizontalPadding = 20 * densityScale;
+    final verticalPadding = 24 * densityScale;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24)
-          .scale(densityScale),
+      padding: EdgeInsets.fromLTRB(
+        horizontalPadding,
+        verticalPadding + topInset,
+        horizontalPadding,
+        verticalPadding,
+      ),
       decoration: BoxDecoration(
         color: ColorTokens.panelBackground(context),
         border: Border(

@@ -6,11 +6,13 @@ import 'package:provider/provider.dart';
 
 import '../../core/formatters.dart';
 import '../../state/app_state.dart';
+import '../../state/accent_color_source.dart';
 import '../../state/home_section.dart';
 import '../../state/keyboard_shortcut.dart';
 import '../../state/layout_density.dart';
 import '../../state/now_playing_layout.dart';
 import '../../state/sidebar_item.dart';
+import '../../state/theme_palette_source.dart';
 import '../../core/color_tokens.dart';
 import 'glass_container.dart';
 import 'section_header.dart';
@@ -145,22 +147,75 @@ class _SettingsTab extends StatelessWidget {
     final densityScale =
         context.watch<AppState>().layoutDensity.scaleDouble;
     final padding = EdgeInsets.all((20 * densityScale).clamp(12.0, 28.0));
+    final pagePadding =
+        EdgeInsets.symmetric(horizontal: (10 * densityScale).clamp(6.0, 14.0));
     return SingleChildScrollView(
-      child: GlassContainer(
-        padding: padding,
-        child: child,
-      ),
+      padding: pagePadding,
+      child: GlassContainer(padding: padding, child: child),
     );
   }
 }
 
-class _AppearanceSettings extends StatelessWidget {
+class _AppearanceSettings extends StatefulWidget {
   const _AppearanceSettings({required this.state});
 
   final AppState state;
 
   @override
+  State<_AppearanceSettings> createState() => _AppearanceSettingsState();
+}
+
+class _AppearanceSettingsState extends State<_AppearanceSettings> {
+  late final TextEditingController _accentController;
+  final FocusNode _accentFocusNode = FocusNode();
+  String? _accentError;
+
+  @override
+  void initState() {
+    super.initState();
+    _accentController = TextEditingController(
+      text: _formatHex(widget.state.accentColorValue),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _AppearanceSettings oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextHex = _formatHex(widget.state.accentColorValue);
+    if (!_accentFocusNode.hasFocus &&
+        _accentController.text.toUpperCase() != nextHex) {
+      _accentController.text = nextHex;
+    }
+  }
+
+  @override
+  void dispose() {
+    _accentController.dispose();
+    _accentFocusNode.dispose();
+    super.dispose();
+  }
+
+  String _formatHex(int value) {
+    final hex = value.toRadixString(16).padLeft(8, '0');
+    return hex.substring(2).toUpperCase();
+  }
+
+  Color? _parseHex(String input) {
+    final raw = input.replaceAll('#', '').trim();
+    if (raw.length != 6) {
+      return null;
+    }
+    final valid = RegExp(r'^[0-9a-fA-F]{6}$');
+    if (!valid.hasMatch(raw)) {
+      return null;
+    }
+    final value = int.parse(raw, radix: 16);
+    return Color(0xFF000000 | value);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
     final fontChoice = _fontChoices.firstWhere(
       (choice) => choice.family == state.fontFamily,
       orElse: () => _fontChoices.first,
@@ -171,6 +226,7 @@ class _AppearanceSettings extends StatelessWidget {
         : 1.0;
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final accentSource = state.accentColorSource;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -198,6 +254,126 @@ class _AppearanceSettings extends StatelessWidget {
             onSelectionChanged: (selection) {
               final mode = selection.first;
               state.setThemeMode(mode);
+            },
+          ),
+        ),
+        SizedBox(height: space(16)),
+        _SettingRow(
+          title: 'Accent color',
+          subtitle: 'Pick a brand accent or sync to the now playing artwork.',
+          trailing: SegmentedButton<AccentColorSource>(
+            segments: AccentColorSource.values
+                .map(
+                  (source) => ButtonSegment(
+                    value: source,
+                    label: Text(source.label),
+                  ),
+                )
+                .toList(),
+            selected: {accentSource},
+            onSelectionChanged: (selection) {
+              state.setAccentColorSource(selection.first);
+              setState(() {
+                _accentError = null;
+              });
+            },
+          ),
+        ),
+        SizedBox(height: space(12)),
+        if (accentSource == AccentColorSource.preset)
+          Wrap(
+            spacing: space(12),
+            runSpacing: space(8),
+            children: _accentPresets
+                .map(
+                  (preset) => _AccentSwatch(
+                    label: preset.label,
+                    color: preset.color,
+                    selected: state.accentColorValue == preset.color.value &&
+                        accentSource == AccentColorSource.preset,
+                    onTap: () {
+                      state.setAccentColor(preset.color);
+                    },
+                  ),
+                )
+                .toList(),
+          )
+        else if (accentSource == AccentColorSource.custom)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 220,
+                child: TextField(
+                  controller: _accentController,
+                  focusNode: _accentFocusNode,
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                      RegExp(r'[0-9a-fA-F#]'),
+                    ),
+                    LengthLimitingTextInputFormatter(7),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Hex color',
+                    prefixText: '#',
+                    errorText: _accentError,
+                  ),
+                  onChanged: (value) {
+                    final color = _parseHex(value);
+                    if (color == null) {
+                      if (value.replaceAll('#', '').length < 6) {
+                        setState(() {
+                          _accentError = null;
+                        });
+                        return;
+                      }
+                      setState(() {
+                        _accentError = 'Invalid hex';
+                      });
+                      return;
+                    }
+                    setState(() {
+                      _accentError = null;
+                    });
+                    state.setAccentColor(color);
+                  },
+                ),
+              ),
+            ],
+          )
+        else
+          Row(
+            children: [
+              _AccentPreview(color: state.accentColor),
+              SizedBox(width: space(12)),
+              Expanded(
+                child: Text(
+                  'Uses the dominant artwork color in Now Playing.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: ColorTokens.textSecondary(context),
+                      ),
+                ),
+              ),
+            ],
+          ),
+        SizedBox(height: space(16)),
+        _SettingRow(
+          title: 'Theme palette',
+          subtitle:
+              'Tint gradients and hero cards using Now Playing artwork.',
+          trailing: SegmentedButton<ThemePaletteSource>(
+            segments: ThemePaletteSource.values
+                .map(
+                  (source) => ButtonSegment(
+                    value: source,
+                    label: Text(source.label),
+                  ),
+                )
+                .toList(),
+            selected: {state.themePaletteSource},
+            onSelectionChanged: (selection) {
+              state.setThemePaletteSource(selection.first);
             },
           ),
         ),
@@ -1430,6 +1606,93 @@ class _AccountStatChip extends StatelessWidget {
     );
   }
 }
+
+class _AccentSwatch extends StatelessWidget {
+  const _AccentSwatch({
+    required this.label,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    final ringColor =
+        selected ? Theme.of(context).colorScheme.primary : Colors.transparent;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: space(24).clamp(18.0, 30.0),
+              height: space(24).clamp(18.0, 30.0),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color,
+                border: Border.all(
+                  color: ringColor,
+                  width: 2,
+                ),
+              ),
+            ),
+            SizedBox(width: space(8)),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AccentPreview extends StatelessWidget {
+  const _AccentPreview({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+        border: Border.all(color: ColorTokens.border(context, 0.2)),
+      ),
+    );
+  }
+}
+
+class _AccentPreset {
+  const _AccentPreset(this.label, this.color);
+
+  final String label;
+  final Color color;
+}
+
+const List<_AccentPreset> _accentPresets = [
+  _AccentPreset('Indigo', Color(0xFF6F7BFF)),
+  _AccentPreset('Mint', Color(0xFF45D6B4)),
+  _AccentPreset('Coral', Color(0xFFFF7A59)),
+  _AccentPreset('Amber', Color(0xFFFFB347)),
+  _AccentPreset('Teal', Color(0xFF35B7C3)),
+  _AccentPreset('Rose', Color(0xFFF06292)),
+];
 
 
 class _FontChoice {
