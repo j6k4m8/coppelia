@@ -17,6 +17,28 @@ Coppelia is a cross-platform app designed for Jellyfin music libraries. I built 
 
 If you hold in your heart other bulletpoints than these, please share and help make Coppelia better!
 
+## Downloads & Installation
+
+For macOS, iOS, and Android, you can download Coppelia from [the Releases page](https://github.com/j6k4m8/coppelia/releases).
+
+### macOS
+
+You will need to allow Coppelia to run from _System Preferences > Security & Privacy > General_, as it is not yet notarized by Apple. Alternatively from the terminal, you can run:
+
+```bash
+xattr -d com.apple.quarantine /path/to/Coppelia.app
+```
+
+### Android
+
+You may need to enable installation from unknown sources in your device settings.
+
+F-Droid listing coming soon!
+
+### iOS
+
+You will need to sideload the app using Xcode or a tool like AltStore for now...
+
 ## Screenshots
 
 ### macOS
