@@ -24,6 +24,7 @@ class SettingsStore {
   static const _sidebarWidthKey = 'settings_sidebar_width';
   static const _sidebarCollapsedKey = 'settings_sidebar_collapsed';
   static const _homeSectionKey = 'settings_home_sections';
+  static const _homeSectionOrderKey = 'settings_home_section_order';
   static const _sidebarVisibilityKey = 'settings_sidebar_visibility';
   static const _fontFamilyKey = 'settings_font_family';
   static const _fontScaleKey = 'settings_font_scale';
@@ -279,6 +280,51 @@ class SettingsStore {
       }
     }
     return visibility;
+  }
+
+  /// Loads the preferred home section order.
+  Future<List<HomeSection>> loadHomeSectionOrder() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_homeSectionOrderKey);
+    final defaultOrder = List<HomeSection>.from(HomeSection.values);
+    if (raw == null || raw.isEmpty) {
+      return defaultOrder;
+    }
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      final ordered = decoded
+          .map((entry) => entry?.toString())
+          .whereType<String>()
+          .map(
+            (key) => HomeSection.values.firstWhere(
+              (section) => section.storageKey == key,
+              orElse: () => HomeSection.featured,
+            ),
+          )
+          .toList();
+      final seen = <HomeSection>{};
+      final filtered = <HomeSection>[];
+      for (final section in ordered) {
+        if (seen.add(section)) {
+          filtered.add(section);
+        }
+      }
+      for (final section in HomeSection.values) {
+        if (!seen.contains(section)) {
+          filtered.add(section);
+        }
+      }
+      return filtered;
+    } catch (_) {
+      return defaultOrder;
+    }
+  }
+
+  /// Saves the preferred home section order.
+  Future<void> saveHomeSectionOrder(List<HomeSection> order) async {
+    final preferences = await SharedPreferences.getInstance();
+    final payload = order.map((section) => section.storageKey).toList();
+    await preferences.setString(_homeSectionOrderKey, jsonEncode(payload));
   }
 
   /// Saves the preferred home section visibility map.

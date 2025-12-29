@@ -146,6 +146,9 @@ class AppState extends ChangeNotifier {
   Map<HomeSection, bool> _homeSectionVisibility = {
     for (final section in HomeSection.values) section: true,
   };
+  List<HomeSection> _homeSectionOrder = List<HomeSection>.from(
+    HomeSection.values,
+  );
   Map<SidebarItem, bool> _sidebarVisibility = {
     for (final item in SidebarItem.values) item: true,
   };
@@ -448,6 +451,10 @@ class AppState extends ChangeNotifier {
   Map<HomeSection, bool> get homeSectionVisibility =>
       Map.unmodifiable(_homeSectionVisibility);
 
+  /// Preferred home section order.
+  List<HomeSection> get homeSectionOrder =>
+      List.unmodifiable(_homeSectionOrder);
+
   /// Random track for the Jump in shelf.
   MediaItem? get jumpInTrack => _jumpInTrack;
 
@@ -516,6 +523,26 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Updates the ordering of home sections.
+  Future<void> reorderHomeSections(int oldIndex, int newIndex) async {
+    if (oldIndex == newIndex) {
+      return;
+    }
+    final list = List<HomeSection>.from(_homeSectionOrder);
+    if (oldIndex < 0 || oldIndex >= list.length) {
+      return;
+    }
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+    final moved = list.removeAt(oldIndex);
+    final target = newIndex.clamp(0, list.length);
+    list.insert(target, moved);
+    _homeSectionOrder = list;
+    await _settingsStore.saveHomeSectionOrder(_homeSectionOrder);
+    notifyListeners();
+  }
+
   /// Updates the visibility of a sidebar item.
   Future<void> setSidebarItemVisible(
     SidebarItem item,
@@ -575,6 +602,7 @@ class AppState extends ChangeNotifier {
     _offlineMode = await _settingsStore.loadOfflineMode();
     _cacheMaxBytes = await _cacheStore.loadCacheMaxBytes();
     _homeSectionVisibility = await _settingsStore.loadHomeSectionVisibility();
+    _homeSectionOrder = await _settingsStore.loadHomeSectionOrder();
     _sidebarVisibility = await _settingsStore.loadSidebarVisibility();
     _sidebarWidth = await _settingsStore.loadSidebarWidth();
     _sidebarCollapsed = await _settingsStore.loadSidebarCollapsed();

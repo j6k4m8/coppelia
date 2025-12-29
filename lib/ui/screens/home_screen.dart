@@ -913,11 +913,18 @@ class _HomePlaylistsView extends StatelessWidget {
     if (playlists.isEmpty) {
       return const LibraryPlaceholderView(view: LibraryView.homePlaylists);
     }
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    final leftGutter =
+        (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter =
+        (24 * densityScale).clamp(12.0, 32.0).toDouble();
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossAxisCount = (constraints.maxWidth / 220).floor();
         final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
         return GridView.builder(
+          padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 24),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
             crossAxisSpacing: 16,
