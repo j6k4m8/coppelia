@@ -155,6 +155,7 @@ class AppState extends ChangeNotifier {
   bool _isLoadingJumpIn = false;
   DateTime? _lastJumpInRefreshAt;
   int _cacheMaxBytes = CacheStore.defaultCacheMaxBytes;
+  bool _offlineMode = false;
   bool _offlineOnlyFilter = false;
 
   StreamSubscription<Duration>? _positionSubscription;
@@ -408,8 +409,11 @@ class AppState extends ChangeNotifier {
   /// True when auto-downloads are restricted to Wi-Fi.
   bool get autoDownloadFavoritesWifiOnly => _autoDownloadFavoritesWifiOnly;
 
+  /// True when offline mode is enabled.
+  bool get offlineMode => _offlineMode;
+
   /// True when the offline-only filter is active.
-  bool get offlineOnlyFilter => _offlineOnlyFilter;
+  bool get offlineOnlyFilter => _offlineMode || _offlineOnlyFilter;
 
   /// Preferred layout for now playing.
   NowPlayingLayout get nowPlayingLayout => _nowPlayingLayout;
@@ -541,6 +545,7 @@ class AppState extends ChangeNotifier {
     _searchShortcut = await _settingsStore.loadSearchShortcut();
     _layoutDensity = await _settingsStore.loadLayoutDensity();
     _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
+    _offlineMode = await _settingsStore.loadOfflineMode();
     _cacheMaxBytes = await _cacheStore.loadCacheMaxBytes();
     _homeSectionVisibility = await _settingsStore.loadHomeSectionVisibility();
     _sidebarVisibility = await _settingsStore.loadSidebarVisibility();
@@ -548,12 +553,15 @@ class AppState extends ChangeNotifier {
     _sidebarCollapsed = await _settingsStore.loadSidebarCollapsed();
     _pinnedAudio = await _cacheStore.loadPinnedAudio();
     await _loadCachedLibrary();
+    if (_offlineMode) {
+      await _applyOfflineModeData();
+    }
     await _restorePlaybackResumeState();
     unawaited(_maybeUpdateNowPlayingPalette(_nowPlaying));
     _isBootstrapping = false;
     notifyListeners();
 
-    if (_session != null) {
+    if (_session != null && !_offlineMode) {
       await refreshLibrary();
     }
   }
@@ -647,6 +655,10 @@ class AppState extends ChangeNotifier {
     if (_session == null) {
       return;
     }
+    if (_offlineMode) {
+      await _applyOfflineModeData();
+      return;
+    }
     _isLoadingLibrary = true;
     notifyListeners();
     try {
@@ -708,6 +720,9 @@ class AppState extends ChangeNotifier {
       _playlistTracks = cached;
       notifyListeners();
     }
+    if (_offlineMode) {
+      return;
+    }
     try {
       final tracks = await _client.fetchPlaylistTracks(playlist.id);
       _playlistTracks = tracks;
@@ -721,6 +736,15 @@ class AppState extends ChangeNotifier {
   /// Loads a playlist and starts playback without navigating.
   Future<void> playPlaylist(Playlist playlist) async {
     List<MediaItem> tracks = const [];
+    if (_offlineMode) {
+      tracks = await _cacheStore.loadPlaylistTracks(playlist.id);
+      final filtered = _filterPinnedTracks(tracks);
+      if (filtered.isEmpty) {
+        return;
+      }
+      await _playFromList(filtered, filtered.first);
+      return;
+    }
     try {
       tracks = await _client.fetchPlaylistTracks(playlist.id);
       await _cacheStore.savePlaylistTracks(playlist.id, tracks);
@@ -750,7 +774,7 @@ class AppState extends ChangeNotifier {
     _selectedView = view;
     _selectedPlaylist = null;
     _playlistTracks = [];
-    if (!_isOfflineLibraryView(view)) {
+    if (!_isOfflineLibraryView(view) && !_offlineMode) {
       _offlineOnlyFilter = false;
     }
     clearBrowseSelection(notify: false);
@@ -820,7 +844,7 @@ class AppState extends ChangeNotifier {
       }
     }
     if (match != null) {
-      await selectAlbum(match, offlineOnly: _offlineOnlyFilter);
+      await selectAlbum(match, offlineOnly: offlineOnlyFilter);
     }
   }
 
@@ -837,7 +861,7 @@ class AppState extends ChangeNotifier {
       }
     }
     if (match != null) {
-      await selectArtist(match, offlineOnly: _offlineOnlyFilter);
+      await selectArtist(match, offlineOnly: offlineOnlyFilter);
     }
   }
 
@@ -861,7 +885,7 @@ class AppState extends ChangeNotifier {
     if (match == null) {
       return;
     }
-    await selectArtist(match, offlineOnly: _offlineOnlyFilter);
+    await selectArtist(match, offlineOnly: offlineOnlyFilter);
   }
 
   /// Performs a search across the library.
@@ -870,6 +894,40 @@ class AppState extends ChangeNotifier {
     _searchQuery = trimmed;
     if (trimmed.isEmpty) {
       clearSearch();
+      return;
+    }
+    if (_offlineMode) {
+      _isSearching = true;
+      notifyListeners();
+      final needle = trimmed.toLowerCase();
+      bool matches(String value) => value.toLowerCase().contains(needle);
+      final tracks = _libraryTracks
+          .where(
+            (track) =>
+                matches(track.title) ||
+                matches(track.album) ||
+                track.artists.any(matches),
+          )
+          .toList();
+      final albums = _albums
+          .where(
+            (album) =>
+                matches(album.name) || matches(album.artistName),
+          )
+          .toList();
+      final artists = _artists.where((artist) => matches(artist.name)).toList();
+      final genres = _genres.where((genre) => matches(genre.name)).toList();
+      final playlists =
+          _playlists.where((playlist) => matches(playlist.name)).toList();
+      _searchResults = SearchResults(
+        tracks: tracks,
+        albums: albums,
+        artists: artists,
+        genres: genres,
+        playlists: playlists,
+      );
+      _isSearching = false;
+      notifyListeners();
       return;
     }
     _isSearching = true;
@@ -933,6 +991,11 @@ class AppState extends ChangeNotifier {
       _albums = cached;
       notifyListeners();
     }
+    if (_offlineMode) {
+      _albums = await loadOfflineAlbums();
+      notifyListeners();
+      return;
+    }
     await _loadAlbums();
   }
 
@@ -942,6 +1005,11 @@ class AppState extends ChangeNotifier {
     if (cached.isNotEmpty) {
       _artists = cached;
       notifyListeners();
+    }
+    if (_offlineMode) {
+      _artists = await loadOfflineArtists();
+      notifyListeners();
+      return;
     }
     await _loadArtists();
   }
@@ -953,12 +1021,24 @@ class AppState extends ChangeNotifier {
       _genres = cached;
       notifyListeners();
     }
+    if (_offlineMode) {
+      return;
+    }
     await _loadGenres();
   }
 
   /// Loads paginated tracks for the library browse view.
   Future<void> loadLibraryTracks({bool reset = false}) async {
     if (_session == null) {
+      return;
+    }
+    if (_offlineMode) {
+      final offlineTracks = await loadOfflineTracks();
+      _libraryTracks = offlineTracks;
+      _tracksOffset = offlineTracks.length;
+      _hasMoreTracks = false;
+      _isLoadingTracks = false;
+      notifyListeners();
       return;
     }
     if (_isLoadingTracks) {
@@ -1003,6 +1083,9 @@ class AppState extends ChangeNotifier {
 
   /// Returns a random track from the library when available.
   Future<MediaItem?> getRandomTrack() async {
+    if (_offlineMode) {
+      return _randomFromList(_libraryTracks);
+    }
     if (_session == null) {
       return null;
     }
@@ -1020,6 +1103,9 @@ class AppState extends ChangeNotifier {
 
   /// Returns a random album from the library when available.
   Future<Album?> getRandomAlbum() async {
+    if (_offlineMode) {
+      return _randomFromList(_albums);
+    }
     if (_session == null) {
       return null;
     }
@@ -1034,6 +1120,9 @@ class AppState extends ChangeNotifier {
 
   /// Returns a random artist from the library when available.
   Future<Artist?> getRandomArtist() async {
+    if (_offlineMode) {
+      return _randomFromList(_artists);
+    }
     if (_session == null) {
       return null;
     }
@@ -1048,6 +1137,20 @@ class AppState extends ChangeNotifier {
 
   /// Loads the Jump in shelf picks.
   Future<void> loadJumpIn({bool force = false}) async {
+    if (_offlineMode) {
+      if (_isLoadingJumpIn) {
+        return;
+      }
+      _isLoadingJumpIn = true;
+      notifyListeners();
+      _jumpInTrack = _randomFromList(_libraryTracks) ?? _jumpInTrack;
+      _jumpInAlbum = _randomFromList(_albums) ?? _jumpInAlbum;
+      _jumpInArtist = _randomFromList(_artists) ?? _jumpInArtist;
+      _lastJumpInRefreshAt = DateTime.now();
+      _isLoadingJumpIn = false;
+      notifyListeners();
+      return;
+    }
     if (_session == null) {
       return;
     }
@@ -1080,11 +1183,13 @@ class AppState extends ChangeNotifier {
 
   /// Plays a shuffled copy of the provided tracks.
   Future<void> playShuffledList(List<MediaItem> tracks) async {
-    if (tracks.isEmpty) {
+    final selection =
+        _offlineMode ? _filterPinnedTracks(tracks) : List.of(tracks);
+    if (selection.isEmpty) {
       return;
     }
-    final shuffled = [...tracks]..shuffle(_random);
-    await _playFromList(shuffled, shuffled.first);
+    selection.shuffle(_random);
+    await _playFromList(selection, selection.first);
   }
 
   /// Loads favorite albums.
@@ -1093,6 +1198,15 @@ class AppState extends ChangeNotifier {
     if (cached.isNotEmpty) {
       _favoriteAlbums = cached;
       notifyListeners();
+    }
+    if (_offlineMode) {
+      final offlineAlbums = await loadOfflineAlbums();
+      final offlineIds = offlineAlbums.map((album) => album.id).toSet();
+      _favoriteAlbums = cached
+          .where((album) => offlineIds.contains(album.id))
+          .toList();
+      notifyListeners();
+      return;
     }
     await _loadFavoriteAlbums();
   }
@@ -1104,6 +1218,15 @@ class AppState extends ChangeNotifier {
       _favoriteArtists = cached;
       notifyListeners();
     }
+    if (_offlineMode) {
+      final offlineArtists = await loadOfflineArtists();
+      final offlineIds = offlineArtists.map((artist) => artist.id).toSet();
+      _favoriteArtists = cached
+          .where((artist) => offlineIds.contains(artist.id))
+          .toList();
+      notifyListeners();
+      return;
+    }
     await _loadFavoriteArtists();
   }
 
@@ -1113,6 +1236,11 @@ class AppState extends ChangeNotifier {
     if (cached.isNotEmpty) {
       _favoriteTracks = cached;
       notifyListeners();
+    }
+    if (_offlineMode) {
+      _favoriteTracks = _filterPinnedTracks(cached);
+      notifyListeners();
+      return;
     }
     await _loadFavoriteTracks();
   }
@@ -1130,6 +1258,14 @@ class AppState extends ChangeNotifier {
       _albumTracks = cached;
       notifyListeners();
     }
+    if (_offlineMode) {
+      final filtered = _filterPinnedTracks(_albumTracks);
+      _albumTracks = filtered.isNotEmpty
+          ? filtered
+          : await _offlineTracksForAlbum(album);
+      notifyListeners();
+      return;
+    }
     try {
       final tracks = await _client.fetchAlbumTracks(album.id);
       _albumTracks = tracks;
@@ -1143,8 +1279,10 @@ class AppState extends ChangeNotifier {
   /// Loads an album and starts playback.
   Future<void> playAlbum(Album album) async {
     await selectAlbum(album);
-    if (_albumTracks.isNotEmpty) {
-      await playFromAlbum(_albumTracks.first);
+    final tracks =
+        _offlineMode ? _filterPinnedTracks(_albumTracks) : _albumTracks;
+    if (tracks.isNotEmpty) {
+      await _playFromList(tracks, tracks.first);
     }
   }
 
@@ -1161,6 +1299,14 @@ class AppState extends ChangeNotifier {
       _artistTracks = cached;
       notifyListeners();
     }
+    if (_offlineMode) {
+      final filtered = _filterPinnedTracks(_artistTracks);
+      _artistTracks = filtered.isNotEmpty
+          ? filtered
+          : await _offlineTracksForArtist(artist);
+      notifyListeners();
+      return;
+    }
     try {
       final tracks = await _client.fetchArtistTracks(artist.id);
       _artistTracks = tracks;
@@ -1174,8 +1320,10 @@ class AppState extends ChangeNotifier {
   /// Loads an artist and starts playback.
   Future<void> playArtist(Artist artist) async {
     await selectArtist(artist);
-    if (_artistTracks.isNotEmpty) {
-      await playFromArtist(_artistTracks.first);
+    final tracks =
+        _offlineMode ? _filterPinnedTracks(_artistTracks) : _artistTracks;
+    if (tracks.isNotEmpty) {
+      await _playFromList(tracks, tracks.first);
     }
   }
 
@@ -1191,6 +1339,9 @@ class AppState extends ChangeNotifier {
       _genreTracks = cached;
       notifyListeners();
     }
+    if (_offlineMode) {
+      return;
+    }
     try {
       final tracks = await _client.fetchGenreTracks(genre.id);
       _genreTracks = tracks;
@@ -1204,50 +1355,64 @@ class AppState extends ChangeNotifier {
   /// Loads a genre and starts playback.
   Future<void> playGenre(Genre genre) async {
     await selectGenre(genre);
-    if (_genreTracks.isNotEmpty) {
-      await playFromGenre(_genreTracks.first);
+    final tracks =
+        _offlineMode ? _filterPinnedTracks(_genreTracks) : _genreTracks;
+    if (tracks.isNotEmpty) {
+      await _playFromList(tracks, tracks.first);
     }
   }
 
   /// Starts playback from a selected track.
   Future<void> playFromPlaylist(MediaItem track) async {
-    await _playFromList(_playlistTracks, track);
+    await playFromList(_playlistTracks, track);
   }
 
   /// Plays tracks from the selected album.
   Future<void> playFromAlbum(MediaItem track) async {
-    await _playFromList(_albumTracks, track);
+    await playFromList(_albumTracks, track);
   }
 
   /// Plays tracks from the selected artist.
   Future<void> playFromArtist(MediaItem track) async {
-    await _playFromList(_artistTracks, track);
+    await playFromList(_artistTracks, track);
   }
 
   /// Plays tracks from the selected genre.
   Future<void> playFromGenre(MediaItem track) async {
-    await _playFromList(_genreTracks, track);
+    await playFromList(_genreTracks, track);
   }
 
   /// Plays tracks from favorites.
   Future<void> playFromFavorites(MediaItem track) async {
-    await _playFromList(_favoriteTracks, track);
+    await playFromList(_favoriteTracks, track);
   }
 
   /// Plays tracks from search results.
   Future<void> playFromSearch(MediaItem track) async {
     final tracks = _searchResults?.tracks ?? const <MediaItem>[];
-    await _playFromList(tracks, track);
+    await playFromList(tracks, track);
   }
 
   /// Plays tracks from a provided list.
   Future<void> playFromList(List<MediaItem> tracks, MediaItem track) async {
+    if (_offlineMode) {
+      final filtered = _filterPinnedTracks(tracks);
+      if (filtered.isEmpty) {
+        return;
+      }
+      final match = filtered.firstWhere(
+        (item) => item.id == track.id,
+        orElse: () => filtered.first,
+      );
+      await _playFromList(filtered, match);
+      return;
+    }
     await _playFromList(tracks, track);
   }
 
   /// Plays featured tracks from the home shelf.
   Future<void> playFeatured(MediaItem track) async {
-    await _playFromList(_featuredTracks, track);
+    await playFromList(_featuredTracks, track);
   }
 
   /// Toggles between play and pause states.
@@ -1309,6 +1474,9 @@ class AppState extends ChangeNotifier {
 
   /// Adds a track to the end of the queue.
   Future<void> enqueueTrack(MediaItem track) async {
+    if (_offlineMode && !_pinnedAudio.contains(track.streamUrl)) {
+      return;
+    }
     if (_queue.isEmpty) {
       await _playFromList([track], track);
       return;
@@ -1325,6 +1493,9 @@ class AppState extends ChangeNotifier {
 
   /// Inserts a track to play next.
   Future<void> playNext(MediaItem track) async {
+    if (_offlineMode && !_pinnedAudio.contains(track.streamUrl)) {
+      return;
+    }
     if (_queue.isEmpty) {
       await enqueueTrack(track);
       return;
@@ -1463,12 +1634,31 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Updates the offline-only filter for detail views.
-  void setOfflineOnlyFilter(bool enabled) {
-    if (_offlineOnlyFilter == enabled) {
+  /// Updates the offline mode preference.
+  Future<void> setOfflineMode(bool enabled) async {
+    if (_offlineMode == enabled) {
       return;
     }
-    _offlineOnlyFilter = enabled;
+    _offlineMode = enabled;
+    await _settingsStore.saveOfflineMode(enabled);
+    if (enabled) {
+      await _applyOfflineModeData();
+      return;
+    }
+    _offlineOnlyFilter = false;
+    notifyListeners();
+    if (_session != null) {
+      unawaited(refreshLibrary());
+    }
+  }
+
+  /// Updates the offline-only filter for detail views.
+  void setOfflineOnlyFilter(bool enabled) {
+    final next = _offlineMode ? true : enabled;
+    if (_offlineOnlyFilter == next) {
+      return;
+    }
+    _offlineOnlyFilter = next;
     notifyListeners();
   }
 
@@ -1652,6 +1842,9 @@ class AppState extends ChangeNotifier {
     bool artistsOnly = false,
     bool tracksOnly = false,
   }) async {
+    if (_offlineMode) {
+      return;
+    }
     if (!await _canAutoDownloadFavorites()) {
       return;
     }
@@ -1682,7 +1875,9 @@ class AppState extends ChangeNotifier {
   Future<void> makeTrackAvailableOffline(MediaItem track) async {
     await _cacheStore.setPinnedAudio(track.streamUrl, true);
     _pinnedAudio.add(track.streamUrl);
-    await _cacheStore.prefetchAudio(track);
+    if (!_offlineMode) {
+      await _cacheStore.prefetchAudio(track);
+    }
     notifyListeners();
   }
 
@@ -1698,6 +1893,9 @@ class AppState extends ChangeNotifier {
     if (cached.isNotEmpty) {
       return cached;
     }
+    if (_offlineMode) {
+      return [];
+    }
     try {
       final tracks = await _client.fetchAlbumTracks(album.id);
       await _cacheStore.saveAlbumTracks(album.id, tracks);
@@ -1711,6 +1909,9 @@ class AppState extends ChangeNotifier {
     final cached = await _cacheStore.loadArtistTracks(artist.id);
     if (cached.isNotEmpty) {
       return cached;
+    }
+    if (_offlineMode) {
+      return [];
     }
     try {
       final tracks = await _client.fetchArtistTracks(artist.id);
@@ -1727,7 +1928,9 @@ class AppState extends ChangeNotifier {
     for (final track in tracks) {
       await _cacheStore.setPinnedAudio(track.streamUrl, true);
       _pinnedAudio.add(track.streamUrl);
-      await _cacheStore.prefetchAudio(track);
+      if (!_offlineMode) {
+        await _cacheStore.prefetchAudio(track);
+      }
     }
     notifyListeners();
   }
@@ -1748,7 +1951,9 @@ class AppState extends ChangeNotifier {
     for (final track in tracks) {
       await _cacheStore.setPinnedAudio(track.streamUrl, true);
       _pinnedAudio.add(track.streamUrl);
-      await _cacheStore.prefetchAudio(track);
+      if (!_offlineMode) {
+        await _cacheStore.prefetchAudio(track);
+      }
     }
     notifyListeners();
   }
@@ -1823,7 +2028,7 @@ class AppState extends ChangeNotifier {
     if (pinnedAlbums.isEmpty) {
       return [];
     }
-    final albums = _albums.isNotEmpty ? _albums : await _cacheStore.loadAlbums();
+    final albums = await _cacheStore.loadAlbums();
     final offline = albums
         .where(
           (album) => pinnedAlbums.contains(album.name.trim().toLowerCase()),
@@ -1854,8 +2059,7 @@ class AppState extends ChangeNotifier {
     if (pinnedArtists.isEmpty) {
       return [];
     }
-    final artists =
-        _artists.isNotEmpty ? _artists : await _cacheStore.loadArtists();
+    final artists = await _cacheStore.loadArtists();
     final offline = artists
         .where((artist) => pinnedArtists.contains(artist.name.trim().toLowerCase()))
         .toList();
@@ -1868,8 +2072,7 @@ class AppState extends ChangeNotifier {
     if (_pinnedAudio.isEmpty) {
       return [];
     }
-    final playlists =
-        _playlists.isNotEmpty ? _playlists : await _cacheStore.loadPlaylists();
+    final playlists = await _cacheStore.loadPlaylists();
     final offline = <Playlist>[];
     for (final playlist in playlists) {
       final tracks = await _cacheStore.loadPlaylistTracks(playlist.id);
@@ -1953,6 +2156,76 @@ class AppState extends ChangeNotifier {
     _playHistory = await _cacheStore.loadPlayHistory();
     _libraryStats = await _cacheStore.loadLibraryStats();
     notifyListeners();
+  }
+
+  Future<void> _applyOfflineModeData() async {
+    _isLoadingLibrary = true;
+    clearSearch(notify: false);
+    notifyListeners();
+    _pinnedAudio = await _cacheStore.loadPinnedAudio();
+    final offlineTracks = await loadOfflineTracks();
+    final offlineAlbums = await loadOfflineAlbums();
+    final offlineArtists = await loadOfflineArtists();
+    final offlinePlaylists = await loadOfflinePlaylists();
+    _genres = await _cacheStore.loadGenres();
+    _libraryStats = await _cacheStore.loadLibraryStats();
+    final offlineAlbumIds = offlineAlbums.map((album) => album.id).toSet();
+    final offlineArtistIds =
+        offlineArtists.map((artist) => artist.id).toSet();
+    _libraryTracks = offlineTracks;
+    _tracksOffset = offlineTracks.length;
+    _hasMoreTracks = false;
+    _isLoadingTracks = false;
+    _featuredTracks = offlineTracks;
+    _recentTracks = offlineTracks;
+    _albums = offlineAlbums;
+    _artists = offlineArtists;
+    _playlists = offlinePlaylists;
+    final cachedFavorites = await _cacheStore.loadFavoriteTracks();
+    _favoriteTracks = _filterPinnedTracks(cachedFavorites);
+    final cachedFavoriteAlbums = await _cacheStore.loadFavoriteAlbums();
+    _favoriteAlbums = cachedFavoriteAlbums
+        .where((album) => offlineAlbumIds.contains(album.id))
+        .toList();
+    final cachedFavoriteArtists = await _cacheStore.loadFavoriteArtists();
+    _favoriteArtists = cachedFavoriteArtists
+        .where((artist) => offlineArtistIds.contains(artist.id))
+        .toList();
+    await _refreshSelectedDetailsForOfflineMode();
+    _jumpInTrack = _randomFromList(offlineTracks);
+    _jumpInAlbum = _randomFromList(offlineAlbums);
+    _jumpInArtist = _randomFromList(offlineArtists);
+    _lastJumpInRefreshAt = DateTime.now();
+    _isLoadingLibrary = false;
+    notifyListeners();
+  }
+
+  Future<void> _refreshSelectedDetailsForOfflineMode() async {
+    if (_selectedPlaylist != null) {
+      _playlistTracks =
+          await _cacheStore.loadPlaylistTracks(_selectedPlaylist!.id);
+    }
+    if (_selectedAlbum != null) {
+      final cached =
+          await _cacheStore.loadAlbumTracks(_selectedAlbum!.id);
+      final filtered = _filterPinnedTracks(cached);
+      _albumTracks = filtered.isNotEmpty
+          ? filtered
+          : await _offlineTracksForAlbum(_selectedAlbum!);
+    }
+    if (_selectedArtist != null) {
+      final cached =
+          await _cacheStore.loadArtistTracks(_selectedArtist!.id);
+      final filtered = _filterPinnedTracks(cached);
+      _artistTracks = filtered.isNotEmpty
+          ? filtered
+          : await _offlineTracksForArtist(_selectedArtist!);
+    }
+    if (_selectedGenre != null) {
+      final cached =
+          await _cacheStore.loadGenreTracks(_selectedGenre!.id);
+      _genreTracks = _filterPinnedTracks(cached);
+    }
   }
 
   void _bindPlayback() {
@@ -2299,6 +2572,9 @@ class AppState extends ChangeNotifier {
   }
 
   void _reportPlaybackStart() {
+    if (_offlineMode) {
+      return;
+    }
     final track = _nowPlaying;
     final sessionId = _playSessionId;
     if (track == null || sessionId == null) {
@@ -2323,6 +2599,9 @@ class AppState extends ChangeNotifier {
     required bool isPaused,
     required bool force,
   }) {
+    if (_offlineMode) {
+      return;
+    }
     final track = _nowPlaying;
     final sessionId = _playSessionId;
     if (track == null || sessionId == null) {
@@ -2350,6 +2629,9 @@ class AppState extends ChangeNotifier {
     required String sessionId,
     required bool completed,
   }) {
+    if (_offlineMode) {
+      return;
+    }
     unawaited(
       _client.reportPlaybackStopped(
         track: track,
@@ -2364,6 +2646,9 @@ class AppState extends ChangeNotifier {
 
   Future<void> _loadAlbums() async {
     if (_session == null) {
+      return;
+    }
+    if (_offlineMode) {
       return;
     }
     try {
@@ -2384,6 +2669,9 @@ class AppState extends ChangeNotifier {
     if (_session == null) {
       return;
     }
+    if (_offlineMode) {
+      return;
+    }
     try {
       _isLoadingLibrary = true;
       notifyListeners();
@@ -2402,6 +2690,9 @@ class AppState extends ChangeNotifier {
     if (_session == null) {
       return;
     }
+    if (_offlineMode) {
+      return;
+    }
     try {
       _isLoadingLibrary = true;
       notifyListeners();
@@ -2418,6 +2709,9 @@ class AppState extends ChangeNotifier {
 
   Future<void> _loadFavoriteAlbums() async {
     if (_session == null) {
+      return;
+    }
+    if (_offlineMode) {
       return;
     }
     try {
@@ -2441,6 +2735,9 @@ class AppState extends ChangeNotifier {
     if (_session == null) {
       return;
     }
+    if (_offlineMode) {
+      return;
+    }
     try {
       _isLoadingLibrary = true;
       notifyListeners();
@@ -2460,6 +2757,9 @@ class AppState extends ChangeNotifier {
 
   Future<void> _loadFavoriteTracks() async {
     if (_session == null) {
+      return;
+    }
+    if (_offlineMode) {
       return;
     }
     try {
@@ -2575,6 +2875,12 @@ class AppState extends ChangeNotifier {
     _favoriteAlbumUpdatesInFlight.add(album.id);
     _applyAlbumFavoriteLocal(album, isFavorite);
     notifyListeners();
+    if (_offlineMode) {
+      await _cacheStore.saveFavoriteAlbums(_favoriteAlbums);
+      _favoriteAlbumUpdatesInFlight.remove(album.id);
+      notifyListeners();
+      return;
+    }
     try {
       await _client.setFavorite(itemId: album.id, isFavorite: isFavorite);
       await _cacheStore.saveFavoriteAlbums(_favoriteAlbums);
@@ -2600,6 +2906,12 @@ class AppState extends ChangeNotifier {
     _favoriteArtistUpdatesInFlight.add(artist.id);
     _applyArtistFavoriteLocal(artist, isFavorite);
     notifyListeners();
+    if (_offlineMode) {
+      await _cacheStore.saveFavoriteArtists(_favoriteArtists);
+      _favoriteArtistUpdatesInFlight.remove(artist.id);
+      notifyListeners();
+      return;
+    }
     try {
       await _client.setFavorite(itemId: artist.id, isFavorite: isFavorite);
       await _cacheStore.saveFavoriteArtists(_favoriteArtists);
@@ -2625,6 +2937,12 @@ class AppState extends ChangeNotifier {
     _favoriteTrackUpdatesInFlight.add(track.id);
     _applyTrackFavoriteLocal(track, isFavorite);
     notifyListeners();
+    if (_offlineMode) {
+      await _cacheStore.saveFavoriteTracks(_favoriteTracks);
+      _favoriteTrackUpdatesInFlight.remove(track.id);
+      notifyListeners();
+      return;
+    }
     try {
       await _client.setFavorite(itemId: track.id, isFavorite: isFavorite);
       await _cacheStore.saveFavoriteTracks(_favoriteTracks);
@@ -2656,6 +2974,56 @@ class AppState extends ChangeNotifier {
       return null;
     }
     return items[_random.nextInt(items.length)];
+  }
+
+  List<MediaItem> _filterPinnedTracks(List<MediaItem> tracks) {
+    if (_pinnedAudio.isEmpty) {
+      return [];
+    }
+    return tracks
+        .where((track) => _pinnedAudio.contains(track.streamUrl))
+        .toList();
+  }
+
+  Future<List<MediaItem>> _offlineTracksForAlbum(Album album) async {
+    if (_pinnedAudio.isEmpty) {
+      return [];
+    }
+    final normalized = album.name.trim().toLowerCase();
+    final cachedEntries = await _cacheStore.loadCachedAudioEntries();
+    final matches = cachedEntries
+        .where(
+          (entry) =>
+              _pinnedAudio.contains(entry.streamUrl) &&
+              entry.album.trim().toLowerCase() == normalized,
+        )
+        .toList()
+      ..sort((a, b) => a.title.compareTo(b.title));
+    return matches.map(_mediaItemFromCachedEntry).toList();
+  }
+
+  Future<List<MediaItem>> _offlineTracksForArtist(Artist artist) async {
+    if (_pinnedAudio.isEmpty) {
+      return [];
+    }
+    final normalized = artist.name.trim().toLowerCase();
+    final cachedEntries = await _cacheStore.loadCachedAudioEntries();
+    final matches = cachedEntries.where((entry) {
+      if (!_pinnedAudio.contains(entry.streamUrl)) {
+        return false;
+      }
+      return entry.artists.any(
+        (name) => name.trim().toLowerCase() == normalized,
+      );
+    }).toList()
+      ..sort((a, b) {
+        final albumCompare = a.album.compareTo(b.album);
+        if (albumCompare != 0) {
+          return albumCompare;
+        }
+        return a.title.compareTo(b.title);
+      });
+    return matches.map(_mediaItemFromCachedEntry).toList();
   }
 
   Future<void> _playFromList(

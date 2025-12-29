@@ -8,6 +8,7 @@ import '../../state/library_view.dart';
 import '../../state/layout_density.dart';
 import '../../state/sidebar_item.dart';
 import '../../core/color_tokens.dart';
+import 'compact_switch.dart';
 
 /// Vertical navigation rail for playlists and actions.
 class SidebarNavigation extends StatefulWidget {
@@ -132,7 +133,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             ],
           ),
           SizedBox(height: space(32)),
-          if (state.isSidebarItemVisible(SidebarItem.settings))
+          if (state.isSidebarItemVisible(SidebarItem.settings)) ...[
             _NavTile(
               icon: Icons.menu,
               label: 'Settings',
@@ -142,6 +143,14 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                 () => state.selectLibraryView(LibraryView.settings),
               ),
             ),
+            SizedBox(height: space(8)),
+            _ToggleTile(
+              icon: Icons.cloud_off,
+              label: 'Offline mode',
+              value: state.offlineMode,
+              onChanged: (value) => state.setOfflineMode(value),
+            ),
+          ],
           SizedBox(height: space(20)),
           if (showFavoritesSection) ...[
             _SectionHeader(
@@ -481,6 +490,56 @@ class _NavTile extends StatelessWidget {
             Icon(icon, size: clamped(18, min: 14, max: 20)),
             SizedBox(width: space(12).clamp(8.0, 16.0)),
             Text(label),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ToggleTile extends StatelessWidget {
+  const _ToggleTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onChanged(!value),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: space(12).clamp(8.0, 16.0),
+          vertical: space(10).clamp(6.0, 14.0),
+        ),
+        decoration: BoxDecoration(
+          color: value ? ColorTokens.activeRow(context) : Colors.transparent,
+          borderRadius: BorderRadius.circular(
+            clamped(16, min: 10, max: 20),
+          ),
+        ),
+            child: Row(
+          children: [
+            Icon(icon, size: clamped(18, min: 14, max: 20)),
+            SizedBox(width: space(12).clamp(8.0, 16.0)),
+            Expanded(child: Text(label)),
+            CompactSwitch(
+              value: value,
+              onChanged: onChanged,
+            ),
           ],
         ),
       ),

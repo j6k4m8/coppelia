@@ -7,3 +7,8 @@
     -   [x] custom hex input
     -   [x] or override accent color based on album art dominant color in now playing
     -   [x] theme palette source (default vs now playing artwork)
+
+## Integrations
+
+-   [ ] add AirPlay device picker + playback route integration (iOS/macOS)
+-   [ ] add Chromecast support + cast-friendly stream URLs (Android)

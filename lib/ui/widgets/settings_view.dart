@@ -14,6 +14,7 @@ import '../../state/now_playing_layout.dart';
 import '../../state/sidebar_item.dart';
 import '../../state/theme_palette_source.dart';
 import '../../core/color_tokens.dart';
+import 'compact_switch.dart';
 import 'glass_container.dart';
 import 'section_header.dart';
 
@@ -502,7 +503,7 @@ class _LayoutSettings extends StatelessWidget {
               title: section.label,
               subtitle: section.description,
               forceInline: true,
-              trailing: Switch(
+              trailing: CompactSwitch(
                 value: state.isHomeSectionVisible(section),
                 onChanged: (value) =>
                     state.setHomeSectionVisible(section, value),
@@ -527,7 +528,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.home.label,
                 subtitle: 'Show Home in the sidebar.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(SidebarItem.home),
                   onChanged: (value) =>
                       state.setSidebarItemVisible(SidebarItem.home, value),
@@ -541,7 +542,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.settings.label,
                 subtitle: 'Show Settings in the sidebar.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(SidebarItem.settings),
                   onChanged: (value) =>
                       state.setSidebarItemVisible(SidebarItem.settings, value),
@@ -560,7 +561,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.favoritesAlbums.label,
                 subtitle: 'Show favorite albums.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(
                     SidebarItem.favoritesAlbums,
                   ),
@@ -578,7 +579,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.favoritesSongs.label,
                 subtitle: 'Show favorite songs.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(
                     SidebarItem.favoritesSongs,
                   ),
@@ -596,7 +597,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.favoritesArtists.label,
                 subtitle: 'Show favorite artists.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(
                     SidebarItem.favoritesArtists,
                   ),
@@ -619,7 +620,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.offlineAlbums.label,
                 subtitle: 'Show offline albums.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(
                     SidebarItem.offlineAlbums,
                   ),
@@ -637,7 +638,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.offlineArtists.label,
                 subtitle: 'Show offline artists.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(
                     SidebarItem.offlineArtists,
                   ),
@@ -655,7 +656,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.offlinePlaylists.label,
                 subtitle: 'Show offline playlists.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(
                     SidebarItem.offlinePlaylists,
                   ),
@@ -673,7 +674,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.offlineTracks.label,
                 subtitle: 'Show offline tracks.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(
                     SidebarItem.offlineTracks,
                   ),
@@ -696,7 +697,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.browseAlbums.label,
                 subtitle: 'Show albums in Browse.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(
                     SidebarItem.browseAlbums,
                   ),
@@ -714,7 +715,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.browseArtists.label,
                 subtitle: 'Show artists in Browse.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(
                     SidebarItem.browseArtists,
                   ),
@@ -732,7 +733,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.browseGenres.label,
                 subtitle: 'Show genres in Browse.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(
                     SidebarItem.browseGenres,
                   ),
@@ -750,7 +751,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.browseTracks.label,
                 subtitle: 'Show tracks in Browse.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(
                     SidebarItem.browseTracks,
                   ),
@@ -773,7 +774,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.history.label,
                 subtitle: 'Show playback history.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(SidebarItem.history),
                   onChanged: (value) =>
                       state.setSidebarItemVisible(SidebarItem.history, value),
@@ -787,7 +788,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.queue.label,
                 subtitle: 'Show the play queue.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(SidebarItem.queue),
                   onChanged: (value) =>
                       state.setSidebarItemVisible(SidebarItem.queue, value),
@@ -806,7 +807,7 @@ class _LayoutSettings extends StatelessWidget {
                 title: SidebarItem.playlists.label,
                 subtitle: 'Show playlist list in the sidebar.',
                 forceInline: true,
-                trailing: Switch(
+                trailing: CompactSwitch(
                   value: state.isSidebarItemVisible(SidebarItem.playlists),
                   onChanged: (value) => state.setSidebarItemVisible(
                     SidebarItem.playlists,
@@ -852,7 +853,7 @@ class _KeyboardSettings extends StatelessWidget {
           title: 'Enabled',
           subtitle: 'Allow the shortcut to open Settings.',
           forceInline: true,
-          trailing: Switch(
+          trailing: CompactSwitch(
             value: state.settingsShortcutEnabled,
             onChanged: (value) => state.setSettingsShortcutEnabled(value),
           ),
@@ -885,7 +886,7 @@ class _KeyboardSettings extends StatelessWidget {
           title: 'Enabled',
           subtitle: 'Allow the shortcut to focus Search.',
           forceInline: true,
-          trailing: Switch(
+          trailing: CompactSwitch(
             value: state.searchShortcutEnabled,
             onChanged: (value) => state.setSearchShortcutEnabled(value),
           ),
@@ -1052,7 +1053,7 @@ class _CacheSettingsState extends State<_CacheSettings> {
           title: 'Automatically download favorites',
           subtitle: 'Keep favorited items available offline.',
           forceInline: true,
-          trailing: Switch(
+          trailing: CompactSwitch(
             value: widget.state.autoDownloadFavoritesEnabled,
             onChanged: widget.state.setAutoDownloadFavoritesEnabled,
           ),
@@ -1064,7 +1065,7 @@ class _CacheSettingsState extends State<_CacheSettings> {
             title: 'Albums',
             subtitle: 'Download favorited albums.',
             forceInline: true,
-            trailing: Switch(
+            trailing: CompactSwitch(
               value: widget.state.autoDownloadFavoriteAlbums,
               onChanged: widget.state.setAutoDownloadFavoriteAlbums,
             ),
@@ -1077,7 +1078,7 @@ class _CacheSettingsState extends State<_CacheSettings> {
             title: 'Artists',
             subtitle: 'Download favorited artists.',
             forceInline: true,
-            trailing: Switch(
+            trailing: CompactSwitch(
               value: widget.state.autoDownloadFavoriteArtists,
               onChanged: widget.state.setAutoDownloadFavoriteArtists,
             ),
@@ -1090,7 +1091,7 @@ class _CacheSettingsState extends State<_CacheSettings> {
             title: 'Tracks',
             subtitle: 'Download favorited tracks.',
             forceInline: true,
-            trailing: Switch(
+            trailing: CompactSwitch(
               value: widget.state.autoDownloadFavoriteTracks,
               onChanged: widget.state.setAutoDownloadFavoriteTracks,
             ),
@@ -1103,7 +1104,7 @@ class _CacheSettingsState extends State<_CacheSettings> {
             title: 'Only on Wi-Fi',
             subtitle: 'Avoid cellular downloads for favorites.',
             forceInline: true,
-            trailing: Switch(
+            trailing: CompactSwitch(
               value: widget.state.autoDownloadFavoritesWifiOnly,
               onChanged: widget.state.setAutoDownloadFavoritesWifiOnly,
             ),
@@ -1433,7 +1434,7 @@ class _AccountSettings extends StatelessWidget {
           title: 'Playback reporting',
           subtitle: 'Send now playing and pause/resume state to Jellyfin.',
           forceInline: true,
-          trailing: Switch(
+          trailing: CompactSwitch(
             value: state.telemetryPlaybackEnabled,
             onChanged: state.setTelemetryPlayback,
           ),
@@ -1443,7 +1444,7 @@ class _AccountSettings extends StatelessWidget {
           title: 'Progress updates',
           subtitle: 'Report playback progress while a track is playing.',
           forceInline: true,
-          trailing: Switch(
+          trailing: CompactSwitch(
             value: state.telemetryProgressEnabled,
             onChanged: state.setTelemetryProgress,
           ),
@@ -1453,7 +1454,7 @@ class _AccountSettings extends StatelessWidget {
           title: 'Play history',
           subtitle: 'Send play completion events for library history.',
           forceInline: true,
-          trailing: Switch(
+          trailing: CompactSwitch(
             value: state.telemetryHistoryEnabled,
             onChanged: state.setTelemetryHistory,
           ),

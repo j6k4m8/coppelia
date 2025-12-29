@@ -16,19 +16,25 @@ class GenreDetailView extends StatelessWidget {
     if (genre == null) {
       return const SizedBox.shrink();
     }
+    final pinned = state.pinnedAudio;
+    final offlineTracks = state.genreTracks
+        .where((track) => pinned.contains(track.streamUrl))
+        .toList();
+    final displayTracks =
+        state.offlineOnlyFilter ? offlineTracks : state.genreTracks;
     return CollectionDetailView(
       title: genre.name,
       subtitle: '${genre.trackCount} tracks',
       imageUrl: genre.imageUrl,
-      tracks: state.genreTracks,
+      tracks: displayTracks,
       nowPlaying: state.nowPlaying,
-      onPlayAll: state.genreTracks.isEmpty
+      onPlayAll: displayTracks.isEmpty
           ? null
-          : () => state.playFromGenre(state.genreTracks.first),
-      onShuffle: state.genreTracks.isEmpty
+          : () => state.playFromList(displayTracks, displayTracks.first),
+      onShuffle: displayTracks.isEmpty
           ? null
-          : () => state.playShuffledList(state.genreTracks),
-      onTrackTap: state.playFromGenre,
+          : () => state.playShuffledList(displayTracks),
+      onTrackTap: (track) => state.playFromList(displayTracks, track),
       onPlayNext: state.playNext,
       onAddToQueue: state.enqueueTrack,
       onAlbumTap: (track) {

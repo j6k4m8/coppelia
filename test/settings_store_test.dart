@@ -146,4 +146,14 @@ void main() {
     expect(await store.loadProgressTelemetry(), isFalse);
     expect(await store.loadHistoryTelemetry(), isFalse);
   });
+
+  test('settings store saves offline mode', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SettingsStore();
+
+    expect(await store.loadOfflineMode(), isFalse);
+    await store.saveOfflineMode(true);
+
+    expect(await store.loadOfflineMode(), isTrue);
+  });
 }

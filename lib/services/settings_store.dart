@@ -50,6 +50,7 @@ class SettingsStore {
   static const _searchShortcutKey = 'settings_shortcut_search';
   static const _layoutDensityKey = 'settings_layout_density';
   static const _deviceIdKey = 'settings_device_id';
+  static const _offlineModeKey = 'settings_offline_mode';
   static const int _defaultAccentValue = 0xFF6F7BFF;
 
   /// Loads the preferred theme mode.
@@ -129,6 +130,18 @@ class SettingsStore {
   Future<void> saveSearchShortcut(KeyboardShortcut shortcut) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_searchShortcutKey, shortcut.serialize());
+  }
+
+  /// Loads whether offline mode is enabled.
+  Future<bool> loadOfflineMode() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_offlineModeKey) ?? false;
+  }
+
+  /// Saves whether offline mode is enabled.
+  Future<void> saveOfflineMode(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_offlineModeKey, enabled);
   }
 
   /// Loads or generates a unique device identifier.
