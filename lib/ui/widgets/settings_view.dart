@@ -16,7 +16,6 @@ import '../../state/theme_palette_source.dart';
 import '../../core/color_tokens.dart';
 import 'compact_switch.dart';
 import 'glass_container.dart';
-import 'section_header.dart';
 
 /// Settings view for Coppelia preferences.
 class SettingsView extends StatelessWidget {
@@ -39,8 +38,6 @@ class SettingsView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionHeader(title: 'Settings'),
-            SizedBox(height: space(12)),
             _SettingsTabBar(),
             SizedBox(height: space(16)),
             Expanded(
@@ -228,6 +225,11 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final accentSource = state.accentColorSource;
+    final segmentedStyle = ButtonStyle(
+      textStyle: MaterialStatePropertyAll(
+        Theme.of(context).textTheme.bodyLarge,
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -237,6 +239,7 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
           title: 'Theme',
           subtitle: 'Follow system appearance or set manually.',
           trailing: SegmentedButton<ThemeMode>(
+            style: segmentedStyle,
             segments: const [
               ButtonSegment(
                 value: ThemeMode.light,
@@ -263,6 +266,7 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
           title: 'Accent color',
           subtitle: 'Pick a brand accent or sync to the now playing artwork.',
           trailing: SegmentedButton<AccentColorSource>(
+            style: segmentedStyle,
             segments: AccentColorSource.values
                 .map(
                   (source) => ButtonSegment(
@@ -364,6 +368,7 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
           subtitle:
               'Tint gradients and hero cards using Now Playing artwork.',
           trailing: SegmentedButton<ThemePaletteSource>(
+            style: segmentedStyle,
             segments: ThemePaletteSource.values
                 .map(
                   (source) => ButtonSegment(
@@ -418,6 +423,7 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
           title: 'Font size',
           subtitle: 'Scale typography across the interface.',
           trailing: SegmentedButton<double>(
+            style: segmentedStyle,
             segments: _fontScaleChoices
                 .map(
                   (choice) => ButtonSegment(
@@ -440,6 +446,7 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
           title: 'Layout density',
           subtitle: 'Adjust padding and spacing throughout the UI.',
           trailing: SegmentedButton<LayoutDensity>(
+            style: segmentedStyle,
             segments: LayoutDensity.values
                 .map(
                   (density) => ButtonSegment(
@@ -468,6 +475,11 @@ class _LayoutSettings extends StatelessWidget {
   Widget build(BuildContext context) {
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final segmentedStyle = ButtonStyle(
+      textStyle: MaterialStatePropertyAll(
+        Theme.of(context).textTheme.bodyLarge,
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -478,6 +490,7 @@ class _LayoutSettings extends StatelessWidget {
           subtitle: 'Choose where the player is docked.',
           forceInline: true,
           trailing: SegmentedButton<NowPlayingLayout>(
+            style: segmentedStyle,
             segments: NowPlayingLayout.values
                 .map(
                   (layout) => ButtonSegment(
@@ -576,24 +589,6 @@ class _LayoutSettings extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(left: 24),
               child: _SettingRow(
-                title: SidebarItem.favoritesSongs.label,
-                subtitle: 'Show favorite songs.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(
-                    SidebarItem.favoritesSongs,
-                  ),
-                  onChanged: (value) => state.setSidebarItemVisible(
-                    SidebarItem.favoritesSongs,
-                    value,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: space(12)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
                 title: SidebarItem.favoritesArtists.label,
                 subtitle: 'Show favorite artists.',
                 forceInline: true,
@@ -603,6 +598,24 @@ class _LayoutSettings extends StatelessWidget {
                   ),
                   onChanged: (value) => state.setSidebarItemVisible(
                     SidebarItem.favoritesArtists,
+                    value,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: space(12)),
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: SidebarItem.favoritesSongs.label,
+                subtitle: 'Show favorite tracks.',
+                forceInline: true,
+                trailing: CompactSwitch(
+                  value: state.isSidebarItemVisible(
+                    SidebarItem.favoritesSongs,
+                  ),
+                  onChanged: (value) => state.setSidebarItemVisible(
+                    SidebarItem.favoritesSongs,
                     value,
                   ),
                 ),

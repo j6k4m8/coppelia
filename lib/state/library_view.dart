@@ -18,7 +18,7 @@ enum LibraryView {
   /// Favorite albums section.
   favoritesAlbums,
 
-  /// Favorite songs section.
+  /// Favorite tracks section.
   favoritesSongs,
 
   /// Favorite artists section.
@@ -73,7 +73,7 @@ extension LibraryViewLabels on LibraryView {
       case LibraryView.favoritesAlbums:
         return 'Favorite Albums';
       case LibraryView.favoritesSongs:
-        return 'Favorite Songs';
+        return 'Favorite Tracks';
       case LibraryView.favoritesArtists:
         return 'Favorite Artists';
       case LibraryView.offlineAlbums:

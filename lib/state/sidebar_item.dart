@@ -9,7 +9,7 @@ enum SidebarItem {
   /// Favorite albums.
   favoritesAlbums,
 
-  /// Favorite songs.
+  /// Favorite tracks.
   favoritesSongs,
 
   /// Favorite artists.
@@ -98,7 +98,7 @@ extension SidebarItemMetadata on SidebarItem {
       case SidebarItem.favoritesAlbums:
         return 'Albums';
       case SidebarItem.favoritesSongs:
-        return 'Songs';
+        return 'Tracks';
       case SidebarItem.favoritesArtists:
         return 'Artists';
       case SidebarItem.offlineAlbums:

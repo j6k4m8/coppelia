@@ -182,21 +182,6 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                             ),
                           ),
                         if (state.isSidebarItemVisible(
-                          SidebarItem.favoritesSongs,
-                        ))
-                          _NavTile(
-                            icon: Icons.music_note,
-                            label: 'Songs',
-                            selected: state.selectedPlaylist == null &&
-                                state.selectedView ==
-                                    LibraryView.favoritesSongs,
-                            onTap: () => _handleNavigate(
-                              () => state.selectLibraryView(
-                                LibraryView.favoritesSongs,
-                              ),
-                            ),
-                          ),
-                        if (state.isSidebarItemVisible(
                           SidebarItem.favoritesArtists,
                         ))
                           _NavTile(
@@ -208,6 +193,21 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                             onTap: () => _handleNavigate(
                               () => state.selectLibraryView(
                                 LibraryView.favoritesArtists,
+                              ),
+                            ),
+                          ),
+                        if (state.isSidebarItemVisible(
+                          SidebarItem.favoritesSongs,
+                        ))
+                          _NavTile(
+                            icon: Icons.music_note,
+                            label: 'Tracks',
+                            selected: state.selectedPlaylist == null &&
+                                state.selectedView ==
+                                    LibraryView.favoritesSongs,
+                            onTap: () => _handleNavigate(
+                              () => state.selectLibraryView(
+                                LibraryView.favoritesSongs,
                               ),
                             ),
                           ),

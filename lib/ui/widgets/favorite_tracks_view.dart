@@ -27,7 +27,7 @@ class FavoriteTracksView extends StatelessWidget {
         Padding(
           padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
           child: SectionHeader(
-            title: 'Favorite Songs',
+            title: 'Favorite Tracks',
             action: Text(
               '${state.favoriteTracks.length} tracks',
               style: Theme.of(context)
