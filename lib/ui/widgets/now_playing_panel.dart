@@ -164,23 +164,92 @@ class _BottomBar extends StatelessWidget {
           top: BorderSide(color: ColorTokens.border(context)),
         ),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 680;
-          final titleBlock = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                track?.title ?? 'Nothing queued',
-                style: Theme.of(context).textTheme.titleMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              SizedBox(height: space(4).clamp(2.0, 6.0)),
-              _NowPlayingMeta(track: track),
-            ],
-          );
-          if (isNarrow) {
+      child: RepaintBoundary(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 680;
+            final titleBlock = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  track?.title ?? 'Nothing queued',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: space(4).clamp(2.0, 6.0)),
+                _NowPlayingMeta(track: track),
+              ],
+            );
+            if (isNarrow) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      _MiniArtwork(
+                        track: track,
+                        onTap: track == null
+                            ? null
+                            : () => _openExpandedNowPlaying(context),
+                      ),
+                      SizedBox(width: space(12).clamp(8.0, 16.0)),
+                      Expanded(child: titleBlock),
+                    ],
+                  ),
+                  SizedBox(height: space(10).clamp(6.0, 14.0)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (track != null)
+                        _FavoriteButton(
+                          track: track,
+                          isFavorite: isFavorite,
+                          isUpdating: isUpdating,
+                        ),
+                      if (track != null)
+                        _RepeatButton(
+                          mode: state.repeatMode,
+                          onTap: state.toggleRepeatMode,
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.queue_music),
+                        onPressed: () =>
+                            state.selectLibraryView(LibraryView.queue),
+                      ),
+                      _Controls(
+                        isPlaying: state.isPlaying,
+                        onPlayPause: state.togglePlayback,
+                        onNext: state.nextTrack,
+                        onPrevious: state.previousTrack,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: space(6).clamp(4.0, 10.0)),
+                  RepaintBoundary(
+                    child: AnimatedBuilder(
+                      animation: Listenable.merge([
+                        state.positionListenable,
+                        state.durationListenable,
+                        state.isBufferingListenable,
+                      ]),
+                      builder: (context, _) {
+                        final shouldPulse = track != null &&
+                            !state.isNowPlayingCached &&
+                            (state.isBuffering || state.isPreparingPlayback);
+                        return _ProgressScrubber(
+                          position: state.position,
+                          duration: state.duration,
+                          onSeek: state.seek,
+                          compact: true,
+                          isBuffering: shouldPulse,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              );
+            }
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -192,14 +261,8 @@ class _BottomBar extends StatelessWidget {
                           ? null
                           : () => _openExpandedNowPlaying(context),
                     ),
-                    SizedBox(width: space(12).clamp(8.0, 16.0)),
+                    SizedBox(width: space(16).clamp(10.0, 20.0)),
                     Expanded(child: titleBlock),
-                  ],
-                ),
-                SizedBox(height: space(10).clamp(6.0, 14.0)),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
                     if (track != null)
                       _FavoriteButton(
                         track: track,
@@ -225,88 +288,31 @@ class _BottomBar extends StatelessWidget {
                   ],
                 ),
                 SizedBox(height: space(6).clamp(4.0, 10.0)),
-                AnimatedBuilder(
-                  animation: Listenable.merge([
-                    state.positionListenable,
-                    state.durationListenable,
-                    state.isBufferingListenable,
-                  ]),
-                  builder: (context, _) {
-                    final shouldPulse = track != null &&
-                        !state.isNowPlayingCached &&
-                        (state.isBuffering || state.isPreparingPlayback);
-                    return _ProgressScrubber(
-                      position: state.position,
-                      duration: state.duration,
-                      onSeek: state.seek,
-                      compact: true,
-                      isBuffering: shouldPulse,
-                    );
-                  },
+                RepaintBoundary(
+                  child: AnimatedBuilder(
+                    animation: Listenable.merge([
+                      state.positionListenable,
+                      state.durationListenable,
+                      state.isBufferingListenable,
+                    ]),
+                    builder: (context, _) {
+                      final shouldPulse = track != null &&
+                          !state.isNowPlayingCached &&
+                          (state.isBuffering || state.isPreparingPlayback);
+                      return _ProgressScrubber(
+                        position: state.position,
+                        duration: state.duration,
+                        onSeek: state.seek,
+                        compact: true,
+                        isBuffering: shouldPulse,
+                      );
+                    },
+                  ),
                 ),
               ],
             );
-          }
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  _MiniArtwork(
-                    track: track,
-                    onTap: track == null
-                        ? null
-                        : () => _openExpandedNowPlaying(context),
-                  ),
-                  SizedBox(width: space(16).clamp(10.0, 20.0)),
-                  Expanded(child: titleBlock),
-                  if (track != null)
-                    _FavoriteButton(
-                      track: track,
-                      isFavorite: isFavorite,
-                      isUpdating: isUpdating,
-                    ),
-                  if (track != null)
-                    _RepeatButton(
-                      mode: state.repeatMode,
-                      onTap: state.toggleRepeatMode,
-                    ),
-                  IconButton(
-                    icon: const Icon(Icons.queue_music),
-                    onPressed: () =>
-                        state.selectLibraryView(LibraryView.queue),
-                  ),
-                  _Controls(
-                    isPlaying: state.isPlaying,
-                    onPlayPause: state.togglePlayback,
-                    onNext: state.nextTrack,
-                    onPrevious: state.previousTrack,
-                  ),
-                ],
-              ),
-              SizedBox(height: space(6).clamp(4.0, 10.0)),
-              AnimatedBuilder(
-                animation: Listenable.merge([
-                  state.positionListenable,
-                  state.durationListenable,
-                  state.isBufferingListenable,
-                ]),
-                builder: (context, _) {
-                  final shouldPulse = track != null &&
-                      !state.isNowPlayingCached &&
-                      (state.isBuffering || state.isPreparingPlayback);
-                  return _ProgressScrubber(
-                    position: state.position,
-                    duration: state.duration,
-                    onSeek: state.seek,
-                    compact: true,
-                    isBuffering: shouldPulse,
-                  );
-                },
-              ),
-            ],
-          );
-        },
+          },
+        ),
       ),
     );
   }
@@ -926,57 +932,61 @@ class _NowPlayingExpandedView extends StatelessWidget {
               SizedBox(height: space(8)),
               _NowPlayingMeta(track: track),
               SizedBox(height: space(20)),
-              AnimatedBuilder(
-                animation: Listenable.merge([
-                  state.positionListenable,
-                  state.durationListenable,
-                  state.isBufferingListenable,
-                ]),
-                builder: (context, _) {
-                  final shouldPulse = track != null &&
-                      !state.isNowPlayingCached &&
-                      (state.isBuffering || state.isPreparingPlayback);
-                  return _ProgressScrubber(
-                    position: state.position,
-                    duration: state.duration,
-                    onSeek: state.seek,
-                    isBuffering: shouldPulse,
-                  );
-                },
+              RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: Listenable.merge([
+                    state.positionListenable,
+                    state.durationListenable,
+                    state.isBufferingListenable,
+                  ]),
+                  builder: (context, _) {
+                    final shouldPulse = track != null &&
+                        !state.isNowPlayingCached &&
+                        (state.isBuffering || state.isPreparingPlayback);
+                    return _ProgressScrubber(
+                      position: state.position,
+                      duration: state.duration,
+                      onSeek: state.seek,
+                      isBuffering: shouldPulse,
+                    );
+                  },
+                ),
               ),
               SizedBox(height: space(18)),
-              Row(
-                children: [
-                  if (track != null)
-                    _FavoriteButton(
-                      track: track,
-                      isFavorite: isFavorite,
-                      isUpdating: isUpdating,
-                    ),
-                  if (track != null)
-                    _RepeatButton(
-                      mode: state.repeatMode,
-                      onTap: state.toggleRepeatMode,
-                    ),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.center,
-                      child: _Controls(
-                        isPlaying: state.isPlaying,
-                        onPlayPause: state.togglePlayback,
-                        onNext: state.nextTrack,
-                        onPrevious: state.previousTrack,
+              RepaintBoundary(
+                child: Row(
+                  children: [
+                    if (track != null)
+                      _FavoriteButton(
+                        track: track,
+                        isFavorite: isFavorite,
+                        isUpdating: isUpdating,
+                      ),
+                    if (track != null)
+                      _RepeatButton(
+                        mode: state.repeatMode,
+                        onTap: state.toggleRepeatMode,
+                      ),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: _Controls(
+                          isPlaying: state.isPlaying,
+                          onPlayPause: state.togglePlayback,
+                          onNext: state.nextTrack,
+                          onPrevious: state.previousTrack,
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.queue_music),
-                    onPressed: () {
-                      Navigator.of(context).maybePop();
-                      state.selectLibraryView(LibraryView.queue);
-                    },
-                  ),
-                ],
+                    IconButton(
+                      icon: const Icon(Icons.queue_music),
+                      onPressed: () {
+                        Navigator.of(context).maybePop();
+                        state.selectLibraryView(LibraryView.queue);
+                      },
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
