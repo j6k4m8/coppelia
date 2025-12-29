@@ -44,14 +44,12 @@ class _SidePanel extends StatelessWidget {
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final track = state.nowPlaying;
-    final isFavorite =
-        track == null ? false : state.isFavoriteTrack(track.id);
+    final isFavorite = track == null ? false : state.isFavoriteTrack(track.id);
     final isUpdating =
         track == null ? false : state.isFavoriteTrackUpdating(track.id);
     return Container(
       width: 320,
-      padding:
-          const EdgeInsets.fromLTRB(20, 24, 20, 24).scale(densityScale),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24).scale(densityScale),
       decoration: BoxDecoration(
         color: ColorTokens.panelBackground(context),
         border: Border(
@@ -79,9 +77,8 @@ class _SidePanel extends StatelessWidget {
           SizedBox(height: space(20)),
           _Artwork(
             track: track,
-            onTap: track == null
-                ? null
-                : () => _openExpandedNowPlaying(context),
+            onTap:
+                track == null ? null : () => _openExpandedNowPlaying(context),
           ),
           SizedBox(height: space(20)),
           Text(
@@ -150,14 +147,16 @@ class _BottomBar extends StatelessWidget {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final isTouch = !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.fuchsia);
     final track = state.nowPlaying;
-    final isFavorite =
-        track == null ? false : state.isFavoriteTrack(track.id);
+    final isFavorite = track == null ? false : state.isFavoriteTrack(track.id);
     final isUpdating =
         track == null ? false : state.isFavoriteTrackUpdating(track.id);
-    return Container(
-      padding:
-          const EdgeInsets.fromLTRB(24, 12, 24, 16).scale(densityScale),
+    final panel = Container(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 16).scale(densityScale),
       decoration: BoxDecoration(
         color: ColorTokens.panelBackground(context),
         border: Border(
@@ -315,8 +314,20 @@ class _BottomBar extends StatelessWidget {
         ),
       ),
     );
+    if (!isTouch || track == null) {
+      return panel;
+    }
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onVerticalDragEnd: (details) {
+        final velocity = details.primaryVelocity ?? 0;
+        if (velocity < -300) {
+          _openExpandedNowPlaying(context);
+        }
+      },
+      child: panel,
+    );
   }
-
 }
 
 class _QueueList extends StatelessWidget {
@@ -327,8 +338,7 @@ class _QueueList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     if (queue.isEmpty) {
       return Text(
@@ -384,8 +394,7 @@ class _NowPlayingMeta extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       );
     }
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final state = context.read<AppState>();
     final baseStyle = Theme.of(context)
@@ -466,8 +475,7 @@ class _FavoriteButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.read<AppState>();
     final theme = Theme.of(context);
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
     if (isUpdating) {
@@ -561,8 +569,7 @@ class _ProgressScrubberState extends State<_ProgressScrubber>
     final totalMs = widget.duration.inMilliseconds;
     final currentMs = widget.position.inMilliseconds.clamp(0, totalMs);
     final value = totalMs > 0 ? currentMs / totalMs : 0.0;
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     final height =
         ((widget.compact ? 32.0 : 40.0) * densityScale).clamp(24.0, 52.0);
     final trackHeight =
@@ -653,8 +660,7 @@ class _Artwork extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
     final imageUrl = track?.imageUrl;
@@ -700,8 +706,7 @@ class _MiniArtwork extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
     final imageUrl = track?.imageUrl;
@@ -758,8 +763,7 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
     final iconSize = clamped(24, min: 18, max: 28);
@@ -806,14 +810,11 @@ class _RepeatButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
     final isActive = mode != LoopMode.off;
-    final icon = mode == LoopMode.one
-        ? Icons.repeat_one
-        : Icons.repeat;
+    final icon = mode == LoopMode.one ? Icons.repeat_one : Icons.repeat;
     final color = isActive
         ? Theme.of(context).colorScheme.primary
         : ColorTokens.textSecondary(context, 0.6);
@@ -842,13 +843,14 @@ void _openExpandedNowPlaying(BuildContext context) {
       final curved = CurvedAnimation(
         parent: animation,
         curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
       );
-      return FadeTransition(
-        opacity: curved,
-        child: ScaleTransition(
-          scale: Tween<double>(begin: 0.98, end: 1.0).animate(curved),
-          child: child,
-        ),
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.16),
+          end: Offset.zero,
+        ).animate(curved),
+        child: child,
       );
     },
   );
@@ -863,10 +865,13 @@ class _NowPlayingExpandedView extends StatelessWidget {
     final track = state.nowPlaying;
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final isTouch = !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.fuchsia);
     final padding = EdgeInsets.all(space(24).clamp(16.0, 32.0));
     final theme = Theme.of(context);
-    final isFavorite =
-        track == null ? false : state.isFavoriteTrack(track.id);
+    final isFavorite = track == null ? false : state.isFavoriteTrack(track.id);
     final isUpdating =
         track == null ? false : state.isFavoriteTrackUpdating(track.id);
     final topBar = Row(
@@ -894,104 +899,116 @@ class _NowPlayingExpandedView extends StatelessWidget {
       );
     }
 
-    return Material(
-      color: Colors.transparent,
-      child: SafeArea(
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: ColorTokens.backgroundGradient(context),
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: Column(
-            children: [
-              topBar,
-              SizedBox(height: space(18)),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final maxArt = math.min(
-                      constraints.maxHeight * 0.72,
-                      constraints.maxWidth * 0.86,
-                    );
-                    final artworkSize =
-                        maxArt.clamp(240.0, 620.0).toDouble();
-                    return buildPlayerColumn(artworkSize);
-                  },
-                ),
-              ),
-              Text(
-                track?.title ?? 'Nothing queued',
-                style: theme.textTheme.headlineMedium,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              SizedBox(height: space(8)),
-              _NowPlayingMeta(track: track),
-              SizedBox(height: space(20)),
-              RepaintBoundary(
-                child: AnimatedBuilder(
-                  animation: Listenable.merge([
-                    state.positionListenable,
-                    state.durationListenable,
-                    state.isBufferingListenable,
-                  ]),
-                  builder: (context, _) {
-                    final shouldPulse = track != null &&
-                        !state.isNowPlayingCached &&
-                        (state.isBuffering || state.isPreparingPlayback);
-                    return _ProgressScrubber(
-                      position: state.position,
-                      duration: state.duration,
-                      onSeek: state.seek,
-                      isBuffering: shouldPulse,
-                    );
-                  },
-                ),
-              ),
-              SizedBox(height: space(18)),
-              RepaintBoundary(
-                child: Row(
-                  children: [
-                    if (track != null)
-                      _FavoriteButton(
-                        track: track,
-                        isFavorite: isFavorite,
-                        isUpdating: isUpdating,
-                      ),
-                    if (track != null)
-                      _RepeatButton(
-                        mode: state.repeatMode,
-                        onTap: state.toggleRepeatMode,
-                      ),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.center,
-                        child: _Controls(
-                          isPlaying: state.isPlaying,
-                          onPlayPause: state.togglePlayback,
-                          onNext: state.nextTrack,
-                          onPrevious: state.previousTrack,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.queue_music),
-                      onPressed: () {
-                        Navigator.of(context).maybePop();
-                        state.selectLibraryView(LibraryView.queue);
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
+    Widget content = SafeArea(
+      child: Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: ColorTokens.backgroundGradient(context),
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
         ),
+        child: Column(
+          children: [
+            topBar,
+            SizedBox(height: space(18)),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final maxArt = math.min(
+                    constraints.maxHeight * 0.72,
+                    constraints.maxWidth * 0.86,
+                  );
+                  final artworkSize = maxArt.clamp(240.0, 620.0).toDouble();
+                  return buildPlayerColumn(artworkSize);
+                },
+              ),
+            ),
+            Text(
+              track?.title ?? 'Nothing queued',
+              style: theme.textTheme.headlineMedium,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            SizedBox(height: space(8)),
+            _NowPlayingMeta(track: track),
+            SizedBox(height: space(20)),
+            RepaintBoundary(
+              child: AnimatedBuilder(
+                animation: Listenable.merge([
+                  state.positionListenable,
+                  state.durationListenable,
+                  state.isBufferingListenable,
+                ]),
+                builder: (context, _) {
+                  final shouldPulse = track != null &&
+                      !state.isNowPlayingCached &&
+                      (state.isBuffering || state.isPreparingPlayback);
+                  return _ProgressScrubber(
+                    position: state.position,
+                    duration: state.duration,
+                    onSeek: state.seek,
+                    isBuffering: shouldPulse,
+                  );
+                },
+              ),
+            ),
+            SizedBox(height: space(18)),
+            RepaintBoundary(
+              child: Row(
+                children: [
+                  if (track != null)
+                    _FavoriteButton(
+                      track: track,
+                      isFavorite: isFavorite,
+                      isUpdating: isUpdating,
+                    ),
+                  if (track != null)
+                    _RepeatButton(
+                      mode: state.repeatMode,
+                      onTap: state.toggleRepeatMode,
+                    ),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: _Controls(
+                        isPlaying: state.isPlaying,
+                        onPlayPause: state.togglePlayback,
+                        onNext: state.nextTrack,
+                        onPrevious: state.previousTrack,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.queue_music),
+                    onPressed: () {
+                      Navigator.of(context).maybePop();
+                      state.selectLibraryView(LibraryView.queue);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+    if (isTouch) {
+      content = GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onVerticalDragEnd: (details) {
+          final velocity = details.primaryVelocity ?? 0;
+          if (velocity > 300) {
+            Navigator.of(context).maybePop();
+          }
+        },
+        child: content,
+      );
+    }
+    return Material(
+      color: Colors.transparent,
+      child: content,
     );
   }
 }
@@ -1029,8 +1046,7 @@ class _ExpandedArtwork extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
     final imageUrl = track?.imageUrl;
