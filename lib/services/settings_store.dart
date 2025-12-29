@@ -32,6 +32,7 @@ class SettingsStore {
   static const _telemetryPlaybackKey = 'settings_telemetry_playback';
   static const _telemetryProgressKey = 'settings_telemetry_progress';
   static const _telemetryHistoryKey = 'settings_telemetry_history';
+  static const _gaplessPlaybackKey = 'settings_gapless_playback';
   static const _autoDownloadFavoritesKey =
       'settings_auto_download_favorites';
   static const _autoDownloadFavoriteAlbumsKey =
@@ -131,6 +132,19 @@ class SettingsStore {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_searchShortcutKey, shortcut.serialize());
   }
+
+  /// Loads whether gapless playback is enabled.
+  Future<bool> loadGaplessPlayback() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_gaplessPlaybackKey) ?? true;
+  }
+
+  /// Saves whether gapless playback is enabled.
+  Future<void> saveGaplessPlayback(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_gaplessPlaybackKey, enabled);
+  }
+
 
   /// Loads whether offline mode is enabled.
   Future<bool> loadOfflineMode() async {

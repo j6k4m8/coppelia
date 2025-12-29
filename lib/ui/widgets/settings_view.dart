@@ -34,7 +34,7 @@ class SettingsView extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
       child: DefaultTabController(
-        length: 5,
+        length: 6,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -51,6 +51,9 @@ class SettingsView extends StatelessWidget {
                   ),
                   _SettingsTab(
                     child: _KeyboardSettings(state: state),
+                  ),
+                  _SettingsTab(
+                    child: _PlaybackSettings(state: state),
                   ),
                   _SettingsTab(
                     child: _CacheSettings(
@@ -105,6 +108,7 @@ class _SettingsTabBar extends StatelessWidget {
           _SettingsTabLabel(text: 'Appearance'),
           _SettingsTabLabel(text: 'Layout'),
           _SettingsTabLabel(text: 'Keyboard'),
+          _SettingsTabLabel(text: 'Playback'),
           _SettingsTabLabel(text: 'Cache'),
           _SettingsTabLabel(text: 'Account'),
         ],
@@ -913,6 +917,33 @@ class _KeyboardSettings extends StatelessWidget {
             shortcut: state.searchShortcut,
             enabled: state.searchShortcutEnabled,
             onChanged: (shortcut) => state.setSearchShortcut(shortcut),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PlaybackSettings extends StatelessWidget {
+  const _PlaybackSettings({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Playback', style: Theme.of(context).textTheme.titleLarge),
+        SizedBox(height: space(12)),
+        _SettingRow(
+          title: 'Gapless playback',
+          subtitle: 'Preload the next track to remove silence between songs.',
+          trailing: CompactSwitch(
+            value: state.gaplessPlaybackEnabled,
+            onChanged: state.setGaplessPlayback,
           ),
         ),
       ],

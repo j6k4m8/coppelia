@@ -11,6 +11,7 @@ class PlaybackController {
 
   final AudioPlayer _player;
   ConcatenatingAudioSource? _queueSource;
+  bool _gaplessPlayback = true;
 
   /// Stream of playback position updates.
   Stream<Duration> get positionStream => _player.positionStream;
@@ -62,8 +63,39 @@ class PlaybackController {
     for (final item in items) {
       sources.add(await _buildSource(item, cacheStore, headers));
     }
-    _queueSource = ConcatenatingAudioSource(children: sources);
+    _queueSource = ConcatenatingAudioSource(
+      children: sources,
+      useLazyPreparation: !_gaplessPlayback,
+    );
     await _player.setAudioSource(_queueSource!, initialIndex: startIndex);
+  }
+
+  /// Enables or disables gapless playback behavior.
+  Future<void> setGaplessPlayback(bool enabled) async {
+    _gaplessPlayback = enabled;
+    final queue = _queueSource;
+    if (queue == null || queue.length == 0) {
+      return;
+    }
+    final currentIndex = _player.currentIndex;
+    if (currentIndex == null) {
+      return;
+    }
+    final position = _player.position;
+    final wasPlaying = _player.playing;
+    final rebuilt = ConcatenatingAudioSource(
+      children: List<AudioSource>.from(queue.children),
+      useLazyPreparation: !_gaplessPlayback,
+    );
+    _queueSource = rebuilt;
+    await _player.setAudioSource(
+      rebuilt,
+      initialIndex: currentIndex,
+      initialPosition: position,
+    );
+    if (wasPlaying) {
+      await _player.play();
+    }
   }
 
   /// Appends a track to the current queue.

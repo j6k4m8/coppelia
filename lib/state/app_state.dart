@@ -126,6 +126,7 @@ class AppState extends ChangeNotifier {
   bool _telemetryPlayback = true;
   bool _telemetryProgress = true;
   bool _telemetryHistory = true;
+  bool _gaplessPlayback = true;
   bool _autoDownloadFavoritesEnabled = false;
   bool _autoDownloadFavoriteAlbums = true;
   bool _autoDownloadFavoriteArtists = true;
@@ -394,6 +395,10 @@ class AppState extends ChangeNotifier {
   /// True when play history telemetry is enabled.
   bool get telemetryHistoryEnabled => _telemetryHistory;
 
+  /// True when gapless playback is enabled.
+  bool get gaplessPlaybackEnabled => _gaplessPlayback;
+
+
   /// True when favorites should be auto-downloaded for offline playback.
   bool get autoDownloadFavoritesEnabled => _autoDownloadFavoritesEnabled;
 
@@ -528,6 +533,7 @@ class AppState extends ChangeNotifier {
     _telemetryPlayback = await _settingsStore.loadPlaybackTelemetry();
     _telemetryProgress = await _settingsStore.loadProgressTelemetry();
     _telemetryHistory = await _settingsStore.loadHistoryTelemetry();
+    _gaplessPlayback = await _settingsStore.loadGaplessPlayback();
     _autoDownloadFavoritesEnabled =
         await _settingsStore.loadAutoDownloadFavoritesEnabled();
     _autoDownloadFavoriteAlbums =
@@ -553,6 +559,7 @@ class AppState extends ChangeNotifier {
     _sidebarCollapsed = await _settingsStore.loadSidebarCollapsed();
     _pinnedAudio = await _cacheStore.loadPinnedAudio();
     await _loadCachedLibrary();
+    await _applyPlaybackSettings();
     if (_offlineMode) {
       await _applyOfflineModeData();
     }
@@ -564,6 +571,10 @@ class AppState extends ChangeNotifier {
     if (_session != null && !_offlineMode) {
       await refreshLibrary();
     }
+  }
+
+  Future<void> _applyPlaybackSettings() async {
+    await _playback.setGaplessPlayback(_gaplessPlayback);
   }
 
   /// Attempts Jellyfin sign-in.
@@ -1905,6 +1916,17 @@ class AppState extends ChangeNotifier {
   Future<void> setTelemetryHistory(bool enabled) async {
     _telemetryHistory = enabled;
     await _settingsStore.saveHistoryTelemetry(enabled);
+    notifyListeners();
+  }
+
+  /// Updates the gapless playback preference.
+  Future<void> setGaplessPlayback(bool enabled) async {
+    if (_gaplessPlayback == enabled) {
+      return;
+    }
+    _gaplessPlayback = enabled;
+    await _settingsStore.saveGaplessPlayback(enabled);
+    await _applyPlaybackSettings();
     notifyListeners();
   }
 

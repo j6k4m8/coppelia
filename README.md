@@ -66,6 +66,7 @@ I am not sure! I don't have a linux machine handy. If you do, and you can get st
 -   Playlist management with create, rename, delete, add/remove tracks, and drag reordering
 -   Audio playback with queue controls, play-next, and clear-queue
     -   macOS Now Playing integration + media key shortcuts
+-   Gapless playback between tracks
 -   Repeat playback (track or queue)
 -   Android lockscreen + notification media controls with artwork
 -   Linux desktop support (GTK)

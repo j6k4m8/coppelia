@@ -9,6 +9,7 @@
 ## Backlog
 
 -   [ ] [BUG] Favorites → Artists view sometimes empty
--   [ ] Gapless playback + crossfade controls
+-   [x] Gapless playback
+-   [ ] Crossfade controls (requires dual-player mixing)
 -   [ ] Smart Lists (local-only, not synced like playlists)
 -   [ ] Download manager (per-item progress, prioritization, cellular rules)
