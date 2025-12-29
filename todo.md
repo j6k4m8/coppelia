@@ -9,3 +9,6 @@
 ## Backlog
 
 -   [ ] [BUG] Favorites → Artists view sometimes empty
+-   [ ] Gapless playback + crossfade controls
+-   [ ] Smart Lists (local-only, not synced like playlists)
+-   [ ] Download manager (per-item progress, prioritization, cellular rules)
