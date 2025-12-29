@@ -19,6 +19,7 @@ import '../models/media_item.dart';
 import '../models/playback_resume_state.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
+import '../models/smart_list.dart';
 import '../services/cache_store.dart';
 import '../services/jellyfin_client.dart';
 import '../services/now_playing_service.dart';
@@ -94,6 +95,10 @@ class AppState extends ChangeNotifier {
   List<Album> _favoriteAlbums = [];
   List<Artist> _favoriteArtists = [];
   List<MediaItem> _favoriteTracks = [];
+  List<SmartList> _smartLists = [];
+  SmartList? _selectedSmartList;
+  List<MediaItem> _smartListTracks = [];
+  bool _isLoadingSmartList = false;
   final Set<String> _favoriteAlbumUpdatesInFlight = {};
   final Set<String> _favoriteArtistUpdatesInFlight = {};
   final Set<String> _favoriteTrackUpdatesInFlight = {};
@@ -244,6 +249,18 @@ class AppState extends ChangeNotifier {
 
   /// Favorite tracks.
   List<MediaItem> get favoriteTracks => List.unmodifiable(_favoriteTracks);
+
+  /// All Smart Lists.
+  List<SmartList> get smartLists => List.unmodifiable(_smartLists);
+
+  /// Selected Smart List when viewing its results.
+  SmartList? get selectedSmartList => _selectedSmartList;
+
+  /// Tracks for the selected Smart List.
+  List<MediaItem> get smartListTracks => List.unmodifiable(_smartListTracks);
+
+  /// True while Smart List results are loading.
+  bool get isLoadingSmartList => _isLoadingSmartList;
 
   /// Pinned audio stream URLs.
   Set<String> get pinnedAudio => Set.unmodifiable(_pinnedAudio);
@@ -557,6 +574,7 @@ class AppState extends ChangeNotifier {
     _sidebarVisibility = await _settingsStore.loadSidebarVisibility();
     _sidebarWidth = await _settingsStore.loadSidebarWidth();
     _sidebarCollapsed = await _settingsStore.loadSidebarCollapsed();
+    _smartLists = await _settingsStore.loadSmartLists();
     _pinnedAudio = await _cacheStore.loadPinnedAudio();
     await _loadCachedLibrary();
     await _applyPlaybackSettings();
@@ -609,6 +627,7 @@ class AppState extends ChangeNotifier {
     _session = null;
     _client.clearSession();
     _selectedPlaylist = null;
+    _selectedSmartList = null;
     _selectedView = LibraryView.home;
     _viewHistory.clear();
     _selectedAlbum = null;
@@ -618,6 +637,7 @@ class AppState extends ChangeNotifier {
     _searchResults = null;
     _isSearching = false;
     _playlistTracks = [];
+    _smartListTracks = [];
     _featuredTracks = [];
     _playlists = [];
     _albums = [];
@@ -702,6 +722,9 @@ class AppState extends ChangeNotifier {
       await _loadFavoriteAlbums();
       await _loadFavoriteArtists();
       await _loadFavoriteTracks();
+      if (_selectedSmartList != null) {
+        unawaited(_loadSmartListTracks(_selectedSmartList!));
+      }
       if (isHomeSectionVisible(HomeSection.jumpIn)) {
         unawaited(loadJumpIn(force: true));
       }
@@ -721,6 +744,7 @@ class AppState extends ChangeNotifier {
       _recordViewHistory(_selectedView);
     }
     _selectedPlaylist = playlist;
+    _selectedSmartList = null;
     _selectedView = LibraryView.home;
     _offlineOnlyFilter = offlineOnly;
     clearBrowseSelection(notify: false);
@@ -775,6 +799,70 @@ class AppState extends ChangeNotifier {
     _selectedView = LibraryView.home;
     clearBrowseSelection(notify: false);
     notifyListeners();
+  }
+
+  /// Selects a Smart List and loads its tracks.
+  Future<void> selectSmartList(SmartList list) async {
+    if (_selectedView != LibraryView.home) {
+      _recordViewHistory(_selectedView);
+    }
+    _selectedSmartList = list;
+    _selectedView = LibraryView.home;
+    _offlineOnlyFilter = false;
+    _selectedPlaylist = null;
+    _playlistTracks = [];
+    clearBrowseSelection(notify: false);
+    clearSearch(notify: false);
+    notifyListeners();
+    await _loadSmartListTracks(list);
+  }
+
+  /// Clears the current Smart List selection.
+  void clearSmartListSelection() {
+    _selectedSmartList = null;
+    _smartListTracks = [];
+    _selectedView = LibraryView.home;
+    clearBrowseSelection(notify: false);
+    notifyListeners();
+  }
+
+  /// Creates and stores a Smart List.
+  Future<SmartList> createSmartList(SmartList list) async {
+    _smartLists = [..._smartLists, list]
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    await _settingsStore.saveSmartLists(_smartLists);
+    notifyListeners();
+    return list;
+  }
+
+  /// Updates a Smart List definition.
+  Future<void> updateSmartList(SmartList list) async {
+    final index = _smartLists.indexWhere((entry) => entry.id == list.id);
+    if (index == -1) {
+      return;
+    }
+    _smartLists = List<SmartList>.from(_smartLists);
+    _smartLists[index] = list;
+    _smartLists.sort(
+      (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+    );
+    await _settingsStore.saveSmartLists(_smartLists);
+    if (_selectedSmartList?.id == list.id) {
+      _selectedSmartList = list;
+      await _loadSmartListTracks(list);
+    }
+    notifyListeners();
+  }
+
+  /// Deletes a Smart List.
+  Future<void> deleteSmartList(SmartList list) async {
+    _smartLists = _smartLists.where((entry) => entry.id != list.id).toList();
+    await _settingsStore.saveSmartLists(_smartLists);
+    if (_selectedSmartList?.id == list.id) {
+      clearSmartListSelection();
+    } else {
+      notifyListeners();
+    }
   }
 
   /// Creates a new playlist.
@@ -1017,6 +1105,8 @@ class AppState extends ChangeNotifier {
     _selectedView = view;
     _selectedPlaylist = null;
     _playlistTracks = [];
+    _selectedSmartList = null;
+    _smartListTracks = [];
     if (!_isOfflineLibraryView(view) && !_offlineMode) {
       _offlineOnlyFilter = false;
     }
@@ -1580,9 +1670,405 @@ class AppState extends ChangeNotifier {
     await _loadFavoriteTracks();
   }
 
+  Future<void> _loadSmartListTracks(SmartList list) async {
+    _isLoadingSmartList = true;
+    notifyListeners();
+    await _ensureSmartListSourceLoaded();
+    final results = _buildSmartListTracks(list);
+    _smartListTracks = results;
+    _isLoadingSmartList = false;
+    notifyListeners();
+  }
+
+  Future<void> _ensureSmartListSourceLoaded() async {
+    if (_offlineMode) {
+      if (_libraryTracks.isEmpty) {
+        await loadLibraryTracks();
+      }
+      return;
+    }
+    while (_hasMoreTracks) {
+      await loadLibraryTracks();
+    }
+  }
+
+  List<MediaItem> _buildSmartListTracks(SmartList list) {
+    if (list.scope != SmartListScope.tracks) {
+      return [];
+    }
+    final source = _libraryTracks;
+    final filtered = source
+        .where((track) => _matchesSmartListGroup(list.group, track))
+        .toList();
+    if (list.sorts.isNotEmpty) {
+      filtered.sort((a, b) => _compareSmartListSorts(list.sorts, a, b));
+    }
+    final limit = list.limit;
+    if (limit != null && limit > 0 && filtered.length > limit) {
+      return filtered.take(limit).toList();
+    }
+    return filtered;
+  }
+
+  int _compareSmartListSorts(
+    List<SmartListSort> sorts,
+    MediaItem a,
+    MediaItem b,
+  ) {
+    for (final sort in sorts) {
+      final comparison = _compareSmartListField(sort.field, a, b);
+      if (comparison != 0) {
+        return sort.direction == SmartListSortDirection.desc
+            ? -comparison
+            : comparison;
+      }
+    }
+    return 0;
+  }
+
+  int _compareSmartListField(
+    SmartListField field,
+    MediaItem a,
+    MediaItem b,
+  ) {
+    switch (field) {
+      case SmartListField.title:
+        return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+      case SmartListField.album:
+        return a.album.toLowerCase().compareTo(b.album.toLowerCase());
+      case SmartListField.artist:
+        return a.subtitle.toLowerCase().compareTo(b.subtitle.toLowerCase());
+      case SmartListField.genre:
+        return _joinGenres(a).compareTo(_joinGenres(b));
+      case SmartListField.addedAt:
+        return _compareDate(a.addedAt, b.addedAt);
+      case SmartListField.playCount:
+        return (a.playCount ?? 0).compareTo(b.playCount ?? 0);
+      case SmartListField.lastPlayedAt:
+        return _compareDate(a.lastPlayedAt, b.lastPlayedAt);
+      case SmartListField.duration:
+        return a.duration.compareTo(b.duration);
+      case SmartListField.isFavorite:
+        return _compareBool(isFavoriteTrack(a.id), isFavoriteTrack(b.id));
+      case SmartListField.isDownloaded:
+        return _compareBool(
+          _pinnedAudio.contains(a.streamUrl),
+          _pinnedAudio.contains(b.streamUrl),
+        );
+      case SmartListField.albumIsFavorite:
+        return _compareBool(
+          a.albumId != null && isFavoriteAlbum(a.albumId!),
+          b.albumId != null && isFavoriteAlbum(b.albumId!),
+        );
+      case SmartListField.artistIsFavorite:
+        return _compareBool(
+          a.artistIds.any(isFavoriteArtist),
+          b.artistIds.any(isFavoriteArtist),
+        );
+    }
+  }
+
+  int _compareBool(bool a, bool b) {
+    if (a == b) {
+      return 0;
+    }
+    return a ? 1 : -1;
+  }
+
+  int _compareDate(DateTime? a, DateTime? b) {
+    if (a == null && b == null) {
+      return 0;
+    }
+    if (a == null) {
+      return -1;
+    }
+    if (b == null) {
+      return 1;
+    }
+    return a.compareTo(b);
+  }
+
+  bool _matchesSmartListGroup(SmartListGroup group, MediaItem track) {
+    if (group.children.isEmpty) {
+      switch (group.mode) {
+        case SmartListGroupMode.all:
+          return true;
+        case SmartListGroupMode.any:
+          return false;
+        case SmartListGroupMode.not:
+          return true;
+      }
+    }
+    final matches = group.children.map((child) {
+      if (child is SmartListRuleNode) {
+        return _matchesSmartListRule(child.rule, track);
+      }
+      if (child is SmartListGroupNode) {
+        return _matchesSmartListGroup(child.group, track);
+      }
+      return false;
+    }).toList();
+    switch (group.mode) {
+      case SmartListGroupMode.all:
+        return matches.every((match) => match);
+      case SmartListGroupMode.any:
+        return matches.any((match) => match);
+      case SmartListGroupMode.not:
+        return !matches.any((match) => match);
+    }
+  }
+
+  bool _matchesSmartListRule(SmartListRule rule, MediaItem track) {
+    switch (rule.field.valueType) {
+      case SmartListValueType.text:
+        final haystack = _valueForTextField(rule.field, track);
+        return _evaluateTextRule(rule, haystack);
+      case SmartListValueType.number:
+        final value = rule.field == SmartListField.playCount
+            ? (track.playCount ?? 0).toDouble()
+            : 0.0;
+        return _evaluateNumberRule(rule, value);
+      case SmartListValueType.duration:
+        final seconds = track.duration.inSeconds.toDouble();
+        return _evaluateNumberRule(rule, seconds, isDuration: true);
+      case SmartListValueType.date:
+        final date = rule.field == SmartListField.addedAt
+            ? track.addedAt
+            : track.lastPlayedAt;
+        return _evaluateDateRule(rule, date);
+      case SmartListValueType.boolean:
+        final value = _valueForBoolField(rule.field, track);
+        return _evaluateBoolRule(rule, value);
+    }
+  }
+
+  String _valueForTextField(SmartListField field, MediaItem track) {
+    switch (field) {
+      case SmartListField.title:
+        return track.title;
+      case SmartListField.album:
+        return track.album;
+      case SmartListField.artist:
+        return track.subtitle;
+      case SmartListField.genre:
+        return _joinGenres(track);
+      default:
+        return '';
+    }
+  }
+
+  bool _valueForBoolField(SmartListField field, MediaItem track) {
+    switch (field) {
+      case SmartListField.isFavorite:
+        return isFavoriteTrack(track.id);
+      case SmartListField.isDownloaded:
+        return _pinnedAudio.contains(track.streamUrl);
+      case SmartListField.albumIsFavorite:
+        return track.albumId != null && isFavoriteAlbum(track.albumId!);
+      case SmartListField.artistIsFavorite:
+        return track.artistIds.any(isFavoriteArtist);
+      default:
+        return false;
+    }
+  }
+
+  String _joinGenres(MediaItem track) {
+    return track.genres.map((genre) => genre.toLowerCase()).join(', ');
+  }
+
+  bool _evaluateTextRule(SmartListRule rule, String rawValue) {
+    final value = rawValue.toLowerCase();
+    final needle = rule.value.toLowerCase().trim();
+    switch (rule.operatorType) {
+      case SmartListOperator.contains:
+        return needle.isNotEmpty && value.contains(needle);
+      case SmartListOperator.doesNotContain:
+        return needle.isNotEmpty ? !value.contains(needle) : true;
+      case SmartListOperator.equals:
+        return needle.isNotEmpty && value == needle;
+      case SmartListOperator.notEquals:
+        return needle.isNotEmpty ? value != needle : true;
+      case SmartListOperator.startsWith:
+        return needle.isNotEmpty && value.startsWith(needle);
+      case SmartListOperator.endsWith:
+        return needle.isNotEmpty && value.endsWith(needle);
+      default:
+        return false;
+    }
+  }
+
+  bool _evaluateNumberRule(
+    SmartListRule rule,
+    double actualValue, {
+    bool isDuration = false,
+  }) {
+    final value = _parseNumber(rule.value, isDuration: isDuration);
+    final value2 = _parseNumber(rule.value2, isDuration: isDuration);
+    if (value == null) {
+      return false;
+    }
+    switch (rule.operatorType) {
+      case SmartListOperator.equals:
+        return actualValue == value;
+      case SmartListOperator.notEquals:
+        return actualValue != value;
+      case SmartListOperator.greaterThan:
+        return actualValue > value;
+      case SmartListOperator.greaterThanOrEqual:
+        return actualValue >= value;
+      case SmartListOperator.lessThan:
+        return actualValue < value;
+      case SmartListOperator.lessThanOrEqual:
+        return actualValue <= value;
+      case SmartListOperator.between:
+        if (value2 == null) {
+          return false;
+        }
+        final min = value < value2 ? value : value2;
+        final max = value > value2 ? value : value2;
+        return actualValue >= min && actualValue <= max;
+      default:
+        return false;
+    }
+  }
+
+  bool _evaluateDateRule(SmartListRule rule, DateTime? actual) {
+    if (actual == null) {
+      if (rule.operatorType == SmartListOperator.notInLast) {
+        return true;
+      }
+      return false;
+    }
+    switch (rule.operatorType) {
+      case SmartListOperator.isBefore:
+        final target = _parseDate(rule.value);
+        return target != null && actual.isBefore(target);
+      case SmartListOperator.isAfter:
+        final target = _parseDate(rule.value);
+        return target != null && actual.isAfter(target);
+      case SmartListOperator.isOn:
+        final target = _parseDate(rule.value);
+        if (target == null) {
+          return false;
+        }
+        return _isSameDate(actual, target);
+      case SmartListOperator.inLast:
+        final delta = _parseRelativeDuration(rule.value);
+        if (delta == null) {
+          return false;
+        }
+        return actual.isAfter(DateTime.now().subtract(delta));
+      case SmartListOperator.notInLast:
+        final delta = _parseRelativeDuration(rule.value);
+        if (delta == null) {
+          return false;
+        }
+        return actual.isBefore(DateTime.now().subtract(delta));
+      default:
+        return false;
+    }
+  }
+
+  bool _evaluateBoolRule(SmartListRule rule, bool actual) {
+    switch (rule.operatorType) {
+      case SmartListOperator.isTrue:
+        return actual;
+      case SmartListOperator.isFalse:
+        return !actual;
+      default:
+        return false;
+    }
+  }
+
+  double? _parseNumber(String? input, {bool isDuration = false}) {
+    if (input == null) {
+      return null;
+    }
+    final trimmed = input.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    if (isDuration) {
+      final duration = _parseDuration(trimmed);
+      if (duration != null) {
+        return duration.inSeconds.toDouble();
+      }
+    }
+    return double.tryParse(trimmed);
+  }
+
+  Duration? _parseDuration(String input) {
+    if (input.contains(':')) {
+      final parts = input.split(':').map((part) => part.trim()).toList();
+      if (parts.any((part) => part.isEmpty)) {
+        return null;
+      }
+      final numbers = parts.map(int.tryParse).toList();
+      if (numbers.any((value) => value == null)) {
+        return null;
+      }
+      if (numbers.length == 2) {
+        return Duration(
+          minutes: numbers[0]!,
+          seconds: numbers[1]!,
+        );
+      }
+      if (numbers.length == 3) {
+        return Duration(
+          hours: numbers[0]!,
+          minutes: numbers[1]!,
+          seconds: numbers[2]!,
+        );
+      }
+    }
+    final seconds = int.tryParse(input);
+    if (seconds == null) {
+      return null;
+    }
+    return Duration(seconds: seconds);
+  }
+
+  DateTime? _parseDate(String input) {
+    final trimmed = input.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(trimmed);
+  }
+
+  bool _isSameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  Duration? _parseRelativeDuration(String input) {
+    final trimmed = input.trim().toLowerCase();
+    final match = RegExp(r'^(\d+)([dwmy])$').firstMatch(trimmed);
+    if (match == null) {
+      return null;
+    }
+    final amount = int.tryParse(match.group(1) ?? '');
+    final unit = match.group(2);
+    if (amount == null || amount <= 0 || unit == null) {
+      return null;
+    }
+    switch (unit) {
+      case 'd':
+        return Duration(days: amount);
+      case 'w':
+        return Duration(days: amount * 7);
+      case 'm':
+        return Duration(days: amount * 30);
+      case 'y':
+        return Duration(days: amount * 365);
+      default:
+        return null;
+    }
+  }
+
   /// Selects an album and loads its tracks.
   Future<void> selectAlbum(Album album, {bool offlineOnly = false}) async {
     _selectedAlbum = album;
+    _selectedSmartList = null;
     _selectedArtist = null;
     _selectedGenre = null;
     _offlineOnlyFilter = offlineOnly;
@@ -1624,6 +2110,7 @@ class AppState extends ChangeNotifier {
   /// Selects an artist and loads their tracks.
   Future<void> selectArtist(Artist artist, {bool offlineOnly = false}) async {
     _selectedArtist = artist;
+    _selectedSmartList = null;
     _selectedAlbum = null;
     _selectedGenre = null;
     _offlineOnlyFilter = offlineOnly;
@@ -1665,6 +2152,7 @@ class AppState extends ChangeNotifier {
   /// Selects a genre and loads its tracks.
   Future<void> selectGenre(Genre genre) async {
     _selectedGenre = genre;
+    _selectedSmartList = null;
     _selectedAlbum = null;
     _selectedArtist = null;
     clearSearch(notify: false);
@@ -2224,6 +2712,9 @@ class AppState extends ChangeNotifier {
     if (!_offlineMode) {
       await _cacheStore.prefetchAudio(track);
     }
+    if (_selectedSmartList != null) {
+      unawaited(_loadSmartListTracks(_selectedSmartList!));
+    }
     notifyListeners();
   }
 
@@ -2231,6 +2722,9 @@ class AppState extends ChangeNotifier {
   Future<void> unpinTrackOffline(MediaItem track) async {
     await _cacheStore.setPinnedAudio(track.streamUrl, false);
     _pinnedAudio.remove(track.streamUrl);
+    if (_selectedSmartList != null) {
+      unawaited(_loadSmartListTracks(_selectedSmartList!));
+    }
     notifyListeners();
   }
 
@@ -2278,6 +2772,9 @@ class AppState extends ChangeNotifier {
         await _cacheStore.prefetchAudio(track);
       }
     }
+    if (_selectedSmartList != null) {
+      unawaited(_loadSmartListTracks(_selectedSmartList!));
+    }
     notifyListeners();
   }
 
@@ -2287,6 +2784,9 @@ class AppState extends ChangeNotifier {
     for (final track in tracks) {
       await _cacheStore.setPinnedAudio(track.streamUrl, false);
       _pinnedAudio.remove(track.streamUrl);
+    }
+    if (_selectedSmartList != null) {
+      unawaited(_loadSmartListTracks(_selectedSmartList!));
     }
     notifyListeners();
   }
@@ -2301,6 +2801,9 @@ class AppState extends ChangeNotifier {
         await _cacheStore.prefetchAudio(track);
       }
     }
+    if (_selectedSmartList != null) {
+      unawaited(_loadSmartListTracks(_selectedSmartList!));
+    }
     notifyListeners();
   }
 
@@ -2310,6 +2813,9 @@ class AppState extends ChangeNotifier {
     for (final track in tracks) {
       await _cacheStore.setPinnedAudio(track.streamUrl, false);
       _pinnedAudio.remove(track.streamUrl);
+    }
+    if (_selectedSmartList != null) {
+      unawaited(_loadSmartListTracks(_selectedSmartList!));
     }
     notifyListeners();
   }
@@ -2542,6 +3048,9 @@ class AppState extends ChangeNotifier {
     _jumpInAlbum = _randomFromList(offlineAlbums);
     _jumpInArtist = _randomFromList(offlineArtists);
     _lastJumpInRefreshAt = DateTime.now();
+    if (_selectedSmartList != null) {
+      _smartListTracks = _buildSmartListTracks(_selectedSmartList!);
+    }
     _isLoadingLibrary = false;
     notifyListeners();
   }
@@ -3225,6 +3734,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     if (_offlineMode) {
       await _cacheStore.saveFavoriteAlbums(_favoriteAlbums);
+      if (_selectedSmartList != null) {
+        unawaited(_loadSmartListTracks(_selectedSmartList!));
+      }
       _favoriteAlbumUpdatesInFlight.remove(album.id);
       notifyListeners();
       return null;
@@ -3232,6 +3744,9 @@ class AppState extends ChangeNotifier {
     try {
       await _client.setFavorite(itemId: album.id, isFavorite: isFavorite);
       await _cacheStore.saveFavoriteAlbums(_favoriteAlbums);
+      if (_selectedSmartList != null) {
+        unawaited(_loadSmartListTracks(_selectedSmartList!));
+      }
       unawaited(_syncAlbumFavoriteOffline(album, isFavorite));
       return null;
     } catch (error) {
@@ -3261,6 +3776,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     if (_offlineMode) {
       await _cacheStore.saveFavoriteArtists(_favoriteArtists);
+      if (_selectedSmartList != null) {
+        unawaited(_loadSmartListTracks(_selectedSmartList!));
+      }
       _favoriteArtistUpdatesInFlight.remove(artist.id);
       notifyListeners();
       return null;
@@ -3268,6 +3786,9 @@ class AppState extends ChangeNotifier {
     try {
       await _client.setFavorite(itemId: artist.id, isFavorite: isFavorite);
       await _cacheStore.saveFavoriteArtists(_favoriteArtists);
+      if (_selectedSmartList != null) {
+        unawaited(_loadSmartListTracks(_selectedSmartList!));
+      }
       unawaited(_syncArtistFavoriteOffline(artist, isFavorite));
       final confirmed = await _client.fetchFavoriteState(artist.id);
       if (confirmed != null && confirmed != isFavorite) {
@@ -3304,6 +3825,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     if (_offlineMode) {
       await _cacheStore.saveFavoriteTracks(_favoriteTracks);
+      if (_selectedSmartList != null) {
+        unawaited(_loadSmartListTracks(_selectedSmartList!));
+      }
       _favoriteTrackUpdatesInFlight.remove(track.id);
       notifyListeners();
       return null;

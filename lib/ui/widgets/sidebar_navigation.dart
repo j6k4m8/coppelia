@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/playlist.dart';
+import '../../models/smart_list.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
 import '../../state/layout_density.dart';
@@ -10,6 +11,7 @@ import '../../state/sidebar_item.dart';
 import '../../core/color_tokens.dart';
 import 'compact_switch.dart';
 import 'playlist_dialogs.dart';
+import 'smart_list_dialogs.dart';
 
 /// Vertical navigation rail for playlists and actions.
 class SidebarNavigation extends StatefulWidget {
@@ -32,6 +34,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
   bool _browseExpanded = true;
   bool _playbackExpanded = true;
   bool _playlistsExpanded = true;
+  bool _smartListsExpanded = true;
 
   void _handleNavigate(VoidCallback action) {
     action();
@@ -63,6 +66,8 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             state.isSidebarItemVisible(SidebarItem.queue);
     final showPlaylistsSection =
         state.isSidebarItemVisible(SidebarItem.playlists);
+    final showSmartListsSection =
+        state.smartLists.isNotEmpty || state.session != null;
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final safeTop = MediaQuery.of(context).padding.top;
@@ -378,6 +383,54 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                   : const SizedBox.shrink(),
             ),
           ],
+          if (showSmartListsSection) ...[
+            SizedBox(height: space(16)),
+            _SectionHeader(
+              title: 'Smart Lists',
+              onTap: () => setState(() {
+                _smartListsExpanded = !_smartListsExpanded;
+              }),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              child: _smartListsExpanded
+                  ? Column(
+                      children: [
+                        SizedBox(height: space(12)),
+                        _PlaylistActionTile(
+                          label: 'New smart list',
+                          enabled:
+                              state.session != null && !state.offlineMode,
+                          onTap: () async {
+                            final created =
+                                await showSmartListEditorDialog(context);
+                            if (created != null) {
+                              final stored =
+                                  await state.createSmartList(created);
+                              await state.selectSmartList(stored);
+                            }
+                          },
+                        ),
+                        SizedBox(height: space(6)),
+                        ...state.smartLists.map(
+                          (smartList) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: _SmartListTile(
+                              smartList: smartList,
+                              selected:
+                                  state.selectedSmartList?.id == smartList.id,
+                              onTap: () => _handleNavigate(
+                                () => state.selectSmartList(smartList),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
           SizedBox(height: space(20)),
           if (showOfflineSection) ...[
             _SectionHeader(
@@ -634,6 +687,58 @@ class _PlaylistTile extends StatelessWidget {
             Expanded(
               child: Text(
                 playlist.name,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SmartListTile extends StatelessWidget {
+  const _SmartListTile({
+    required this.smartList,
+    required this.onTap,
+    required this.selected,
+  });
+
+  final SmartList smartList;
+  final VoidCallback onTap;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: space(12).clamp(8.0, 16.0),
+          vertical: space(10).clamp(6.0, 14.0),
+        ),
+        decoration: BoxDecoration(
+          color: selected ? ColorTokens.activeRow(context) : Colors.transparent,
+          borderRadius: BorderRadius.circular(
+            clamped(14, min: 10, max: 18),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.auto_awesome,
+              size: clamped(16, min: 12, max: 18),
+            ),
+            SizedBox(width: space(10).clamp(6.0, 14.0)),
+            Expanded(
+              child: Text(
+                smartList.name,
                 overflow: TextOverflow.ellipsis,
               ),
             ),

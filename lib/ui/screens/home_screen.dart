@@ -27,6 +27,7 @@ import '../widgets/offline_artists_view.dart';
 import '../widgets/offline_playlists_view.dart';
 import '../widgets/offline_tracks_view.dart';
 import '../widgets/playlist_detail_view.dart';
+import '../widgets/smart_list_detail_view.dart';
 import '../widgets/playlist_card.dart';
 import '../widgets/track_row.dart';
 import '../widgets/search_results_view.dart';
@@ -435,6 +436,7 @@ class _HeaderState extends State<_Header> {
     final state = widget.state;
     final isSearch = state.searchQuery.isNotEmpty || state.isSearching;
     final hasSelection = state.selectedPlaylist != null ||
+        state.selectedSmartList != null ||
         state.selectedAlbum != null ||
         state.selectedArtist != null ||
         state.selectedGenre != null;
@@ -457,6 +459,13 @@ class _HeaderState extends State<_Header> {
       final playlist = state.selectedPlaylist!;
       title = playlist.name;
       subtitle = '${playlist.trackCount} tracks';
+      titleStyle = theme.textTheme.headlineMedium;
+    } else if (state.selectedSmartList != null) {
+      final smartList = state.selectedSmartList!;
+      title = smartList.name;
+      subtitle = state.isLoadingSmartList
+          ? 'Building smart list...'
+          : '${state.smartListTracks.length} tracks';
       titleStyle = theme.textTheme.headlineMedium;
     } else if (state.selectedAlbum != null) {
       final album = state.selectedAlbum!;
@@ -501,13 +510,15 @@ class _HeaderState extends State<_Header> {
 
     final VoidCallback? backAction = state.selectedPlaylist != null
         ? (state.canGoBack ? state.goBack : state.clearPlaylistSelection)
-        : state.selectedAlbum != null ||
-                state.selectedArtist != null ||
-                state.selectedGenre != null
-            ? state.clearBrowseSelection
-            : state.canGoBack && state.selectedView != LibraryView.home
-                ? state.goBack
-                : null;
+        : state.selectedSmartList != null
+            ? (state.canGoBack ? state.goBack : state.clearSmartListSelection)
+            : state.selectedAlbum != null ||
+                    state.selectedArtist != null ||
+                    state.selectedGenre != null
+                ? state.clearBrowseSelection
+                : state.canGoBack && state.selectedView != LibraryView.home
+                    ? state.goBack
+                    : null;
     final titleRow = backAction == null
         ? Text(title, style: titleStyle)
         : Row(
@@ -725,6 +736,9 @@ class _LibraryContent extends StatelessWidget {
     }
     if (state.selectedPlaylist != null) {
       return const PlaylistDetailView();
+    }
+    if (state.selectedSmartList != null) {
+      return const SmartListDetailView();
     }
     if (state.selectedAlbum != null) {
       return const AlbumDetailView();

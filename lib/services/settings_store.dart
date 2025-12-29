@@ -12,6 +12,7 @@ import '../state/layout_density.dart';
 import '../state/sidebar_item.dart';
 import '../state/accent_color_source.dart';
 import '../state/theme_palette_source.dart';
+import '../models/smart_list.dart';
 
 /// Persists user preferences for the app.
 class SettingsStore {
@@ -52,6 +53,7 @@ class SettingsStore {
   static const _layoutDensityKey = 'settings_layout_density';
   static const _deviceIdKey = 'settings_device_id';
   static const _offlineModeKey = 'settings_offline_mode';
+  static const _smartListsKey = 'settings_smart_lists';
   static const int _defaultAccentValue = 0xFF6F7BFF;
 
   /// Loads the preferred theme mode.
@@ -156,6 +158,31 @@ class SettingsStore {
   Future<void> saveOfflineMode(bool enabled) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_offlineModeKey, enabled);
+  }
+
+  /// Loads stored Smart Lists.
+  Future<List<SmartList>> loadSmartLists() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_smartListsKey);
+    if (raw == null || raw.isEmpty) {
+      return [];
+    }
+    try {
+      final payload = jsonDecode(raw) as List<dynamic>;
+      return payload
+          .whereType<Map<String, dynamic>>()
+          .map(SmartList.fromJson)
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Saves Smart Lists locally.
+  Future<void> saveSmartLists(List<SmartList> lists) async {
+    final preferences = await SharedPreferences.getInstance();
+    final payload = lists.map((list) => list.toJson()).toList();
+    await preferences.setString(_smartListsKey, jsonEncode(payload));
   }
 
   /// Loads or generates a unique device identifier.
