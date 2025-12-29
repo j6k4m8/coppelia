@@ -844,7 +844,8 @@ class JellyfinClient {
     ).replace(
       queryParameters: {
         'SearchTerm': query,
-        'IncludeItemTypes': 'Audio,MusicAlbum,MusicArtist,Genre,Playlist',
+        'IncludeItemTypes':
+            'Audio,MusicAlbum,MusicArtist,Artist,Genre,Playlist',
         'Recursive': 'true',
         'Limit': '80',
         'Fields':
@@ -885,6 +886,10 @@ class JellyfinClient {
         artists.add(
           Artist.fromJellyfin(item, serverUrl: session.serverUrl),
         );
+      } else if (type == 'Artist') {
+        artists.add(
+          Artist.fromJellyfin(item, serverUrl: session.serverUrl),
+        );
       } else if (type == 'Genre') {
         genres.add(
           Genre.fromJellyfin(item, serverUrl: session.serverUrl),
@@ -894,6 +899,34 @@ class JellyfinClient {
           Playlist.fromJellyfin(item, serverUrl: session.serverUrl),
         );
       }
+    }
+    if (artists.isEmpty) {
+      try {
+        final artistUri = Uri.parse('${session.serverUrl}/Artists').replace(
+          queryParameters: {
+            'SearchTerm': query,
+            'UserId': session.userId,
+            'Limit': '40',
+            'Fields': 'ImageTags,SongCount,AlbumCount',
+            'api_key': session.accessToken,
+          },
+        );
+        final artistResponse = await _httpClient.get(artistUri);
+        if (artistResponse.statusCode == 200) {
+          final artistPayload =
+              jsonDecode(artistResponse.body) as Map<String, dynamic>;
+          final artistItems =
+              artistPayload['Items'] as List<dynamic>? ?? [];
+          artists.addAll(
+            artistItems.map(
+              (item) => Artist.fromJellyfin(
+                item as Map<String, dynamic>,
+                serverUrl: session.serverUrl,
+              ),
+            ),
+          );
+        }
+      } catch (_) {}
     }
     return SearchResults(
       tracks: tracks,

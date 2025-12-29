@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+import '../models/artist.dart';
+
 /// Formats a duration to mm:ss.
 String formatDuration(Duration duration) {
   final minutes = duration.inMinutes;
@@ -29,4 +31,28 @@ String formatBytes(int bytes) {
 String formatCount(int value) {
   final formatter = NumberFormat.decimalPattern();
   return formatter.format(value);
+}
+
+/// Formats artist stats for UI, avoiding empty "0 tracks" labels.
+String formatArtistSubtitle(
+  Artist artist, {
+  int? fallbackAlbumCount,
+  int? fallbackTrackCount,
+}) {
+  final albumCount = artist.albumCount > 0
+      ? artist.albumCount
+      : (fallbackAlbumCount ?? 0);
+  final trackCount = artist.trackCount > 0
+      ? artist.trackCount
+      : (fallbackTrackCount ?? 0);
+  if (albumCount > 0 && trackCount > 0) {
+    return '$albumCount albums • $trackCount tracks';
+  }
+  if (albumCount > 0) {
+    return '$albumCount albums';
+  }
+  if (trackCount > 0) {
+    return '$trackCount tracks';
+  }
+  return 'Artist';
 }

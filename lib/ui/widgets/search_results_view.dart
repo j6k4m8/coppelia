@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/color_tokens.dart';
+import '../../core/formatters.dart';
 import '../../models/album.dart';
 import '../../models/artist.dart';
 import '../../state/app_state.dart';
@@ -137,7 +138,7 @@ class SearchResultsView extends StatelessWidget {
                 final artist = results.artists[index];
                 return LibraryCoverCard(
                   title: artist.name,
-                  subtitle: '${artist.trackCount} tracks',
+                  subtitle: formatArtistSubtitle(artist),
                   imageUrl: artist.imageUrl,
                   icon: Icons.people_alt,
                   onTap: () => state.selectArtist(artist),

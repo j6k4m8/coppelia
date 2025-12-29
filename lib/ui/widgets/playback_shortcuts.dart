@@ -22,7 +22,7 @@ class PlaybackShortcuts extends StatelessWidget {
       LogicalKeySet(LogicalKeyboardKey.mediaTrackNext): NextTrackIntent(),
       LogicalKeySet(LogicalKeyboardKey.mediaTrackPrevious):
           PreviousTrackIntent(),
-      LogicalKeySet(LogicalKeyboardKey.space): TogglePlaybackWithSpaceIntent(),
+      const _SpacebarActivator(): TogglePlaybackWithSpaceIntent(),
     };
     if (state.settingsShortcutEnabled) {
       shortcuts[state.settingsShortcut.toKeySet()] = OpenSettingsIntent();
@@ -39,12 +39,7 @@ class PlaybackShortcuts extends StatelessWidget {
           ),
           TogglePlaybackWithSpaceIntent:
               CallbackAction<TogglePlaybackWithSpaceIntent>(
-            onInvoke: (_) {
-              if (_isTextEditing()) {
-                return null;
-              }
-              return state.togglePlayback();
-            },
+            onInvoke: (_) => state.togglePlayback(),
           ),
           NextTrackIntent: CallbackAction<NextTrackIntent>(
             onInvoke: (_) => state.nextTrack(),
@@ -72,18 +67,37 @@ class PlaybackShortcuts extends StatelessWidget {
     );
   }
 
-  bool _isTextEditing() {
-    final focus = FocusManager.instance.primaryFocus;
-    final context = focus?.context;
-    if (context == null) {
+}
+
+class _SpacebarActivator extends ShortcutActivator {
+  const _SpacebarActivator();
+
+  @override
+  bool accepts(KeyEvent event, HardwareKeyboard state) {
+    if (event is! KeyDownEvent) {
       return false;
     }
-    final widget = context.widget;
-    if (widget is EditableText) {
-      return true;
+    if (event.logicalKey != LogicalKeyboardKey.space) {
+      return false;
     }
-    return context.findAncestorWidgetOfExactType<EditableText>() != null;
+    return !_isTextEditing();
   }
+
+  @override
+  String debugDescribeKeys() => 'Space';
+}
+
+bool _isTextEditing() {
+  final focus = FocusManager.instance.primaryFocus;
+  final context = focus?.context;
+  if (context == null) {
+    return false;
+  }
+  final widget = context.widget;
+  if (widget is EditableText) {
+    return true;
+  }
+  return context.findAncestorWidgetOfExactType<EditableText>() != null;
 }
 
 /// Intent to toggle playback.

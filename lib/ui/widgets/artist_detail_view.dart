@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/color_tokens.dart';
 import '../../models/album.dart';
+import '../../core/formatters.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'artwork_image.dart';
@@ -49,9 +50,6 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
     if (artist == null) {
       return const SizedBox.shrink();
     }
-    final subtitle = artist.albumCount > 0
-        ? '${artist.albumCount} albums • ${artist.trackCount} tracks'
-        : '${artist.trackCount} tracks';
     final albums = _albumsForArtist(state.albums, artist.name);
     final hasAlbums = albums.isNotEmpty;
     final tracks = state.artistTracks;
@@ -61,6 +59,11 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
         .toList();
     final displayTracks =
         state.offlineOnlyFilter ? offlineTracks : tracks;
+    final subtitle = formatArtistSubtitle(
+      artist,
+      fallbackAlbumCount: albums.length,
+      fallbackTrackCount: tracks.length,
+    );
     final trackStartIndex = hasAlbums ? 2 : 1;
     final headerImageUrl = artist.imageUrl ??
         (albums.isNotEmpty ? albums.first.imageUrl : null) ??

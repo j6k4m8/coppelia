@@ -30,6 +30,7 @@ import '../widgets/playlist_detail_view.dart';
 import '../widgets/playlist_card.dart';
 import '../widgets/track_row.dart';
 import '../widgets/search_results_view.dart';
+import '../../core/formatters.dart';
 import '../widgets/settings_view.dart';
 import '../widgets/sidebar_navigation.dart';
 import '../widgets/sidebar_resize_handle.dart';
@@ -474,9 +475,10 @@ class _HeaderState extends State<_Header> {
     } else if (state.selectedArtist != null) {
       final artist = state.selectedArtist!;
       title = artist.name;
-      subtitle = artist.albumCount > 0
-          ? '${artist.albumCount} albums • ${artist.trackCount} tracks'
-          : '${artist.trackCount} tracks';
+      subtitle = formatArtistSubtitle(
+        artist,
+        fallbackTrackCount: state.artistTracks.length,
+      );
       titleStyle = theme.textTheme.headlineMedium;
     } else if (state.selectedGenre != null) {
       final genre = state.selectedGenre!;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/artist.dart';
+import '../../core/formatters.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
 import 'context_menu.dart';
@@ -22,13 +23,9 @@ class ArtistsView extends StatelessWidget {
       title: 'Artists',
       items: state.artists,
       titleBuilder: (artist) => artist.name,
-      subtitleBuilder: (artist) => artist.albumCount > 0
-          ? '${artist.albumCount} albums'
-          : '${artist.trackCount} tracks',
+      subtitleBuilder: (artist) => formatArtistSubtitle(artist),
       gridItemBuilder: (context, artist) {
-        final subtitle = artist.albumCount > 0
-            ? '${artist.albumCount} albums'
-            : '${artist.trackCount} tracks';
+        final subtitle = formatArtistSubtitle(artist);
         return LibraryCoverCard(
           title: artist.name,
           subtitle: subtitle,
@@ -44,9 +41,7 @@ class ArtistsView extends StatelessWidget {
         );
       },
       listItemBuilder: (context, artist) {
-        final subtitle = artist.albumCount > 0
-            ? '${artist.albumCount} albums'
-            : '${artist.trackCount} tracks';
+        final subtitle = formatArtistSubtitle(artist);
         return LibraryListTile(
           title: artist.name,
           subtitle: subtitle,

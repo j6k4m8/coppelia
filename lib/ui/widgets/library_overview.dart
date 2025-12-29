@@ -6,6 +6,7 @@ import '../../state/home_section.dart';
 import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
 import '../../core/color_tokens.dart';
+import '../../core/formatters.dart';
 import 'featured_track_card.dart';
 import 'media_card.dart';
 import 'playlist_card.dart';
@@ -182,7 +183,7 @@ class LibraryOverview extends StatelessWidget {
           _JumpInEntry(
             label: 'Artist',
             title: artist.name,
-            subtitle: '${artist.trackCount} tracks',
+            subtitle: formatArtistSubtitle(artist),
             imageUrl: artist.imageUrl,
             icon: Icons.person,
             onTap: () => state.selectArtist(artist),
