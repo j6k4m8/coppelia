@@ -7,7 +7,7 @@ import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
 import '../../core/color_tokens.dart';
 import 'featured_track_card.dart';
-import 'artwork_image.dart';
+import 'media_card.dart';
 import 'playlist_card.dart';
 import 'section_header.dart';
 
@@ -339,21 +339,8 @@ class _JumpInCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
-    double clamped(double value, {double min = 0, double max = 999}) =>
-        (value * densityScale).clamp(min, max);
-    final cardRadius = clamped(22, min: 12, max: 26);
-    Widget buildArtworkFallback() => Container(
-          color: ColorTokens.cardFillStrong(context),
-          child: Center(
-            child: Icon(
-              entry.icon,
-              size: clamped(32, min: 18, max: 36),
-            ),
-          ),
-        );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -367,67 +354,13 @@ class _JumpInCard extends StatelessWidget {
         SizedBox(height: space(8).clamp(6.0, 12.0)),
         AspectRatio(
           aspectRatio: 1.05,
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: entry.onTap,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: ColorTokens.cardFill(context),
-                  borderRadius: BorderRadius.circular(cardRadius),
-                  border: Border.all(color: ColorTokens.border(context)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(cardRadius),
-                          topRight: Radius.circular(cardRadius),
-                        ),
-                        child: entry.imageUrl == null
-                            ? buildArtworkFallback()
-                            : ArtworkImage(
-                                imageUrl: entry.imageUrl,
-                                fit: BoxFit.cover,
-                                placeholder: buildArtworkFallback(),
-                              ),
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        space(16).clamp(10.0, 20.0),
-                        space(12).clamp(8.0, 16.0),
-                        space(16).clamp(10.0, 20.0),
-                        space(16).clamp(8.0, 20.0),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            entry.title,
-                            style: theme.textTheme.titleMedium,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: space(4).clamp(2.0, 6.0)),
-                          Text(
-                            entry.subtitle,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: ColorTokens.textSecondary(context),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          child: MediaCard(
+            layout: MediaCardLayout.vertical,
+            title: entry.title,
+            subtitle: entry.subtitle,
+            imageUrl: entry.imageUrl,
+            fallbackIcon: entry.icon,
+            onTap: entry.onTap,
           ),
         ),
       ],

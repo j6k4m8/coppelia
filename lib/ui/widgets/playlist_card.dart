@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/playlist.dart';
-import '../../core/color_tokens.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
-import 'artwork_image.dart';
+import 'media_card.dart';
 
 /// Artwork tile for a playlist.
 class PlaylistCard extends StatelessWidget {
@@ -28,96 +27,18 @@ class PlaylistCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
-    double space(double value) => value * densityScale;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
-    final cardRadius = clamped(22, min: 12, max: 26);
-    Widget buildArtworkFallback() => Container(
-          color: ColorTokens.cardFillStrong(context),
-          child: Center(
-            child: Icon(
-              Icons.queue_music,
-              size: clamped(32, min: 18, max: 36),
-            ),
-          ),
-        );
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Container(
-          width: clamped(200, min: 130, max: 240),
-          decoration: BoxDecoration(
-            color: ColorTokens.cardFill(context),
-            borderRadius: BorderRadius.circular(cardRadius),
-            border: Border.all(color: ColorTokens.border(context)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(cardRadius),
-                    topRight: Radius.circular(cardRadius),
-                  ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      playlist.imageUrl == null
-                          ? buildArtworkFallback()
-                          : ArtworkImage(
-                              imageUrl: playlist.imageUrl,
-                              fit: BoxFit.cover,
-                              placeholder: buildArtworkFallback(),
-                            ),
-                      if (onPlay != null)
-                        Align(
-                          alignment: Alignment.bottomRight,
-                          child: Padding(
-                            padding: EdgeInsets.all(
-                              space(10).clamp(4.0, 12.0),
-                            ),
-                            child: _PlayOverlayButton(onTap: onPlay!),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  space(16).clamp(10.0, 20.0),
-                  space(12).clamp(8.0, 16.0),
-                  space(16).clamp(10.0, 20.0),
-                  space(16).clamp(8.0, 20.0),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      playlist.name,
-                      style: theme.textTheme.titleMedium,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: space(4).clamp(2.0, 6.0)),
-                    Text(
-                      '${playlist.trackCount} tracks',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: ColorTokens.textSecondary(context),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return MediaCard(
+      layout: MediaCardLayout.vertical,
+      title: playlist.name,
+      subtitle: '${playlist.trackCount} tracks',
+      imageUrl: playlist.imageUrl,
+      fallbackIcon: Icons.queue_music,
+      onTap: onTap,
+      width: clamped(200, min: 130, max: 240),
+      artOverlay: onPlay == null ? null : _PlayOverlayButton(onTap: onPlay!),
     );
   }
 }
