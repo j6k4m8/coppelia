@@ -27,7 +27,8 @@ class PlaylistCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale =
+        context.select((AppState state) => state.layoutDensity.scaleDouble);
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
     return MediaCard(

@@ -59,19 +59,23 @@ class _AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    final hasSession = state.session != null;
+    final state = context.read<AppState>();
+    final themeMode = context.select((AppState s) => s.themeMode);
+    final fontFamily = context.select((AppState s) => s.fontFamily);
+    final fontScale = context.select((AppState s) => s.fontScale);
+    final hasSession = context.select((AppState s) => s.session != null);
+    final isPlaying = context.select((AppState s) => s.isPlaying);
     final app = MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: CoppeliaTheme.lightTheme(
-        fontFamily: state.fontFamily,
-        fontScale: state.fontScale,
+        fontFamily: fontFamily,
+        fontScale: fontScale,
       ),
       darkTheme: CoppeliaTheme.darkTheme(
-        fontFamily: state.fontFamily,
-        fontScale: state.fontScale,
+        fontFamily: fontFamily,
+        fontScale: fontScale,
       ),
-      themeMode: state.themeMode,
+      themeMode: themeMode,
       home: const _RootRouter(),
       builder: (context, child) {
         return PlaybackShortcuts(child: child ?? const SizedBox.shrink());
@@ -105,7 +109,7 @@ class _AppShell extends StatelessWidget {
           label: 'Playback',
           menus: [
             PlatformMenuItem(
-              label: state.isPlaying ? 'Pause' : 'Play',
+              label: isPlaying ? 'Pause' : 'Play',
               onSelected: hasSession ? state.togglePlayback : null,
             ),
             PlatformMenuItem(
@@ -129,8 +133,11 @@ class _RootRouter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    if (state.isBootstrapping) {
+    final isBootstrapping =
+        context.select((AppState state) => state.isBootstrapping);
+    final hasSession =
+        context.select((AppState state) => state.session != null);
+    if (isBootstrapping) {
       return const Scaffold(
         body: Center(
           child: CircularProgressIndicator(),
@@ -138,7 +145,7 @@ class _RootRouter extends StatelessWidget {
       );
     }
 
-    if (state.session == null) {
+    if (!hasSession) {
       return const LoginScreen();
     }
 

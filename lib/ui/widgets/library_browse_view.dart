@@ -101,11 +101,12 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    final density = state.layoutDensity;
-    final densityScale = state.layoutDensity.scaleDouble;
+    final density =
+        context.select((AppState state) => state.layoutDensity);
+    final densityScale = density.scaleDouble;
+    final layout = context
+        .select((AppState state) => state.browseLayoutFor(widget.view));
     double space(double value) => value * densityScale;
-    final layout = state.browseLayoutFor(widget.view);
     final itemCount = widget.items.length;
     final letterIndex = _buildLetterIndex(widget.items);
     final letters = letterIndex.keys.toList(growable: false);
@@ -156,7 +157,9 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                     .toList(),
                 selected: {layout},
                 onSelectionChanged: (selection) {
-                  state.setBrowseLayout(widget.view, selection.first);
+                  context
+                      .read<AppState>()
+                      .setBrowseLayout(widget.view, selection.first);
                 },
               ),
             ],
