@@ -12,6 +12,10 @@ class MediaItem {
     this.albumId,
     this.artistIds = const [],
     this.playlistItemId,
+    this.addedAt,
+    this.playCount,
+    this.lastPlayedAt,
+    this.genres = const [],
   });
 
   /// Jellyfin item identifier.
@@ -43,6 +47,18 @@ class MediaItem {
 
   /// Playlist entry identifier when loaded from a playlist.
   final String? playlistItemId;
+
+  /// Library add date.
+  final DateTime? addedAt;
+
+  /// Times this track has been played.
+  final int? playCount;
+
+  /// Last played timestamp.
+  final DateTime? lastPlayedAt;
+
+  /// Genre labels for the track.
+  final List<String> genres;
 
   /// User-friendly subtitle.
   String get subtitle => artists.isEmpty ? album : artists.join(', ');
@@ -85,6 +101,18 @@ class MediaItem {
             .toList() ??
         const <String>[];
     final playlistItemId = json['PlaylistItemId']?.toString();
+    final addedAtRaw = json['DateCreated']?.toString();
+    final addedAt =
+        addedAtRaw == null ? null : DateTime.tryParse(addedAtRaw);
+    final userData = json['UserData'] as Map<String, dynamic>?;
+    final playCount = (userData?['PlayCount'] as num?)?.toInt();
+    final lastPlayedRaw = userData?['LastPlayedDate']?.toString();
+    final lastPlayedAt =
+        lastPlayedRaw == null ? null : DateTime.tryParse(lastPlayedRaw);
+    final genres = (json['Genres'] as List<dynamic>? ?? const [])
+        .map((entry) => entry.toString())
+        .where((entry) => entry.isNotEmpty)
+        .toList();
 
     return MediaItem(
       id: id,
@@ -99,6 +127,10 @@ class MediaItem {
       albumId: albumId,
       artistIds: artistIds,
       playlistItemId: playlistItemId,
+      addedAt: addedAt,
+      playCount: playCount,
+      lastPlayedAt: lastPlayedAt,
+      genres: genres,
     );
   }
 
@@ -114,6 +146,10 @@ class MediaItem {
         'albumId': albumId,
         'artistIds': artistIds,
         'playlistItemId': playlistItemId,
+        'addedAt': addedAt?.toIso8601String(),
+        'playCount': playCount,
+        'lastPlayedAt': lastPlayedAt?.toIso8601String(),
+        'genres': genres,
       };
 
   /// Restores a track from cached JSON.
@@ -134,5 +170,16 @@ class MediaItem {
                 .toList() ??
             const [],
         playlistItemId: json['playlistItemId'] as String?,
+        addedAt: json['addedAt'] == null
+            ? null
+            : DateTime.tryParse(json['addedAt'] as String),
+        playCount: json['playCount'] as int?,
+        lastPlayedAt: json['lastPlayedAt'] == null
+            ? null
+            : DateTime.tryParse(json['lastPlayedAt'] as String),
+        genres: (json['genres'] as List<dynamic>?)
+                ?.map((entry) => entry.toString())
+                .toList() ??
+            const [],
       );
 }

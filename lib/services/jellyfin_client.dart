@@ -236,7 +236,8 @@ class JellyfinClient {
     ).replace(
       queryParameters: {
         'Fields':
-            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems',
+            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+                'DateCreated,UserData,Genres',
         'api_key': session.accessToken,
       },
     );
@@ -583,7 +584,8 @@ class JellyfinClient {
         'ParentId': albumId,
         'IncludeItemTypes': 'Audio',
         'Recursive': 'true',
-        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems',
+        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+            'DateCreated,UserData,Genres',
         'api_key': session.accessToken,
       },
     );
@@ -615,7 +617,8 @@ class JellyfinClient {
         'IncludeItemTypes': 'Audio',
         'Recursive': 'true',
         'SortBy': 'Album,SortName',
-        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems',
+        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+            'DateCreated,UserData,Genres',
         'api_key': session.accessToken,
       },
     );
@@ -647,7 +650,8 @@ class JellyfinClient {
         'IncludeItemTypes': 'Audio',
         'Recursive': 'true',
         'SortBy': 'Album,SortName',
-        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems',
+        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+            'DateCreated,UserData,Genres',
         'api_key': session.accessToken,
       },
     );
@@ -775,7 +779,8 @@ class JellyfinClient {
         'Filters': 'IsFavorite',
         'SortBy': 'SortName',
         'Fields':
-            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems',
+            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+                'DateCreated,UserData,Genres',
         'api_key': session.accessToken,
       },
     );
@@ -941,6 +946,7 @@ class JellyfinClient {
         'Limit': '80',
         'Fields':
             'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+                'DateCreated,UserData,Genres,'
                 'ChildCount,AlbumArtist,AlbumArtists,SongCount,AlbumCount',
         'api_key': session.accessToken,
       },
@@ -1041,7 +1047,8 @@ class JellyfinClient {
         'Limit': '12',
         'Recursive': 'true',
         'Fields':
-            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems',
+            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+                'DateCreated,UserData,Genres',
         'api_key': session.accessToken,
       },
     );
@@ -1075,7 +1082,8 @@ class JellyfinClient {
         'Limit': '12',
         'Recursive': 'true',
         'Fields':
-            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems',
+            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+                'DateCreated,UserData,Genres',
         'api_key': session.accessToken,
       },
     );
@@ -1109,7 +1117,8 @@ class JellyfinClient {
       'SortOrder': 'Ascending',
       'StartIndex': '$startIndex',
       'Limit': '$limit',
-      'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems',
+      'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+          'DateCreated,UserData,Genres',
       'api_key': session.accessToken,
     };
     final uri = Uri.parse(
@@ -1143,7 +1152,8 @@ class JellyfinClient {
         'Recursive': 'true',
         'SortBy': 'Random',
         'Limit': '1',
-        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems',
+        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+            'DateCreated,UserData,Genres',
         'api_key': session.accessToken,
       },
     );

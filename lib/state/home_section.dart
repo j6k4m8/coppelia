@@ -11,6 +11,9 @@ enum HomeSection {
 
   /// Random picks shelf.
   jumpIn,
+
+  /// Smart Lists shelf.
+  smartLists,
 }
 
 extension HomeSectionMetadata on HomeSection {
@@ -25,6 +28,8 @@ extension HomeSectionMetadata on HomeSection {
         return 'playlists';
       case HomeSection.jumpIn:
         return 'jumpIn';
+      case HomeSection.smartLists:
+        return 'smartLists';
     }
   }
 
@@ -39,6 +44,8 @@ extension HomeSectionMetadata on HomeSection {
         return 'Playlists';
       case HomeSection.jumpIn:
         return 'Jump in';
+      case HomeSection.smartLists:
+        return 'Smart Lists';
     }
   }
 
@@ -53,6 +60,8 @@ extension HomeSectionMetadata on HomeSection {
         return 'Show playlists on Home.';
       case HomeSection.jumpIn:
         return 'Show random picks from your library.';
+      case HomeSection.smartLists:
+        return 'Show smart lists marked for Home.';
     }
   }
 }

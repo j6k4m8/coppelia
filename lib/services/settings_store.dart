@@ -12,6 +12,7 @@ import '../state/layout_density.dart';
 import '../state/sidebar_item.dart';
 import '../state/accent_color_source.dart';
 import '../state/theme_palette_source.dart';
+import '../models/smart_list.dart';
 
 /// Persists user preferences for the app.
 class SettingsStore {
@@ -23,6 +24,7 @@ class SettingsStore {
   static const _sidebarWidthKey = 'settings_sidebar_width';
   static const _sidebarCollapsedKey = 'settings_sidebar_collapsed';
   static const _homeSectionKey = 'settings_home_sections';
+  static const _homeSectionOrderKey = 'settings_home_section_order';
   static const _sidebarVisibilityKey = 'settings_sidebar_visibility';
   static const _fontFamilyKey = 'settings_font_family';
   static const _fontScaleKey = 'settings_font_scale';
@@ -32,6 +34,7 @@ class SettingsStore {
   static const _telemetryPlaybackKey = 'settings_telemetry_playback';
   static const _telemetryProgressKey = 'settings_telemetry_progress';
   static const _telemetryHistoryKey = 'settings_telemetry_history';
+  static const _gaplessPlaybackKey = 'settings_gapless_playback';
   static const _autoDownloadFavoritesKey =
       'settings_auto_download_favorites';
   static const _autoDownloadFavoriteAlbumsKey =
@@ -51,6 +54,7 @@ class SettingsStore {
   static const _layoutDensityKey = 'settings_layout_density';
   static const _deviceIdKey = 'settings_device_id';
   static const _offlineModeKey = 'settings_offline_mode';
+  static const _smartListsKey = 'settings_smart_lists';
   static const int _defaultAccentValue = 0xFF6F7BFF;
 
   /// Loads the preferred theme mode.
@@ -132,6 +136,19 @@ class SettingsStore {
     await preferences.setString(_searchShortcutKey, shortcut.serialize());
   }
 
+  /// Loads whether gapless playback is enabled.
+  Future<bool> loadGaplessPlayback() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_gaplessPlaybackKey) ?? true;
+  }
+
+  /// Saves whether gapless playback is enabled.
+  Future<void> saveGaplessPlayback(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_gaplessPlaybackKey, enabled);
+  }
+
+
   /// Loads whether offline mode is enabled.
   Future<bool> loadOfflineMode() async {
     final preferences = await SharedPreferences.getInstance();
@@ -142,6 +159,31 @@ class SettingsStore {
   Future<void> saveOfflineMode(bool enabled) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_offlineModeKey, enabled);
+  }
+
+  /// Loads stored Smart Lists.
+  Future<List<SmartList>> loadSmartLists() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_smartListsKey);
+    if (raw == null || raw.isEmpty) {
+      return [];
+    }
+    try {
+      final payload = jsonDecode(raw) as List<dynamic>;
+      return payload
+          .whereType<Map<String, dynamic>>()
+          .map(SmartList.fromJson)
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Saves Smart Lists locally.
+  Future<void> saveSmartLists(List<SmartList> lists) async {
+    final preferences = await SharedPreferences.getInstance();
+    final payload = lists.map((list) => list.toJson()).toList();
+    await preferences.setString(_smartListsKey, jsonEncode(payload));
   }
 
   /// Loads or generates a unique device identifier.
@@ -238,6 +280,51 @@ class SettingsStore {
       }
     }
     return visibility;
+  }
+
+  /// Loads the preferred home section order.
+  Future<List<HomeSection>> loadHomeSectionOrder() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_homeSectionOrderKey);
+    final defaultOrder = List<HomeSection>.from(HomeSection.values);
+    if (raw == null || raw.isEmpty) {
+      return defaultOrder;
+    }
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      final ordered = decoded
+          .map((entry) => entry?.toString())
+          .whereType<String>()
+          .map(
+            (key) => HomeSection.values.firstWhere(
+              (section) => section.storageKey == key,
+              orElse: () => HomeSection.featured,
+            ),
+          )
+          .toList();
+      final seen = <HomeSection>{};
+      final filtered = <HomeSection>[];
+      for (final section in ordered) {
+        if (seen.add(section)) {
+          filtered.add(section);
+        }
+      }
+      for (final section in HomeSection.values) {
+        if (!seen.contains(section)) {
+          filtered.add(section);
+        }
+      }
+      return filtered;
+    } catch (_) {
+      return defaultOrder;
+    }
+  }
+
+  /// Saves the preferred home section order.
+  Future<void> saveHomeSectionOrder(List<HomeSection> order) async {
+    final preferences = await SharedPreferences.getInstance();
+    final payload = order.map((section) => section.storageKey).toList();
+    await preferences.setString(_homeSectionOrderKey, jsonEncode(payload));
   }
 
   /// Saves the preferred home section visibility map.

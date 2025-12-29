@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/playlist.dart';
+import '../../models/smart_list.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
 import '../../state/layout_density.dart';
@@ -10,6 +11,7 @@ import '../../state/sidebar_item.dart';
 import '../../core/color_tokens.dart';
 import 'compact_switch.dart';
 import 'playlist_dialogs.dart';
+import 'smart_list_dialogs.dart';
 
 /// Vertical navigation rail for playlists and actions.
 class SidebarNavigation extends StatefulWidget {
@@ -32,10 +34,97 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
   bool _browseExpanded = true;
   bool _playbackExpanded = true;
   bool _playlistsExpanded = true;
+  bool _smartListsExpanded = true;
 
   void _handleNavigate(VoidCallback action) {
     action();
     widget.onNavigate?.call();
+  }
+
+  Future<void> _renameSmartList(
+    BuildContext context,
+    SmartList smartList,
+  ) async {
+    final controller = TextEditingController(text: smartList.name);
+    String value = controller.text;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Rename smart list'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            onChanged: (text) => setState(() {
+              value = text;
+            }),
+            onSubmitted: (_) => Navigator.of(context).pop(value),
+            decoration: const InputDecoration(hintText: 'Smart list name'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: value.trim().isEmpty
+                  ? null
+                  : () => Navigator.of(context).pop(value),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    final trimmed = result?.trim();
+    if (!mounted || trimmed == null || trimmed.isEmpty) {
+      return;
+    }
+    await context
+        .read<AppState>()
+        .updateSmartList(smartList.copyWith(name: trimmed));
+  }
+
+  Future<void> _duplicateSmartList(
+    BuildContext context,
+    SmartList smartList,
+  ) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final copy = smartList.copyWith(
+      id: 'smart-$now',
+      name: '${smartList.name} Copy',
+    );
+    final created = await context.read<AppState>().createSmartList(copy);
+    if (mounted) {
+      await context.read<AppState>().selectSmartList(created);
+    }
+  }
+
+  Future<void> _deleteSmartList(
+    BuildContext context,
+    SmartList smartList,
+  ) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Smart List?'),
+        content: Text('“${smartList.name}” will be deleted.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (result == true && mounted) {
+      await context.read<AppState>().deleteSmartList(smartList);
+    }
   }
 
   @override
@@ -63,6 +152,8 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             state.isSidebarItemVisible(SidebarItem.queue);
     final showPlaylistsSection =
         state.isSidebarItemVisible(SidebarItem.playlists);
+    final showSmartListsSection =
+        state.smartLists.isNotEmpty || state.session != null;
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final safeTop = MediaQuery.of(context).padding.top;
@@ -378,6 +469,85 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                   : const SizedBox.shrink(),
             ),
           ],
+          if (showSmartListsSection) ...[
+            SizedBox(height: space(16)),
+            _SectionHeader(
+              title: 'Smart Lists',
+              onTap: () => setState(() {
+                _smartListsExpanded = !_smartListsExpanded;
+              }),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              child: _smartListsExpanded
+                  ? Column(
+                      children: [
+                        SizedBox(height: space(12)),
+                        _PlaylistActionTile(
+                          label: 'New smart list',
+                          enabled:
+                              state.session != null && !state.offlineMode,
+                          onTap: () async {
+                            final created =
+                                await showSmartListEditorDialog(context);
+                            if (created != null) {
+                              final stored =
+                                  await state.createSmartList(created);
+                              await state.selectSmartList(stored);
+                            }
+                          },
+                        ),
+                        SizedBox(height: space(6)),
+                        if (state.smartLists.isEmpty)
+                          Padding(
+                            padding: EdgeInsets.only(
+                              left: space(12).clamp(8.0, 16.0),
+                              right: space(12).clamp(8.0, 16.0),
+                              bottom: space(8),
+                            ),
+                            child: Text(
+                              'Build playlists that update themselves.',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color:
+                                        ColorTokens.textSecondary(context, 0.6),
+                                  ),
+                            ),
+                          )
+                        else
+                          ...state.smartLists.map(
+                            (smartList) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: _SmartListTile(
+                                smartList: smartList,
+                                selected: state.selectedSmartList?.id ==
+                                    smartList.id,
+                                onTap: () => _handleNavigate(
+                                  () => state.selectSmartList(smartList),
+                                ),
+                                onRename: () =>
+                                    _renameSmartList(context, smartList),
+                                onDuplicate: () =>
+                                    _duplicateSmartList(context, smartList),
+                                onToggleHome: () {
+                                  final updated = smartList.copyWith(
+                                    showOnHome: !smartList.showOnHome,
+                                  );
+                                  state.updateSmartList(updated);
+                                },
+                                onDelete: () =>
+                                    _deleteSmartList(context, smartList),
+                              ),
+                            ),
+                          ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
           SizedBox(height: space(20)),
           if (showOfflineSection) ...[
             _SectionHeader(
@@ -642,6 +812,129 @@ class _PlaylistTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SmartListTile extends StatelessWidget {
+  const _SmartListTile({
+    required this.smartList,
+    required this.onTap,
+    required this.selected,
+    required this.onRename,
+    required this.onDuplicate,
+    required this.onToggleHome,
+    required this.onDelete,
+  });
+
+  final SmartList smartList;
+  final VoidCallback onTap;
+  final bool selected;
+  final VoidCallback onRename;
+  final VoidCallback onDuplicate;
+  final VoidCallback onToggleHome;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      onSecondaryTapDown: (details) {
+        showMenu<_SmartListContextAction>(
+          context: context,
+          position: RelativeRect.fromLTRB(
+            details.globalPosition.dx,
+            details.globalPosition.dy,
+            details.globalPosition.dx,
+            details.globalPosition.dy,
+          ),
+          items: [
+            const PopupMenuItem(
+              value: _SmartListContextAction.open,
+              child: Text('Open'),
+            ),
+            const PopupMenuItem(
+              value: _SmartListContextAction.rename,
+              child: Text('Rename'),
+            ),
+            const PopupMenuItem(
+              value: _SmartListContextAction.duplicate,
+              child: Text('Duplicate'),
+            ),
+            PopupMenuItem(
+              value: _SmartListContextAction.toggleHome,
+              child: Text(
+                smartList.showOnHome ? 'Remove from Home' : 'Add to Home',
+              ),
+            ),
+            const PopupMenuItem(
+              value: _SmartListContextAction.delete,
+              child: Text('Delete'),
+            ),
+          ],
+        ).then((value) {
+          switch (value) {
+            case _SmartListContextAction.open:
+              onTap();
+              break;
+            case _SmartListContextAction.rename:
+              onRename();
+              break;
+            case _SmartListContextAction.duplicate:
+              onDuplicate();
+              break;
+            case _SmartListContextAction.toggleHome:
+              onToggleHome();
+              break;
+            case _SmartListContextAction.delete:
+              onDelete();
+              break;
+            case null:
+              break;
+          }
+        });
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: space(12).clamp(8.0, 16.0),
+          vertical: space(10).clamp(6.0, 14.0),
+        ),
+        decoration: BoxDecoration(
+          color: selected ? ColorTokens.activeRow(context) : Colors.transparent,
+          borderRadius: BorderRadius.circular(
+            clamped(14, min: 10, max: 18),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.auto_awesome,
+              size: clamped(16, min: 12, max: 18),
+            ),
+            SizedBox(width: space(10).clamp(6.0, 14.0)),
+            Expanded(
+              child: Text(
+                smartList.name,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+enum _SmartListContextAction {
+  open,
+  rename,
+  duplicate,
+  toggleHome,
+  delete,
 }
 
 class _PlaylistActionTile extends StatelessWidget {

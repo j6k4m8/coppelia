@@ -9,7 +9,7 @@ import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../core/color_tokens.dart';
 import 'app_snack.dart';
-import 'artwork_image.dart';
+import 'collection_header.dart';
 import 'playlist_dialogs.dart';
 import 'track_row.dart';
 
@@ -281,126 +281,48 @@ class _PlaylistHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.read<AppState>();
-    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
-    double space(double value) => value * densityScale;
-    double clamped(double value, {double min = 0, double max = 999}) =>
-        (value * densityScale).clamp(min, max);
-    Widget buildArtworkFallback(bool isNarrow) => Container(
-          width: clamped(isNarrow ? 160 : 140, min: 110, max: 190),
-          height: clamped(isNarrow ? 160 : 140, min: 110, max: 190),
-          color: ColorTokens.cardFillStrong(context),
-          child: Icon(
-            Icons.queue_music,
-            size: clamped(36, min: 26, max: 42),
-          ),
-        );
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(space(24).clamp(14.0, 32.0)),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: ColorTokens.heroGradient(context),
-        ),
-        borderRadius: BorderRadius.circular(
-          clamped(26, min: 16, max: 30),
-        ),
-        border: Border.all(color: ColorTokens.border(context)),
+    final actions = <Widget>[
+      FilledButton.icon(
+        onPressed:
+            tracks.isEmpty ? null : () => state.playFromList(tracks, tracks.first),
+        icon: const Icon(Icons.play_arrow),
+        label: const Text('Play'),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 720;
-          final artworkSize =
-              clamped(isNarrow ? 160 : 140, min: 110, max: 190);
-          final artwork = ClipRRect(
-            borderRadius: BorderRadius.circular(
-              clamped(20, min: 12, max: 24),
+      if (tracks.isNotEmpty)
+        FilledButton.tonalIcon(
+          onPressed: () => state.playShuffledList(tracks),
+          icon: const Icon(Icons.shuffle),
+          label: const Text('Shuffle'),
+        ),
+      if (canEdit)
+        PopupMenuButton<_PlaylistHeaderAction>(
+          tooltip: 'Playlist options',
+          onSelected: (value) {
+            if (value == _PlaylistHeaderAction.rename) {
+              onRename?.call();
+            } else if (value == _PlaylistHeaderAction.delete) {
+              onDelete?.call();
+            }
+          },
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: _PlaylistHeaderAction.rename,
+              child: Text('Rename'),
             ),
-            child: ArtworkImage(
-              imageUrl: playlist.imageUrl,
-              width: artworkSize,
-              height: artworkSize,
-              fit: BoxFit.cover,
-              placeholder: buildArtworkFallback(isNarrow),
+            const PopupMenuItem(
+              value: _PlaylistHeaderAction.delete,
+              child: Text('Delete'),
             ),
-          );
-          final details = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                playlist.name,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              SizedBox(height: space(8)),
-              Text(
-                '${playlist.trackCount} tracks',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: ColorTokens.textSecondary(context)),
-              ),
-              SizedBox(height: space(16)),
-              Wrap(
-                spacing: space(12),
-                runSpacing: space(8),
-                children: [
-                  FilledButton.icon(
-                    onPressed: tracks.isEmpty
-                        ? null
-                        : () => state.playFromList(tracks, tracks.first),
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('Play'),
-                  ),
-                  if (tracks.isNotEmpty)
-                    FilledButton.tonalIcon(
-                      onPressed: () => state.playShuffledList(tracks),
-                      icon: const Icon(Icons.shuffle),
-                      label: const Text('Shuffle'),
-                    ),
-                  if (canEdit)
-                    PopupMenuButton<_PlaylistHeaderAction>(
-                      tooltip: 'Playlist options',
-                      onSelected: (value) {
-                        if (value == _PlaylistHeaderAction.rename) {
-                          onRename?.call();
-                        } else if (value == _PlaylistHeaderAction.delete) {
-                          onDelete?.call();
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: _PlaylistHeaderAction.rename,
-                          child: Text('Rename'),
-                        ),
-                        const PopupMenuItem(
-                          value: _PlaylistHeaderAction.delete,
-                          child: Text('Delete'),
-                        ),
-                      ],
-                      icon: const Icon(Icons.more_horiz),
-                    ),
-                ],
-              ),
-            ],
-          );
-          if (isNarrow) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                artwork,
-                SizedBox(height: space(20)),
-                details,
-              ],
-            );
-          }
-          return Row(
-            children: [
-              artwork,
-              SizedBox(width: space(24)),
-              Expanded(child: details),
-            ],
-          );
-        },
-      ),
+          ],
+          icon: const Icon(Icons.more_horiz),
+        ),
+    ];
+    return CollectionHeader(
+      title: playlist.name,
+      subtitle: '${playlist.trackCount} tracks',
+      imageUrl: playlist.imageUrl,
+      fallbackIcon: Icons.queue_music,
+      actions: actions,
     );
   }
 }

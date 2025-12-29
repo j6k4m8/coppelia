@@ -11,6 +11,7 @@ import 'featured_track_card.dart';
 import 'media_card.dart';
 import 'playlist_card.dart';
 import 'section_header.dart';
+import 'smart_list_card.dart';
 
 /// Displays featured content and playlists.
 class LibraryOverview extends StatelessWidget {
@@ -32,6 +33,7 @@ class LibraryOverview extends StatelessWidget {
     final recent = state.playHistory.isNotEmpty
         ? state.playHistory.take(12).toList()
         : state.recentTracks;
+    final smartLists = state.smartListsOnHome;
     final children = <Widget>[];
 
     void addSection(List<Widget> section) {
@@ -41,279 +43,354 @@ class LibraryOverview extends StatelessWidget {
       children.addAll(section);
     }
 
-    if (state.isHomeSectionVisible(HomeSection.featured)) {
-      addSection([
-        Padding(
-          padding: sectionPadding(),
-          child: SectionHeader(
-            title: 'Featured',
-            action: Row(
-              children: [
-                Text(
-                  '${state.featuredTracks.length} tracks',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: ColorTokens.textSecondary(context)),
-                ),
-                SizedBox(width: space(8)),
-                _HeaderAction(
-                  label: 'View all',
-                  onTap: () =>
-                      state.selectLibraryView(LibraryView.homeFeatured),
-                ),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(height: space(16)),
-        Padding(
-          padding: leftPadding(),
-          child: SizedBox(
-            height: space(110).clamp(86.0, 140.0),
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.zero,
-              itemCount: state.featuredTracks.length,
-              separatorBuilder: (_, __) => SizedBox(width: space(16)),
-              itemBuilder: (context, index) {
-                final track = state.featuredTracks[index];
-                return FeaturedTrackCard(
-                  track: track,
-                  onTap: () => state.playFeatured(track),
-                );
-              },
-            ),
-          ),
-        ),
-      ]);
-    }
-
-    if (state.isHomeSectionVisible(HomeSection.recent) && recent.isNotEmpty) {
-      addSection([
-        Padding(
-          padding: sectionPadding(),
-          child: SectionHeader(
-            title: 'Recently played',
-            action: Row(
-              children: [
-                Text(
-                  '${recent.length} tracks',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: ColorTokens.textSecondary(context)),
-                ),
-                SizedBox(width: space(8)),
-                _HeaderAction(
-                  label: 'View all',
-                  onTap: () =>
-                      state.selectLibraryView(LibraryView.homeRecent),
-                ),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(height: space(16)),
-        Padding(
-          padding: leftPadding(),
-          child: SizedBox(
-            height: space(110).clamp(86.0, 140.0),
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.zero,
-              itemCount: recent.length,
-              separatorBuilder: (_, __) => SizedBox(width: space(16)),
-              itemBuilder: (context, index) {
-                final track = recent[index];
-                return FeaturedTrackCard(
-                  track: track,
-                  onTap: () => state.playFromList(recent, track),
-                  onArtistTap: track.artistIds.isEmpty
-                      ? null
-                      : () => state.selectArtistById(track.artistIds.first),
-                );
-              },
-            ),
-          ),
-        ),
-      ]);
-    }
-
-    if (state.isHomeSectionVisible(HomeSection.jumpIn)) {
-      final track = state.jumpInTrack;
-      final album = state.jumpInAlbum;
-      final artist = state.jumpInArtist;
-      if (!state.isLoadingJumpIn && state.shouldRefreshJumpIn) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (context.mounted) {
-            state.loadJumpIn(force: true);
-          }
-        });
-      }
-      final entries = <_JumpInEntry>[];
-      if (track != null) {
-        entries.add(
-          _JumpInEntry(
-            label: 'Track',
-            title: track.title,
-            subtitle: track.artists.isNotEmpty
-                ? track.artists.join(', ')
-                : track.album,
-            imageUrl: track.imageUrl,
-            icon: Icons.music_note,
-            onTap: () => state.playFromList([track], track),
-          ),
-        );
-      }
-      if (album != null) {
-        entries.add(
-          _JumpInEntry(
-            label: 'Album',
-            title: album.name,
-            subtitle: album.artistName,
-            imageUrl: album.imageUrl,
-            icon: Icons.album,
-            onTap: () => state.selectAlbum(album),
-          ),
-        );
-      }
-      if (artist != null) {
-        entries.add(
-          _JumpInEntry(
-            label: 'Artist',
-            title: artist.name,
-            subtitle: formatArtistSubtitle(artist),
-            imageUrl: artist.imageUrl,
-            icon: Icons.person,
-            onTap: () => state.selectArtist(artist),
-          ),
-        );
-      }
-      if (!state.isLoadingJumpIn &&
-          (track == null || album == null || artist == null)) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (context.mounted) {
-            state.loadJumpIn();
-          }
-        });
-      }
-      addSection([
-        Padding(
-          padding: sectionPadding(),
-          child: SectionHeader(
-            title: 'Jump in',
-            action: Row(
-              children: [
-                if (state.isLoadingJumpIn)
+    final builders = <HomeSection, void Function()>{
+      HomeSection.featured: () {
+        if (!state.isHomeSectionVisible(HomeSection.featured)) {
+          return;
+        }
+        addSection([
+          Padding(
+            padding: sectionPadding(),
+            child: SectionHeader(
+              title: 'Featured',
+              action: Row(
+                children: [
                   Text(
-                    'Refreshing...',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: ColorTokens.textSecondary(context)),
-                  )
-                else
-                  Text(
-                    '${entries.length} picks',
+                    '${state.featuredTracks.length} tracks',
                     style: Theme.of(context)
                         .textTheme
                         .bodySmall
                         ?.copyWith(color: ColorTokens.textSecondary(context)),
                   ),
-                SizedBox(width: space(12)),
-                _HeaderAction(
-                  label: 'Refresh',
-                  onTap: () => state.loadJumpIn(force: true),
-                ),
-              ],
+                  SizedBox(width: space(8)),
+                  _HeaderAction(
+                    label: 'View all',
+                    onTap: () =>
+                        state.selectLibraryView(LibraryView.homeFeatured),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-        SizedBox(height: space(16)),
-        if (entries.isEmpty)
+          SizedBox(height: space(16)),
+          Padding(
+            padding: leftPadding(),
+            child: SizedBox(
+              height: space(110).clamp(86.0, 140.0),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.zero,
+                itemCount: state.featuredTracks.length,
+                separatorBuilder: (_, __) => SizedBox(width: space(16)),
+                itemBuilder: (context, index) {
+                  final track = state.featuredTracks[index];
+                  return FeaturedTrackCard(
+                    track: track,
+                    onTap: () => state.playFeatured(track),
+                  );
+                },
+              ),
+            ),
+          ),
+        ]);
+      },
+      HomeSection.recent: () {
+        if (!state.isHomeSectionVisible(HomeSection.recent) ||
+            recent.isEmpty) {
+          return;
+        }
+        addSection([
           Padding(
             padding: sectionPadding(),
-            child: SizedBox(
-              height: space(120).clamp(96.0, 150.0),
-              child: const Center(child: CircularProgressIndicator()),
+            child: SectionHeader(
+              title: 'Recently played',
+              action: Row(
+                children: [
+                  Text(
+                    '${recent.length} tracks',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: ColorTokens.textSecondary(context)),
+                  ),
+                  SizedBox(width: space(8)),
+                  _HeaderAction(
+                    label: 'View all',
+                    onTap: () =>
+                        state.selectLibraryView(LibraryView.homeRecent),
+                  ),
+                ],
+              ),
             ),
-          )
-        else
+          ),
+          SizedBox(height: space(16)),
+          Padding(
+            padding: leftPadding(),
+            child: SizedBox(
+              height: space(110).clamp(86.0, 140.0),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.zero,
+                itemCount: recent.length,
+                separatorBuilder: (_, __) => SizedBox(width: space(16)),
+                itemBuilder: (context, index) {
+                  final track = recent[index];
+                  return FeaturedTrackCard(
+                    track: track,
+                    onTap: () => state.playFromList(recent, track),
+                    onArtistTap: track.artistIds.isEmpty
+                        ? null
+                        : () => state.selectArtistById(track.artistIds.first),
+                  );
+                },
+              ),
+            ),
+          ),
+        ]);
+      },
+      HomeSection.jumpIn: () {
+        if (!state.isHomeSectionVisible(HomeSection.jumpIn)) {
+          return;
+        }
+        final track = state.jumpInTrack;
+        final album = state.jumpInAlbum;
+        final artist = state.jumpInArtist;
+        if (!state.isLoadingJumpIn && state.shouldRefreshJumpIn) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              state.loadJumpIn(force: true);
+            }
+          });
+        }
+        final entries = <_JumpInEntry>[];
+        if (track != null) {
+          entries.add(
+            _JumpInEntry(
+              label: 'Track',
+              title: track.title,
+              subtitle: track.artists.isNotEmpty
+                  ? track.artists.join(', ')
+                  : track.album,
+              imageUrl: track.imageUrl,
+              icon: Icons.music_note,
+              onTap: () => state.playFromList([track], track),
+            ),
+          );
+        }
+        if (album != null) {
+          entries.add(
+            _JumpInEntry(
+              label: 'Album',
+              title: album.name,
+              subtitle: album.artistName,
+              imageUrl: album.imageUrl,
+              icon: Icons.album,
+              onTap: () => state.selectAlbum(album),
+            ),
+          );
+        }
+        if (artist != null) {
+          entries.add(
+            _JumpInEntry(
+              label: 'Artist',
+              title: artist.name,
+              subtitle: formatArtistSubtitle(artist),
+              imageUrl: artist.imageUrl,
+              icon: Icons.person,
+              onTap: () => state.selectArtist(artist),
+            ),
+          );
+        }
+        if (!state.isLoadingJumpIn &&
+            (track == null || album == null || artist == null)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              state.loadJumpIn();
+            }
+          });
+        }
+        addSection([
+          Padding(
+            padding: sectionPadding(),
+            child: SectionHeader(
+              title: 'Jump in',
+              action: Row(
+                children: [
+                  if (state.isLoadingJumpIn)
+                    Text(
+                      'Refreshing...',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: ColorTokens.textSecondary(context)),
+                    )
+                  else
+                    Text(
+                      '${entries.length} picks',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: ColorTokens.textSecondary(context)),
+                    ),
+                  SizedBox(width: space(12)),
+                  _HeaderAction(
+                    label: 'Refresh',
+                    onTap: () => state.loadJumpIn(force: true),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: space(16)),
+          if (entries.isEmpty)
+            Padding(
+              padding: sectionPadding(),
+              child: SizedBox(
+                height: space(120).clamp(96.0, 150.0),
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+            )
+          else
+            Padding(
+              padding: sectionPadding(),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final targetWidth = space(220).clamp(160.0, 260.0);
+                  final columns =
+                      (constraints.maxWidth / targetWidth).floor().clamp(1, 3);
+                  final spacing = space(16);
+                  final width = (constraints.maxWidth -
+                          spacing * (columns - 1)) /
+                      columns;
+                  return Wrap(
+                    spacing: spacing,
+                    runSpacing: spacing,
+                    children: entries
+                        .map(
+                          (entry) => SizedBox(
+                            width: width,
+                            child: _JumpInCard(entry: entry),
+                          ),
+                        )
+                        .toList(),
+                  );
+                },
+              ),
+            ),
+        ]);
+      },
+      HomeSection.smartLists: () {
+        if (!state.isHomeSectionVisible(HomeSection.smartLists) ||
+            smartLists.isEmpty) {
+          return;
+        }
+        addSection([
+          Padding(
+            padding: sectionPadding(),
+            child: SectionHeader(
+              title: 'Smart Lists',
+              action: Row(
+                children: [
+                  Text(
+                    '${smartLists.length} lists',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: ColorTokens.textSecondary(context)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: space(16)),
           Padding(
             padding: sectionPadding(),
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final targetWidth = space(220).clamp(160.0, 260.0);
-                final columns =
-                    (constraints.maxWidth / targetWidth).floor().clamp(1, 3);
-                final spacing = space(16);
-                final width = (constraints.maxWidth -
-                        spacing * (columns - 1)) /
-                    columns;
-                return Wrap(
-                  spacing: spacing,
-                  runSpacing: spacing,
-                  children: entries
-                      .map(
-                        (entry) => SizedBox(
-                          width: width,
-                          child: _JumpInCard(entry: entry),
-                        ),
-                      )
-                      .toList(),
+                final crossAxisCount =
+                    (constraints.maxWidth / targetWidth).floor();
+                final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns,
+                    crossAxisSpacing: space(16),
+                    mainAxisSpacing: space(16),
+                    childAspectRatio: 1.1,
+                  ),
+                  itemCount: smartLists.length,
+                  itemBuilder: (context, index) {
+                    final list = smartLists[index];
+                    return SmartListCard(
+                      smartList: list,
+                      onTap: () => state.selectSmartList(list),
+                      onPlay: () => state.playSmartList(list),
+                    );
+                  },
                 );
               },
             ),
           ),
-      ]);
-    }
-
-    if (state.isHomeSectionVisible(HomeSection.playlists)) {
-      addSection([
-        Padding(
-          padding: sectionPadding(),
-          child: SectionHeader(
-            title: 'Playlists',
-            action: _HeaderAction(
-              label: 'View all',
-              onTap: () =>
-                  state.selectLibraryView(LibraryView.homePlaylists),
+        ]);
+      },
+      HomeSection.playlists: () {
+        if (!state.isHomeSectionVisible(HomeSection.playlists)) {
+          return;
+        }
+        addSection([
+          Padding(
+            padding: sectionPadding(),
+            child: SectionHeader(
+              title: 'Playlists',
+              action: _HeaderAction(
+                label: 'View all',
+                onTap: () =>
+                    state.selectLibraryView(LibraryView.homePlaylists),
+              ),
             ),
           ),
-        ),
-        SizedBox(height: space(16)),
-        Padding(
-          padding: sectionPadding(),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final targetWidth = space(220).clamp(160.0, 260.0);
-              final crossAxisCount =
-                  (constraints.maxWidth / targetWidth).floor();
-              final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: columns,
-                  crossAxisSpacing: space(16),
-                  mainAxisSpacing: space(16),
-                  childAspectRatio: 1.1,
-                ),
-                itemCount: state.playlists.length,
-                itemBuilder: (context, index) {
-                  final playlist = state.playlists[index];
-                  return PlaylistCard(
-                    playlist: playlist,
-                    onTap: () => state.selectPlaylist(playlist),
-                    onPlay: () => state.playPlaylist(playlist),
-                  );
-                },
-              );
-            },
+          SizedBox(height: space(16)),
+          Padding(
+            padding: sectionPadding(),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final targetWidth = space(220).clamp(160.0, 260.0);
+                final crossAxisCount =
+                    (constraints.maxWidth / targetWidth).floor();
+                final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns,
+                    crossAxisSpacing: space(16),
+                    mainAxisSpacing: space(16),
+                    childAspectRatio: 1.1,
+                  ),
+                  itemCount: state.playlists.length,
+                  itemBuilder: (context, index) {
+                    final playlist = state.playlists[index];
+                    return PlaylistCard(
+                      playlist: playlist,
+                      onTap: () => state.selectPlaylist(playlist),
+                      onPlay: () => state.playPlaylist(playlist),
+                    );
+                  },
+                );
+              },
+            ),
           ),
-        ),
-      ]);
+        ]);
+      },
+    };
+
+    for (final section in state.homeSectionOrder) {
+      final builder = builders[section];
+      if (builder != null) {
+        builder();
+      }
     }
     return SingleChildScrollView(
       child: Column(

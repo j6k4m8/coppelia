@@ -34,7 +34,7 @@ class SettingsView extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
       child: DefaultTabController(
-        length: 5,
+        length: 6,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -51,6 +51,9 @@ class SettingsView extends StatelessWidget {
                   ),
                   _SettingsTab(
                     child: _KeyboardSettings(state: state),
+                  ),
+                  _SettingsTab(
+                    child: _PlaybackSettings(state: state),
                   ),
                   _SettingsTab(
                     child: _CacheSettings(
@@ -105,6 +108,7 @@ class _SettingsTabBar extends StatelessWidget {
           _SettingsTabLabel(text: 'Appearance'),
           _SettingsTabLabel(text: 'Layout'),
           _SettingsTabLabel(text: 'Keyboard'),
+          _SettingsTabLabel(text: 'Playback'),
           _SettingsTabLabel(text: 'Cache'),
           _SettingsTabLabel(text: 'Account'),
         ],
@@ -509,20 +513,24 @@ class _LayoutSettings extends StatelessWidget {
         Divider(height: space(32), color: ColorTokens.border(context, 0.12)),
         Text('Home', style: Theme.of(context).textTheme.titleLarge),
         SizedBox(height: space(12)),
-        ...HomeSection.values.map(
-          (section) => Padding(
-            padding: EdgeInsets.only(bottom: space(12)),
-            child: _SettingRow(
-              title: section.label,
-              subtitle: section.description,
-              forceInline: true,
-              trailing: CompactSwitch(
-                value: state.isHomeSectionVisible(section),
-                onChanged: (value) =>
-                    state.setHomeSectionVisible(section, value),
-              ),
-            ),
-          ),
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
+          itemCount: state.homeSectionOrder.length,
+          onReorder: (oldIndex, newIndex) =>
+              state.reorderHomeSections(oldIndex, newIndex),
+          itemBuilder: (context, index) {
+            final section = state.homeSectionOrder[index];
+            return _HomeSectionRow(
+              key: ValueKey(section.storageKey),
+              section: section,
+              index: index,
+              enabled: state.isHomeSectionVisible(section),
+              onToggle: (value) =>
+                  state.setHomeSectionVisible(section, value),
+            );
+          },
         ),
         Divider(height: space(32), color: ColorTokens.border(context, 0.12)),
         Text('Sidebar', style: Theme.of(context).textTheme.titleLarge),
@@ -836,6 +844,61 @@ class _LayoutSettings extends StatelessWidget {
   }
 }
 
+class _HomeSectionRow extends StatelessWidget {
+  const _HomeSectionRow({
+    super.key,
+    required this.section,
+    required this.index,
+    required this.enabled,
+    required this.onToggle,
+  });
+
+  final HomeSection section;
+  final int index;
+  final bool enabled;
+  final ValueChanged<bool> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    return Padding(
+      padding: EdgeInsets.only(bottom: space(12)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ReorderableDragStartListener(
+            index: index,
+            child: Padding(
+              padding: EdgeInsets.only(
+                top: space(6),
+                right: space(10).clamp(6.0, 14.0),
+              ),
+              child: Icon(
+                Icons.drag_handle,
+                size: space(18).clamp(14.0, 22.0),
+                color: ColorTokens.textSecondary(context, 0.7),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _SettingRow(
+              title: section.label,
+              subtitle: section.description,
+              forceInline: true,
+              trailing: CompactSwitch(
+                value: enabled,
+                onChanged: onToggle,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _KeyboardSettings extends StatelessWidget {
   const _KeyboardSettings({required this.state});
 
@@ -913,6 +976,33 @@ class _KeyboardSettings extends StatelessWidget {
             shortcut: state.searchShortcut,
             enabled: state.searchShortcutEnabled,
             onChanged: (shortcut) => state.setSearchShortcut(shortcut),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PlaybackSettings extends StatelessWidget {
+  const _PlaybackSettings({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Playback', style: Theme.of(context).textTheme.titleLarge),
+        SizedBox(height: space(12)),
+        _SettingRow(
+          title: 'Gapless playback',
+          subtitle: 'Preload the next track to remove silence between songs.',
+          trailing: CompactSwitch(
+            value: state.gaplessPlaybackEnabled,
+            onChanged: state.setGaplessPlayback,
           ),
         ),
       ],
