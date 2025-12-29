@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:palette_generator/palette_generator.dart';
 
@@ -13,6 +14,7 @@ import '../models/album.dart';
 import '../models/artist.dart';
 import '../models/auth_session.dart';
 import '../models/cached_audio_entry.dart';
+import '../models/download_task.dart';
 import '../models/genre.dart';
 import '../models/library_stats.dart';
 import '../models/media_item.dart';
@@ -103,6 +105,9 @@ class AppState extends ChangeNotifier {
   final Set<String> _favoriteArtistUpdatesInFlight = {};
   final Set<String> _favoriteTrackUpdatesInFlight = {};
   Set<String> _pinnedAudio = {};
+  final List<DownloadTask> _downloadQueue = [];
+  final Map<String, DateTime> _downloadProgressTimestamps = {};
+  bool _isProcessingDownloads = false;
   List<MediaItem> _recentTracks = [];
   List<MediaItem> _playHistory = [];
 
@@ -121,6 +126,10 @@ class AppState extends ChangeNotifier {
       ValueNotifier(Duration.zero);
   final ValueNotifier<bool> _isPlayingNotifier = ValueNotifier(false);
   final ValueNotifier<bool> _isBufferingNotifier = ValueNotifier(false);
+  final ValueNotifier<int> _mediaCacheBytesNotifier =
+      ValueNotifier(0);
+  final ValueNotifier<int> _pinnedCacheBytesNotifier =
+      ValueNotifier(0);
   final Random _random = Random();
   ThemeMode _themeMode = ThemeMode.dark;
   String? _fontFamily = 'SF Pro Display';
@@ -132,6 +141,8 @@ class AppState extends ChangeNotifier {
   bool _telemetryProgress = true;
   bool _telemetryHistory = true;
   bool _gaplessPlayback = true;
+  bool _downloadsWifiOnly = false;
+  bool _downloadsPaused = false;
   bool _autoDownloadFavoritesEnabled = false;
   bool _autoDownloadFavoriteAlbums = true;
   bool _autoDownloadFavoriteArtists = true;
@@ -271,6 +282,23 @@ class AppState extends ChangeNotifier {
 
   /// Pinned audio stream URLs.
   Set<String> get pinnedAudio => Set.unmodifiable(_pinnedAudio);
+
+  /// Active download queue for offline audio.
+  List<DownloadTask> get downloadQueue => List.unmodifiable(_downloadQueue);
+
+  /// Stream of cached media size updates.
+  ValueListenable<int> get mediaCacheBytesListenable =>
+      _mediaCacheBytesNotifier;
+
+  /// Stream of pinned media size updates.
+  ValueListenable<int> get pinnedCacheBytesListenable =>
+      _pinnedCacheBytesNotifier;
+
+  /// True when downloads are limited to Wi-Fi.
+  bool get downloadsWifiOnly => _downloadsWifiOnly;
+
+  /// True when downloads are paused.
+  bool get downloadsPaused => _downloadsPaused;
 
   /// Returns true when the album is marked as a favorite.
   bool isFavoriteAlbum(String albumId) =>
@@ -582,6 +610,8 @@ class AppState extends ChangeNotifier {
     _telemetryProgress = await _settingsStore.loadProgressTelemetry();
     _telemetryHistory = await _settingsStore.loadHistoryTelemetry();
     _gaplessPlayback = await _settingsStore.loadGaplessPlayback();
+    _downloadsWifiOnly = await _settingsStore.loadDownloadsWifiOnly();
+    _downloadsPaused = await _settingsStore.loadDownloadsPaused();
     _autoDownloadFavoritesEnabled =
         await _settingsStore.loadAutoDownloadFavoritesEnabled();
     _autoDownloadFavoriteAlbums =
@@ -608,6 +638,7 @@ class AppState extends ChangeNotifier {
     _sidebarCollapsed = await _settingsStore.loadSidebarCollapsed();
     _smartLists = await _settingsStore.loadSmartLists();
     _pinnedAudio = await _cacheStore.loadPinnedAudio();
+    unawaited(refreshMediaCacheBytes());
     await _loadCachedLibrary();
     await _applyPlaybackSettings();
     if (_offlineMode) {
@@ -696,6 +727,8 @@ class AppState extends ChangeNotifier {
     _isLoadingJumpIn = false;
     _lastJumpInRefreshAt = null;
     _queue = [];
+    _downloadQueue.clear();
+    _isProcessingDownloads = false;
     _nowPlaying = null;
     unawaited(_maybeUpdateNowPlayingPalette(null));
     _playSessionId = null;
@@ -2460,6 +2493,24 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Updates whether downloads are limited to Wi-Fi.
+  Future<void> setDownloadsWifiOnly(bool enabled) async {
+    _downloadsWifiOnly = enabled;
+    await _settingsStore.saveDownloadsWifiOnly(enabled);
+    notifyListeners();
+    unawaited(_processDownloadQueue());
+  }
+
+  /// Updates whether downloads are paused.
+  Future<void> setDownloadsPaused(bool paused) async {
+    _downloadsPaused = paused;
+    await _settingsStore.saveDownloadsPaused(paused);
+    notifyListeners();
+    if (!paused) {
+      unawaited(_processDownloadQueue());
+    }
+  }
+
   /// Updates auto-download preference for favorites.
   Future<void> setAutoDownloadFavoritesEnabled(bool enabled) async {
     _autoDownloadFavoritesEnabled = enabled;
@@ -2510,6 +2561,40 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Updates the ordering of pending downloads.
+  void reorderDownloadQueue(int oldIndex, int newIndex) {
+    if (oldIndex == newIndex) {
+      return;
+    }
+    if (oldIndex < 0 || oldIndex >= _downloadQueue.length) {
+      return;
+    }
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+    final task = _downloadQueue.removeAt(oldIndex);
+    final target = newIndex.clamp(0, _downloadQueue.length);
+    _downloadQueue.insert(target, task);
+    notifyListeners();
+  }
+
+  /// Retries a failed download.
+  void retryDownload(DownloadTask task) {
+    final index = _indexOfDownload(task.track.streamUrl);
+    if (index == null) {
+      return;
+    }
+    _downloadQueue[index] = _downloadQueue[index].copyWith(
+      status: DownloadStatus.queued,
+      progress: null,
+      totalBytes: null,
+      downloadedBytes: null,
+      errorMessage: null,
+    );
+    notifyListeners();
+    unawaited(_processDownloadQueue());
+  }
+
   /// Updates the offline mode preference.
   Future<void> setOfflineMode(bool enabled) async {
     if (_offlineMode == enabled) {
@@ -2526,6 +2611,7 @@ class AppState extends ChangeNotifier {
     if (_session != null) {
       unawaited(refreshLibrary());
     }
+    unawaited(_processDownloadQueue());
   }
 
   /// Updates the offline-only filter for detail views.
@@ -2655,6 +2741,7 @@ class AppState extends ChangeNotifier {
   /// Clears cached audio files.
   Future<void> clearAudioCache() async {
     await _cacheStore.clearAudioCache();
+    await refreshMediaCacheBytes();
   }
 
   /// Returns the estimated cached media size in bytes.
@@ -2662,10 +2749,24 @@ class AppState extends ChangeNotifier {
     return _cacheStore.getMediaCacheBytes();
   }
 
+  /// Refreshes cached media size counters.
+  Future<void> refreshMediaCacheBytes() async {
+    final totalBytes = await _cacheStore.getMediaCacheBytes();
+    _mediaCacheBytesNotifier.value = totalBytes;
+    final pinnedBytes = await _cacheStore.getPinnedMediaBytes(_pinnedAudio);
+    _pinnedCacheBytesNotifier.value = pinnedBytes;
+  }
+
+  /// Returns the estimated size of pinned downloads.
+  Future<int> getPinnedCacheBytes() async {
+    return _cacheStore.getPinnedMediaBytes(_pinnedAudio);
+  }
+
   /// Updates the cache size limit.
   Future<void> setCacheMaxBytes(int bytes) async {
     _cacheMaxBytes = bytes;
     await _cacheStore.saveCacheMaxBytes(bytes);
+    await refreshMediaCacheBytes();
     notifyListeners();
   }
 
@@ -2682,13 +2783,15 @@ class AppState extends ChangeNotifier {
   /// Removes a cached audio entry and its file.
   Future<void> evictCachedAudio(String streamUrl) async {
     await _cacheStore.evictCachedAudio(streamUrl);
+    await refreshMediaCacheBytes();
   }
 
-  Future<bool> _canAutoDownloadFavorites() async {
-    if (!_autoDownloadFavoritesEnabled) {
+  Future<bool> _canDownloadOverNetwork({bool requireWifi = false}) async {
+    if (_offlineMode) {
       return false;
     }
-    if (!_autoDownloadFavoritesWifiOnly) {
+    final needsWifi = _downloadsWifiOnly || requireWifi;
+    if (!needsWifi) {
       return true;
     }
     if (kIsWeb) {
@@ -2718,10 +2821,7 @@ class AppState extends ChangeNotifier {
     bool artistsOnly = false,
     bool tracksOnly = false,
   }) async {
-    if (_offlineMode) {
-      return;
-    }
-    if (!await _canAutoDownloadFavorites()) {
+    if (!_autoDownloadFavoritesEnabled) {
       return;
     }
     final shouldAlbums =
@@ -2732,31 +2832,217 @@ class AppState extends ChangeNotifier {
         _autoDownloadFavoriteTracks && !albumsOnly && !artistsOnly;
     if (shouldAlbums) {
       for (final album in _favoriteAlbums) {
-        await makeAlbumAvailableOffline(album);
+        await makeAlbumAvailableOffline(
+          album,
+          requiresWifi: _autoDownloadFavoritesWifiOnly,
+        );
       }
     }
     if (shouldArtists) {
       for (final artist in _favoriteArtists) {
-        await makeArtistAvailableOffline(artist);
+        await makeArtistAvailableOffline(
+          artist,
+          requiresWifi: _autoDownloadFavoritesWifiOnly,
+        );
       }
     }
     if (shouldTracks) {
       for (final track in _favoriteTracks) {
-        await makeTrackAvailableOffline(track);
+        await makeTrackAvailableOffline(
+          track,
+          requiresWifi: _autoDownloadFavoritesWifiOnly,
+        );
       }
     }
   }
 
+  int? _indexOfDownload(String streamUrl) {
+    final index = _downloadQueue.indexWhere(
+      (task) => task.track.streamUrl == streamUrl,
+    );
+    return index == -1 ? null : index;
+  }
+
+  Future<void> _queueDownload(
+    MediaItem track, {
+    bool requiresWifi = false,
+  }) async {
+    final normalized = _normalizeTrackForPlayback(track);
+    if (_downloadQueue.any(
+      (task) => task.track.streamUrl == normalized.streamUrl,
+    )) {
+      return;
+    }
+    final cached = await _cacheStore.isAudioCached(normalized);
+    if (cached) {
+      await _cacheStore.touchCachedAudio(normalized);
+      return;
+    }
+    _downloadQueue.add(
+      DownloadTask(
+        track: normalized,
+        status: DownloadStatus.queued,
+        queuedAt: DateTime.now(),
+        requiresWifi: requiresWifi,
+      ),
+    );
+    notifyListeners();
+    unawaited(_processDownloadQueue());
+  }
+
+  void _resetWaitingDownloads() {
+    var updated = false;
+    for (var i = 0; i < _downloadQueue.length; i += 1) {
+      final task = _downloadQueue[i];
+      if (task.status == DownloadStatus.waitingForWifi) {
+        _downloadQueue[i] = task.copyWith(status: DownloadStatus.queued);
+        updated = true;
+      }
+    }
+    if (updated) {
+      notifyListeners();
+    }
+  }
+
+  void _updateDownloadTask(
+    String streamUrl, {
+    DownloadStatus? status,
+    double? progress,
+    int? totalBytes,
+    int? downloadedBytes,
+    String? errorMessage,
+  }) {
+    final index = _indexOfDownload(streamUrl);
+    if (index == null) {
+      return;
+    }
+    final existing = _downloadQueue[index];
+    if (progress != null &&
+        _shouldThrottleProgress(
+          streamUrl,
+          progress,
+          existing.progress,
+        )) {
+      return;
+    }
+    _downloadQueue[index] = existing.copyWith(
+      status: status,
+      progress: progress,
+      totalBytes: totalBytes,
+      downloadedBytes: downloadedBytes,
+      errorMessage: errorMessage,
+    );
+    notifyListeners();
+  }
+
+  bool _shouldThrottleProgress(
+    String streamUrl,
+    double newProgress,
+    double? currentProgress,
+  ) {
+    final now = DateTime.now();
+    final last = _downloadProgressTimestamps[streamUrl];
+    final pivot = currentProgress ?? 0.0;
+    if (last != null &&
+        now.difference(last) < const Duration(milliseconds: 250) &&
+        (newProgress - pivot).abs() < 0.01) {
+      return true;
+    }
+    _downloadProgressTimestamps[streamUrl] = now;
+    return false;
+  }
+
+  void _removeDownload(String streamUrl) {
+    final index = _indexOfDownload(streamUrl);
+    if (index == null) {
+      return;
+    }
+    _downloadQueue.removeAt(index);
+    _downloadProgressTimestamps.remove(streamUrl);
+    notifyListeners();
+  }
+
+  Future<void> _processDownloadQueue() async {
+    if (_isProcessingDownloads) {
+      return;
+    }
+    if (_downloadsPaused) {
+      return;
+    }
+    _isProcessingDownloads = true;
+    try {
+      _resetWaitingDownloads();
+      while (true) {
+        if (_downloadsPaused) {
+          break;
+        }
+        DownloadTask? next;
+        for (final task in _downloadQueue) {
+          if (task.status == DownloadStatus.queued) {
+            final canDownload = await _canDownloadOverNetwork(
+              requireWifi: task.requiresWifi,
+            );
+            if (canDownload) {
+              next = task;
+              break;
+            }
+            _updateDownloadTask(
+              task.track.streamUrl,
+              status: DownloadStatus.waitingForWifi,
+            );
+          }
+        }
+        if (next == null) {
+          break;
+        }
+        await _downloadTrack(next);
+      }
+    } finally {
+      _isProcessingDownloads = false;
+    }
+  }
+
+  Future<void> _downloadTrack(DownloadTask task) async {
+    final streamUrl = task.track.streamUrl;
+    _updateDownloadTask(streamUrl, status: DownloadStatus.downloading);
+    try {
+      await for (final response in _cacheStore.downloadAudioWithProgress(
+        task.track,
+        headers: _playbackHeaders(),
+      )) {
+        if (response is DownloadProgress) {
+          _updateDownloadTask(
+            streamUrl,
+            progress: response.progress,
+            totalBytes: response.totalSize,
+            downloadedBytes: response.downloaded,
+          );
+        } else if (response is FileInfo) {
+          _removeDownload(streamUrl);
+          unawaited(refreshMediaCacheBytes());
+        }
+      }
+    } catch (error) {
+      _updateDownloadTask(
+        streamUrl,
+        status: DownloadStatus.failed,
+        errorMessage: error.toString(),
+      );
+    }
+  }
+
   /// Pins a track for offline playback.
-  Future<void> makeTrackAvailableOffline(MediaItem track) async {
+  Future<void> makeTrackAvailableOffline(
+    MediaItem track, {
+    bool requiresWifi = false,
+  }) async {
     await _cacheStore.setPinnedAudio(track.streamUrl, true);
     _pinnedAudio.add(track.streamUrl);
-    if (!_offlineMode) {
-      await _cacheStore.prefetchAudio(track);
-    }
+    await _queueDownload(track, requiresWifi: requiresWifi);
     if (_selectedSmartList != null) {
       unawaited(_loadSmartListTracks(_selectedSmartList!));
     }
+    unawaited(refreshMediaCacheBytes());
     notifyListeners();
   }
 
@@ -2764,9 +3050,11 @@ class AppState extends ChangeNotifier {
   Future<void> unpinTrackOffline(MediaItem track) async {
     await _cacheStore.setPinnedAudio(track.streamUrl, false);
     _pinnedAudio.remove(track.streamUrl);
+    _removeDownload(track.streamUrl);
     if (_selectedSmartList != null) {
       unawaited(_loadSmartListTracks(_selectedSmartList!));
     }
+    unawaited(refreshMediaCacheBytes());
     notifyListeners();
   }
 
@@ -2805,18 +3093,20 @@ class AppState extends ChangeNotifier {
   }
 
   /// Pins all tracks in an album for offline playback.
-  Future<void> makeAlbumAvailableOffline(Album album) async {
+  Future<void> makeAlbumAvailableOffline(
+    Album album, {
+    bool requiresWifi = false,
+  }) async {
     final tracks = await _loadAlbumTracksForOffline(album);
     for (final track in tracks) {
       await _cacheStore.setPinnedAudio(track.streamUrl, true);
       _pinnedAudio.add(track.streamUrl);
-      if (!_offlineMode) {
-        await _cacheStore.prefetchAudio(track);
-      }
+      await _queueDownload(track, requiresWifi: requiresWifi);
     }
     if (_selectedSmartList != null) {
       unawaited(_loadSmartListTracks(_selectedSmartList!));
     }
+    unawaited(refreshMediaCacheBytes());
     notifyListeners();
   }
 
@@ -2826,26 +3116,30 @@ class AppState extends ChangeNotifier {
     for (final track in tracks) {
       await _cacheStore.setPinnedAudio(track.streamUrl, false);
       _pinnedAudio.remove(track.streamUrl);
+      _removeDownload(track.streamUrl);
     }
     if (_selectedSmartList != null) {
       unawaited(_loadSmartListTracks(_selectedSmartList!));
     }
+    unawaited(refreshMediaCacheBytes());
     notifyListeners();
   }
 
   /// Pins all tracks for an artist for offline playback.
-  Future<void> makeArtistAvailableOffline(Artist artist) async {
+  Future<void> makeArtistAvailableOffline(
+    Artist artist, {
+    bool requiresWifi = false,
+  }) async {
     final tracks = await _loadArtistTracksForOffline(artist);
     for (final track in tracks) {
       await _cacheStore.setPinnedAudio(track.streamUrl, true);
       _pinnedAudio.add(track.streamUrl);
-      if (!_offlineMode) {
-        await _cacheStore.prefetchAudio(track);
-      }
+      await _queueDownload(track, requiresWifi: requiresWifi);
     }
     if (_selectedSmartList != null) {
       unawaited(_loadSmartListTracks(_selectedSmartList!));
     }
+    unawaited(refreshMediaCacheBytes());
     notifyListeners();
   }
 
@@ -2855,10 +3149,12 @@ class AppState extends ChangeNotifier {
     for (final track in tracks) {
       await _cacheStore.setPinnedAudio(track.streamUrl, false);
       _pinnedAudio.remove(track.streamUrl);
+      _removeDownload(track.streamUrl);
     }
     if (_selectedSmartList != null) {
       unawaited(_loadSmartListTracks(_selectedSmartList!));
     }
+    unawaited(refreshMediaCacheBytes());
     notifyListeners();
   }
 
@@ -3033,6 +3329,8 @@ class AppState extends ChangeNotifier {
     _durationNotifier.dispose();
     _isPlayingNotifier.dispose();
     _isBufferingNotifier.dispose();
+    _mediaCacheBytesNotifier.dispose();
+    _pinnedCacheBytesNotifier.dispose();
     unawaited(_playback.dispose());
     super.dispose();
   }
@@ -3722,9 +4020,10 @@ class AppState extends ChangeNotifier {
       return;
     }
     if (isFavorite) {
-      if (await _canAutoDownloadFavorites()) {
-        await makeAlbumAvailableOffline(album);
-      }
+      await makeAlbumAvailableOffline(
+        album,
+        requiresWifi: _autoDownloadFavoritesWifiOnly,
+      );
       return;
     }
     await unpinAlbumOffline(album);
@@ -3738,9 +4037,10 @@ class AppState extends ChangeNotifier {
       return;
     }
     if (isFavorite) {
-      if (await _canAutoDownloadFavorites()) {
-        await makeArtistAvailableOffline(artist);
-      }
+      await makeArtistAvailableOffline(
+        artist,
+        requiresWifi: _autoDownloadFavoritesWifiOnly,
+      );
       return;
     }
     await unpinArtistOffline(artist);
@@ -3754,9 +4054,10 @@ class AppState extends ChangeNotifier {
       return;
     }
     if (isFavorite) {
-      if (await _canAutoDownloadFavorites()) {
-        await makeTrackAvailableOffline(track);
-      }
+      await makeTrackAvailableOffline(
+        track,
+        requiresWifi: _autoDownloadFavoritesWifiOnly,
+      );
       return;
     }
     await unpinTrackOffline(track);

@@ -1,10 +1,15 @@
+import 'dart:async';
+import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/formatters.dart';
+import '../../models/download_task.dart';
 import '../../state/app_state.dart';
 import '../../state/accent_color_source.dart';
 import '../../state/home_section.dart';
@@ -1024,7 +1029,6 @@ class _CacheSettings extends StatefulWidget {
 }
 
 class _CacheSettingsState extends State<_CacheSettings> {
-  late Future<int> _cacheFuture;
   static const List<int> _cacheLimitOptions = [
     50 * 1024 * 1024,
     500 * 1024 * 1024,
@@ -1040,13 +1044,11 @@ class _CacheSettingsState extends State<_CacheSettings> {
   @override
   void initState() {
     super.initState();
-    _cacheFuture = widget.state.getMediaCacheBytes();
+    unawaited(widget.state.refreshMediaCacheBytes());
   }
 
   void _refreshCacheUsage() {
-    setState(() {
-      _cacheFuture = widget.state.getMediaCacheBytes();
-    });
+    unawaited(widget.state.refreshMediaCacheBytes());
   }
 
   Future<bool> _confirmCacheTrim({
@@ -1106,23 +1108,12 @@ class _CacheSettingsState extends State<_CacheSettings> {
         _SettingRow(
           title: 'Media cache',
           subtitle: 'Downloaded artwork and audio stored on disk.',
-          trailing: FutureBuilder<int>(
-            future: _cacheFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Text(
-                  'Calculating...',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: ColorTokens.textSecondary(context),
-                      ),
-                );
-              }
-              final bytes = snapshot.data ?? 0;
-              return Text(
-                formatBytes(bytes),
-                style: Theme.of(context).textTheme.bodyLarge,
-              );
-            },
+          trailing: ValueListenableBuilder<int>(
+            valueListenable: widget.state.mediaCacheBytesListenable,
+            builder: (context, bytes, _) => Text(
+              formatBytes(bytes),
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
           ),
         ),
         SizedBox(height: space(12)),
@@ -1148,6 +1139,23 @@ class _CacheSettingsState extends State<_CacheSettings> {
               }
             },
           ),
+        ),
+        SizedBox(height: space(6)),
+        ValueListenableBuilder<int>(
+          valueListenable: widget.state.pinnedCacheBytesListenable,
+          builder: (context, pinnedBytes, _) {
+            if (widget.state.cacheMaxBytes <= 0 ||
+                pinnedBytes <= widget.state.cacheMaxBytes) {
+              return const SizedBox.shrink();
+            }
+            return Text(
+              'Pinned downloads use ${formatBytes(pinnedBytes)} and may exceed '
+              'the cache limit; unpinned tracks are evicted first.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: ColorTokens.textSecondary(context, 0.7),
+                  ),
+            );
+          },
         ),
         SizedBox(height: space(20)),
         const _SettingsSubheader(title: 'Offline favorites'),
@@ -1212,6 +1220,35 @@ class _CacheSettingsState extends State<_CacheSettings> {
               onChanged: widget.state.setAutoDownloadFavoritesWifiOnly,
             ),
           ),
+        ),
+        SizedBox(height: space(20)),
+        const _SettingsSubheader(title: 'Downloads'),
+        SizedBox(height: space(12)),
+        _SettingRow(
+          title: 'Only on Wi-Fi',
+          subtitle: 'Avoid cellular downloads for pinned media.',
+          forceInline: true,
+          trailing: CompactSwitch(
+            value: widget.state.downloadsWifiOnly,
+            onChanged: widget.state.setDownloadsWifiOnly,
+          ),
+        ),
+        SizedBox(height: space(12)),
+        _SettingRow(
+          title: 'Pause downloads',
+          subtitle: 'Stop downloading until you resume.',
+          forceInline: true,
+          trailing: CompactSwitch(
+            value: widget.state.downloadsPaused,
+            onChanged: widget.state.setDownloadsPaused,
+          ),
+        ),
+        SizedBox(height: space(12)),
+        _DownloadQueueList(
+          tasks: widget.state.downloadQueue,
+          isPaused: widget.state.downloadsPaused,
+          onReorder: widget.state.reorderDownloadQueue,
+          onRetry: widget.state.retryDownload,
         ),
         SizedBox(height: space(12)),
         _SettingRow(
@@ -1331,6 +1368,231 @@ class _AutoDownloadOption extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _DownloadQueueList extends StatelessWidget {
+  const _DownloadQueueList({
+    required this.tasks,
+    required this.isPaused,
+    required this.onReorder,
+    required this.onRetry,
+  });
+
+  final List<DownloadTask> tasks;
+  final bool isPaused;
+  final void Function(int oldIndex, int newIndex) onReorder;
+  final ValueChanged<DownloadTask> onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    if (tasks.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.only(left: space(8)),
+        child: Text(
+          'No downloads queued.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: ColorTokens.textSecondary(context),
+              ),
+        ),
+      );
+    }
+    var downloading = 0;
+    var queued = 0;
+    var waiting = 0;
+    var failed = 0;
+    for (final task in tasks) {
+      switch (task.status) {
+        case DownloadStatus.downloading:
+          downloading += 1;
+          break;
+        case DownloadStatus.queued:
+          queued += 1;
+          break;
+        case DownloadStatus.waitingForWifi:
+          waiting += 1;
+          break;
+        case DownloadStatus.failed:
+          failed += 1;
+          break;
+      }
+    }
+    final summaryParts = <String>[];
+    summaryParts.add('${tasks.length} downloads');
+    if (isPaused) {
+      summaryParts.add('Paused');
+    }
+    if (downloading > 0) {
+      summaryParts.add('$downloading downloading');
+    }
+    if (waiting > 0) {
+      summaryParts.add('$waiting waiting');
+    }
+    if (queued > 0) {
+      summaryParts.add('$queued queued');
+    }
+    if (failed > 0) {
+      summaryParts.add('$failed failed');
+    }
+    final rowHeight = space(38).clamp(32.0, 44.0).toDouble();
+    final visibleRows = tasks.length.clamp(1, 4);
+    final listHeight = rowHeight * visibleRows;
+    return Container(
+      padding: EdgeInsets.all(space(12).clamp(10.0, 16.0)),
+      decoration: BoxDecoration(
+        color: ColorTokens.cardFill(context, 0.04),
+        borderRadius: BorderRadius.circular(space(16).clamp(12.0, 20.0)),
+        border: Border.all(color: ColorTokens.border(context, 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            summaryParts.join(' • '),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: ColorTokens.textSecondary(context),
+                ),
+          ),
+          SizedBox(height: space(6)),
+          SizedBox(
+            height: listHeight,
+            child: ClipRRect(
+              borderRadius:
+                  BorderRadius.circular(space(12).clamp(10.0, 16.0)),
+              child: ReorderableListView.builder(
+                buildDefaultDragHandles: false,
+                itemCount: tasks.length,
+                onReorder: (oldIndex, newIndex) {
+                  SchedulerBinding.instance.addPostFrameCallback((_) {
+                    onReorder(oldIndex, newIndex);
+                  });
+                },
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.zero,
+                itemBuilder: (context, index) {
+                  final task = tasks[index];
+                  return _DownloadQueueRow(
+                    key: ValueKey(task.track.streamUrl),
+                    task: task,
+                    isPaused: isPaused,
+                    index: index,
+                    onRetry: () => onRetry(task),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DownloadQueueRow extends StatelessWidget {
+  const _DownloadQueueRow({
+    super.key,
+    required this.task,
+    required this.isPaused,
+    required this.index,
+    required this.onRetry,
+  });
+
+  final DownloadTask task;
+  final bool isPaused;
+  final int index;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    final progressPrefix = () {
+      if (task.status == DownloadStatus.downloading && task.progress != null) {
+        final percent = (task.progress! * 100).clamp(0, 100).round();
+        return '[$percent%] ';
+      }
+      return '';
+    }();
+    final statusLabel = _statusLabel(task, isPaused);
+    final artistLabel = task.track.artists.isEmpty
+        ? 'Unknown Artist'
+        : task.track.artists.join(', ');
+    final albumLabel =
+        task.track.album.isEmpty ? 'Unknown Album' : task.track.album;
+    final line =
+        '$progressPrefix$statusLabel • ${task.track.title} – $artistLabel / $albumLabel';
+    return Padding(
+      padding: EdgeInsets.only(bottom: space(6)),
+      child: Container(
+        height: space(40).clamp(32.0, 44.0),
+        padding: EdgeInsets.symmetric(
+          horizontal: space(10).clamp(8.0, 14.0),
+        ),
+        decoration: BoxDecoration(
+          color: ColorTokens.cardFill(context, 0.06),
+          borderRadius: BorderRadius.circular(
+            space(12).clamp(8.0, 16.0),
+          ),
+          border: Border.all(
+            color: ColorTokens.border(context, 0.12),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            ReorderableDragStartListener(
+              index: index,
+              child: Padding(
+                padding: EdgeInsets.only(right: space(10)),
+                child: Icon(
+                  Icons.drag_handle,
+                  size: space(16).clamp(12.0, 20.0),
+                  color: ColorTokens.textSecondary(context, 0.7),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                line,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+            if (task.status == DownloadStatus.failed) ...[
+              const SizedBox(width: 6),
+              IconButton(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh, size: 18),
+                tooltip: 'Retry',
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _statusLabel(DownloadTask task, bool isPaused) {
+    if (isPaused &&
+        task.status != DownloadStatus.downloading &&
+        task.status != DownloadStatus.failed) {
+      return 'Paused';
+    }
+    if (task.status == DownloadStatus.downloading) {
+      return 'Downloading';
+    }
+    if (task.status == DownloadStatus.waitingForWifi) {
+      return 'Waiting for Wi-Fi';
+    }
+    if (task.status == DownloadStatus.failed) {
+      return 'Failed';
+    }
+    return 'Queued';
   }
 }
 

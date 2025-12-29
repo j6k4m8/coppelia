@@ -36,6 +36,9 @@ enum SidebarItem {
   /// Browse genres.
   browseGenres,
 
+  /// Browse playlists.
+  browsePlaylists,
+
   /// Browse tracks.
   browseTracks,
 
@@ -77,6 +80,8 @@ extension SidebarItemMetadata on SidebarItem {
         return 'browse_artists';
       case SidebarItem.browseGenres:
         return 'browse_genres';
+      case SidebarItem.browsePlaylists:
+        return 'browse_playlists';
       case SidebarItem.browseTracks:
         return 'browse_tracks';
       case SidebarItem.history:
@@ -115,6 +120,8 @@ extension SidebarItemMetadata on SidebarItem {
         return 'Artists';
       case SidebarItem.browseGenres:
         return 'Genres';
+      case SidebarItem.browsePlaylists:
+        return 'Playlists';
       case SidebarItem.browseTracks:
         return 'Tracks';
       case SidebarItem.history:

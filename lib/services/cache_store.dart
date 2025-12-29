@@ -383,6 +383,25 @@ class CacheStore {
     }
   }
 
+  /// Streams a download with progress updates and caches the result.
+  Stream<FileResponse> downloadAudioWithProgress(
+    MediaItem item, {
+    Map<String, String>? headers,
+  }) async* {
+    final stream = _audioCache.getFileStream(
+      item.streamUrl,
+      headers: headers,
+      withProgress: true,
+    );
+    await for (final response in stream) {
+      if (response is FileInfo) {
+        await _rememberCachedAudio(item);
+        await enforceCacheLimit();
+      }
+      yield response;
+    }
+  }
+
   /// Updates the LRU timestamp for a cached track.
   Future<void> touchCachedAudio(MediaItem item) async {
     final cached = await _audioCache.getFileFromCache(item.streamUrl);
@@ -476,6 +495,17 @@ class CacheStore {
     } catch (_) {
       return 0;
     }
+  }
+
+  /// Returns the total bytes used by pinned tracks.
+  Future<int> getPinnedMediaBytes(Set<String> pinnedAudio) async {
+    if (pinnedAudio.isEmpty) {
+      return 0;
+    }
+    final entries = await loadCachedAudioEntries();
+    return entries
+        .where((entry) => pinnedAudio.contains(entry.streamUrl))
+        .fold<int>(0, (sum, entry) => sum + entry.bytes);
   }
 
   /// Loads the configured cache size limit.

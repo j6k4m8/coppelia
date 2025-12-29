@@ -16,4 +16,4 @@
 -   [ ] Smart Lists: add sidebar empty state and quick-create template picker
 -   [ ] Smart Lists: add per-list context menu (rename, duplicate, delete)
 -   [ ] Smart Lists: improve rule validation + input helpers (date/duration parsing)
--   [ ] Download manager (per-item progress, prioritization, cellular rules)
+-   [x] Download manager (per-item progress, prioritization, cellular rules)

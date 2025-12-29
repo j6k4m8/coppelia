@@ -82,6 +82,7 @@ I am not sure! I don't have a linux machine handy. If you do, and you can get st
 -   Mobile gestures: Now Playing swipes + edge-swipe sidebar
 -   Cached playlists/tracks/audio with size reporting and cache management
 -   Pin tracks, albums, and artists for offline playback via context menus
+-   Download manager with per-item progress, prioritization, and Wi-Fi rules
 -   Offline library sections for pinned albums, artists, playlists, and tracks
 -   Offline mode toggle that switches the UI to cached-only content
 -   Album/artist header actions for favorites and offline pinning

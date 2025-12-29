@@ -147,6 +147,38 @@ void main() {
     expect(await store.loadHistoryTelemetry(), isFalse);
   });
 
+  test('settings store defaults downloads to allow cellular', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SettingsStore();
+
+    expect(await store.loadDownloadsWifiOnly(), isFalse);
+  });
+
+  test('settings store saves downloads Wi-Fi only', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SettingsStore();
+
+    await store.saveDownloadsWifiOnly(true);
+
+    expect(await store.loadDownloadsWifiOnly(), isTrue);
+  });
+
+  test('settings store defaults downloads to unpaused', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SettingsStore();
+
+    expect(await store.loadDownloadsPaused(), isFalse);
+  });
+
+  test('settings store saves downloads paused', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SettingsStore();
+
+    await store.saveDownloadsPaused(true);
+
+    expect(await store.loadDownloadsPaused(), isTrue);
+  });
+
   test('settings store saves offline mode', () async {
     SharedPreferences.setMockInitialValues({});
     final store = SettingsStore();

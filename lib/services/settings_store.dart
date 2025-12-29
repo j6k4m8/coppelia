@@ -35,6 +35,8 @@ class SettingsStore {
   static const _telemetryProgressKey = 'settings_telemetry_progress';
   static const _telemetryHistoryKey = 'settings_telemetry_history';
   static const _gaplessPlaybackKey = 'settings_gapless_playback';
+  static const _downloadsWifiOnlyKey = 'settings_downloads_wifi_only';
+  static const _downloadsPausedKey = 'settings_downloads_paused';
   static const _autoDownloadFavoritesKey =
       'settings_auto_download_favorites';
   static const _autoDownloadFavoriteAlbumsKey =
@@ -146,6 +148,30 @@ class SettingsStore {
   Future<void> saveGaplessPlayback(bool enabled) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_gaplessPlaybackKey, enabled);
+  }
+
+  /// Loads whether downloads should be restricted to Wi-Fi.
+  Future<bool> loadDownloadsWifiOnly() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_downloadsWifiOnlyKey) ?? false;
+  }
+
+  /// Saves whether downloads should be restricted to Wi-Fi.
+  Future<void> saveDownloadsWifiOnly(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_downloadsWifiOnlyKey, enabled);
+  }
+
+  /// Loads whether downloads are paused.
+  Future<bool> loadDownloadsPaused() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_downloadsPausedKey) ?? false;
+  }
+
+  /// Saves whether downloads are paused.
+  Future<void> saveDownloadsPaused(bool paused) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_downloadsPausedKey, paused);
   }
 
 

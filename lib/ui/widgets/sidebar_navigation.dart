@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/playlist.dart';
@@ -129,38 +128,93 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    final showFavoritesSection = state.isSidebarItemVisible(
-          SidebarItem.favoritesAlbums,
-        ) ||
-        state.isSidebarItemVisible(SidebarItem.favoritesSongs) ||
-        state.isSidebarItemVisible(SidebarItem.favoritesArtists);
-    final showOfflineSection = state.isSidebarItemVisible(
-          SidebarItem.offlineAlbums,
-        ) ||
-        state.isSidebarItemVisible(SidebarItem.offlineArtists) ||
-        state.isSidebarItemVisible(SidebarItem.offlinePlaylists) ||
-        state.isSidebarItemVisible(SidebarItem.offlineTracks);
-    final showBrowseSection = state.isSidebarItemVisible(
-          SidebarItem.browseAlbums,
-        ) ||
-        state.isSidebarItemVisible(SidebarItem.browseArtists) ||
-        state.isSidebarItemVisible(SidebarItem.browseGenres) ||
-        state.isSidebarItemVisible(SidebarItem.browseTracks);
+    final layoutDensity = context.select(
+      (AppState s) => s.layoutDensity.scaleDouble,
+    );
+    final homeVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.home),
+    );
+    final settingsVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.settings),
+    );
+    final favoritesAlbumsVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.favoritesAlbums),
+    );
+    final favoritesArtistsVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.favoritesArtists),
+    );
+    final favoritesTracksVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.favoritesSongs),
+    );
+    final offlineAlbumsVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.offlineAlbums),
+    );
+    final offlineArtistsVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.offlineArtists),
+    );
+    final offlinePlaylistsVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.offlinePlaylists),
+    );
+    final offlineTracksVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.offlineTracks),
+    );
+    final browseAlbumsVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.browseAlbums),
+    );
+    final browseArtistsVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.browseArtists),
+    );
+    final browseGenresVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.browseGenres),
+    );
+    final browsePlaylistsVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.browsePlaylists),
+    );
+    final browseTracksVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.browseTracks),
+    );
+    final playbackHistoryVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.history),
+    );
+    final playbackQueueVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.queue),
+    );
+    final playlistsVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.playlists),
+    );
+    final offlineMode = context.select((AppState s) => s.offlineMode);
+    final sessionPresent = context.select((AppState s) => s.session != null);
+    final smartLists = context.select((AppState s) => s.smartLists);
+    final playlists = context.select((AppState s) => s.playlists);
+    final selectedView = context.select((AppState s) => s.selectedView);
+    final selectedPlaylistId = context.select(
+      (AppState s) => s.selectedPlaylist?.id,
+    );
+    final selectedSmartListId = context.select(
+      (AppState s) => s.selectedSmartList?.id,
+    );
+    final topInset = MediaQuery.of(context).padding.top +
+        (14 * layoutDensity).clamp(12.0, 20.0).toDouble();
+    final horizontalPadding = 20 * layoutDensity;
+    final verticalPadding = 24 * layoutDensity;
+    double space(double value) => value * layoutDensity;
+    final showFavoritesSection = favoritesAlbumsVisible ||
+        favoritesArtistsVisible ||
+        favoritesTracksVisible;
+    final showOfflineSection = offlineAlbumsVisible ||
+        offlineArtistsVisible ||
+        offlinePlaylistsVisible ||
+        offlineTracksVisible;
+    final showBrowseSection = browseAlbumsVisible ||
+        browseArtistsVisible ||
+        browseGenresVisible ||
+        browsePlaylistsVisible ||
+        browseTracksVisible;
     final showPlaybackSection =
-        state.isSidebarItemVisible(SidebarItem.history) ||
-            state.isSidebarItemVisible(SidebarItem.queue);
-    final showPlaylistsSection =
-        state.isSidebarItemVisible(SidebarItem.playlists);
-    final showSmartListsSection =
-        state.smartLists.isNotEmpty || state.session != null;
-    final densityScale = state.layoutDensity.scaleDouble;
-    double space(double value) => value * densityScale;
-    final safeTop = MediaQuery.of(context).padding.top;
-    final chromeInset = (14 * densityScale).clamp(12.0, 20.0).toDouble();
-    final topInset = safeTop + chromeInset;
-    final horizontalPadding = 20 * densityScale;
-    final verticalPadding = 24 * densityScale;
+        playbackHistoryVisible || playbackQueueVisible;
+    final showSmartListsSection = smartLists.isNotEmpty || sessionPresent;
+    final showPlaylistsSection = playlistsVisible;
+    final appState = context.read<AppState>();
     return Container(
       padding: EdgeInsets.fromLTRB(
         horizontalPadding,
@@ -183,14 +237,14 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             children: [
               Expanded(
                 child: MouseRegion(
-                  cursor: state.isSidebarItemVisible(SidebarItem.home)
+                  cursor: homeVisible
                       ? SystemMouseCursors.click
                       : SystemMouseCursors.basic,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: state.isSidebarItemVisible(SidebarItem.home)
+                    onTap: homeVisible
                         ? () => _handleNavigate(
-                              () => state.selectLibraryView(
+                              () => appState.selectLibraryView(
                                 LibraryView.home,
                               ),
                             )
@@ -200,10 +254,11 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                         SizedBox(
                           width: space(36).clamp(28.0, 42.0),
                           height: space(36).clamp(28.0, 42.0),
-                          child: SvgPicture.asset(
-                            'assets/logo.svg',
+                          child: Image.asset(
+                            'assets/logo.png',
                             width: space(36).clamp(28.0, 42.0),
                             height: space(36).clamp(28.0, 42.0),
+                            fit: BoxFit.contain,
                           ),
                         ),
                         SizedBox(width: space(12).clamp(8.0, 16.0)),
@@ -225,22 +280,22 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             ],
           ),
           SizedBox(height: space(32)),
-          if (state.isSidebarItemVisible(SidebarItem.settings)) ...[
+          if (settingsVisible) ...[
             _NavTile(
               icon: Icons.menu,
               label: 'Settings',
-              selected: state.selectedPlaylist == null &&
-                  state.selectedView == LibraryView.settings,
+              selected: selectedPlaylistId == null &&
+                  selectedView == LibraryView.settings,
               onTap: () => _handleNavigate(
-                () => state.selectLibraryView(LibraryView.settings),
+                () => appState.selectLibraryView(LibraryView.settings),
               ),
             ),
             SizedBox(height: space(8)),
             _ToggleTile(
               icon: Icons.cloud_off,
               label: 'Offline mode',
-              value: state.offlineMode,
-              onChanged: (value) => state.setOfflineMode(value),
+              value: offlineMode,
+              onChanged: (value) => appState.setOfflineMode(value),
             ),
           ],
           SizedBox(height: space(20)),
@@ -258,47 +313,38 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                   ? Column(
                       children: [
                         SizedBox(height: space(8)),
-                        if (state.isSidebarItemVisible(
-                          SidebarItem.favoritesAlbums,
-                        ))
+                        if (favoritesAlbumsVisible)
                           _NavTile(
                             icon: Icons.album,
                             label: 'Albums',
-                            selected: state.selectedPlaylist == null &&
-                                state.selectedView ==
-                                    LibraryView.favoritesAlbums,
+                            selected: selectedPlaylistId == null &&
+                                selectedView == LibraryView.favoritesAlbums,
                             onTap: () => _handleNavigate(
-                              () => state.selectLibraryView(
+                              () => appState.selectLibraryView(
                                 LibraryView.favoritesAlbums,
                               ),
                             ),
                           ),
-                        if (state.isSidebarItemVisible(
-                          SidebarItem.favoritesArtists,
-                        ))
+                        if (favoritesArtistsVisible)
                           _NavTile(
                             icon: Icons.people_alt,
                             label: 'Artists',
-                            selected: state.selectedPlaylist == null &&
-                                state.selectedView ==
-                                    LibraryView.favoritesArtists,
+                            selected: selectedPlaylistId == null &&
+                                selectedView == LibraryView.favoritesArtists,
                             onTap: () => _handleNavigate(
-                              () => state.selectLibraryView(
+                              () => appState.selectLibraryView(
                                 LibraryView.favoritesArtists,
                               ),
                             ),
                           ),
-                        if (state.isSidebarItemVisible(
-                          SidebarItem.favoritesSongs,
-                        ))
+                        if (favoritesTracksVisible)
                           _NavTile(
                             icon: Icons.music_note,
                             label: 'Tracks',
-                            selected: state.selectedPlaylist == null &&
-                                state.selectedView ==
-                                    LibraryView.favoritesSongs,
+                            selected: selectedPlaylistId == null &&
+                                selectedView == LibraryView.favoritesSongs,
                             onTap: () => _handleNavigate(
-                              () => state.selectLibraryView(
+                              () => appState.selectLibraryView(
                                 LibraryView.favoritesSongs,
                               ),
                             ),
@@ -322,55 +368,62 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                   ? Column(
                       children: [
                         SizedBox(height: space(8)),
-                        if (state.isSidebarItemVisible(
-                          SidebarItem.browseAlbums,
-                        ))
+                        if (browseAlbumsVisible)
                           _NavTile(
                             icon: Icons.album,
                             label: 'Albums',
-                            selected: state.selectedPlaylist == null &&
-                                state.selectedView == LibraryView.albums,
+                            selected: selectedPlaylistId == null &&
+                                selectedView == LibraryView.albums,
                             onTap: () => _handleNavigate(
-                              () =>
-                                  state.selectLibraryView(LibraryView.albums),
+                              () => appState.selectLibraryView(
+                                LibraryView.albums,
+                              ),
                             ),
                           ),
-                        if (state.isSidebarItemVisible(
-                          SidebarItem.browseArtists,
-                        ))
+                        if (browseArtistsVisible)
                           _NavTile(
                             icon: Icons.people_alt,
                             label: 'Artists',
-                            selected: state.selectedPlaylist == null &&
-                                state.selectedView == LibraryView.artists,
+                            selected: selectedPlaylistId == null &&
+                                selectedView == LibraryView.artists,
                             onTap: () => _handleNavigate(
-                              () =>
-                                  state.selectLibraryView(LibraryView.artists),
+                              () => appState.selectLibraryView(
+                                LibraryView.artists,
+                              ),
                             ),
                           ),
-                        if (state.isSidebarItemVisible(
-                          SidebarItem.browseGenres,
-                        ))
+                        if (browseGenresVisible)
                           _NavTile(
                             icon: Icons.auto_awesome_motion,
                             label: 'Genres',
-                            selected: state.selectedPlaylist == null &&
-                                state.selectedView == LibraryView.genres,
+                            selected: selectedPlaylistId == null &&
+                                selectedView == LibraryView.genres,
                             onTap: () => _handleNavigate(
-                              () =>
-                                  state.selectLibraryView(LibraryView.genres),
+                              () => appState.selectLibraryView(
+                                LibraryView.genres,
+                              ),
                             ),
                           ),
-                        if (state.isSidebarItemVisible(
-                          SidebarItem.browseTracks,
-                        ))
+                        if (browsePlaylistsVisible)
+                          _NavTile(
+                            icon: Icons.queue_music,
+                            label: 'Playlists',
+                            selected: selectedPlaylistId == null &&
+                                selectedView == LibraryView.homePlaylists,
+                            onTap: () => _handleNavigate(
+                              () => appState.selectLibraryView(
+                                LibraryView.homePlaylists,
+                              ),
+                            ),
+                          ),
+                        if (browseTracksVisible)
                           _NavTile(
                             icon: Icons.music_note,
                             label: 'Tracks',
-                            selected: state.selectedPlaylist == null &&
-                                state.selectedView == LibraryView.tracks,
+                            selected: selectedPlaylistId == null &&
+                                selectedView == LibraryView.tracks,
                             onTap: () => _handleNavigate(
-                              () => state.selectLibraryView(
+                              () => appState.selectLibraryView(
                                 LibraryView.tracks,
                               ),
                             ),
@@ -395,26 +448,28 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                   ? Column(
                       children: [
                         SizedBox(height: space(8)),
-                        if (state.isSidebarItemVisible(SidebarItem.history))
+                        if (playbackHistoryVisible)
                           _NavTile(
                             icon: Icons.history,
                             label: 'History',
-                            selected: state.selectedPlaylist == null &&
-                                state.selectedView == LibraryView.history,
+                            selected: selectedPlaylistId == null &&
+                                selectedView == LibraryView.history,
                             onTap: () => _handleNavigate(
-                              () =>
-                                  state.selectLibraryView(LibraryView.history),
+                              () => appState.selectLibraryView(
+                                LibraryView.history,
+                              ),
                             ),
                           ),
-                        if (state.isSidebarItemVisible(SidebarItem.queue))
+                        if (playbackQueueVisible)
                           _NavTile(
                             icon: Icons.queue_music,
                             label: 'Queue',
-                            selected: state.selectedPlaylist == null &&
-                                state.selectedView == LibraryView.queue,
+                            selected: selectedPlaylistId == null &&
+                                selectedView == LibraryView.queue,
                             onTap: () => _handleNavigate(
-                              () =>
-                                  state.selectLibraryView(LibraryView.queue),
+                              () => appState.selectLibraryView(
+                                LibraryView.queue,
+                              ),
                             ),
                           ),
                       ],
@@ -439,28 +494,27 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                         SizedBox(height: space(12)),
                         _PlaylistActionTile(
                           label: 'New playlist',
-                          enabled:
-                              state.session != null && !state.offlineMode,
+                          enabled: sessionPresent && !offlineMode,
                           onTap: () async {
                             final created =
                                 await showCreatePlaylistDialog(context);
                             if (created != null) {
-                              state.selectPlaylist(created);
+                              appState.selectPlaylist(created);
                             }
                           },
                         ),
                         SizedBox(height: space(6)),
-                        ...state.playlists.map(
+                        ...playlists.map(
                           (playlist) => Padding(
                             padding: const EdgeInsets.only(bottom: 4),
                             child: _PlaylistTile(
                               playlist: playlist,
-                              selected:
-                                  state.selectedPlaylist?.id == playlist.id,
-                              onTap: () =>
-                                  _handleNavigate(() => state.selectPlaylist(
-                                        playlist,
-                                      )),
+                              selected: selectedPlaylistId == playlist.id,
+                              onTap: () => _handleNavigate(
+                                () => appState.selectPlaylist(
+                                  playlist,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -486,20 +540,19 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                         SizedBox(height: space(12)),
                         _PlaylistActionTile(
                           label: 'New smart list',
-                          enabled:
-                              state.session != null && !state.offlineMode,
+                          enabled: sessionPresent && !offlineMode,
                           onTap: () async {
                             final created =
                                 await showSmartListEditorDialog(context);
                             if (created != null) {
                               final stored =
-                                  await state.createSmartList(created);
-                              await state.selectSmartList(stored);
+                                  await appState.createSmartList(created);
+                              await appState.selectSmartList(stored);
                             }
                           },
                         ),
                         SizedBox(height: space(6)),
-                        if (state.smartLists.isEmpty)
+                        if (smartLists.isEmpty)
                           Padding(
                             padding: EdgeInsets.only(
                               left: space(12).clamp(8.0, 16.0),
@@ -518,15 +571,14 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                             ),
                           )
                         else
-                          ...state.smartLists.map(
+                          ...smartLists.map(
                             (smartList) => Padding(
                               padding: const EdgeInsets.only(bottom: 4),
                               child: _SmartListTile(
                                 smartList: smartList,
-                                selected: state.selectedSmartList?.id ==
-                                    smartList.id,
+                                selected: selectedSmartListId == smartList.id,
                                 onTap: () => _handleNavigate(
-                                  () => state.selectSmartList(smartList),
+                                  () => appState.selectSmartList(smartList),
                                 ),
                                 onRename: () =>
                                     _renameSmartList(context, smartList),
@@ -536,7 +588,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                                   final updated = smartList.copyWith(
                                     showOnHome: !smartList.showOnHome,
                                   );
-                                  state.updateSmartList(updated);
+                                  appState.updateSmartList(updated);
                                 },
                                 onDelete: () =>
                                     _deleteSmartList(context, smartList),
@@ -563,62 +615,50 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                   ? Column(
                       children: [
                         SizedBox(height: space(8)),
-                        if (state.isSidebarItemVisible(
-                          SidebarItem.offlineAlbums,
-                        ))
+                        if (offlineAlbumsVisible)
                           _NavTile(
                             icon: Icons.album,
                             label: 'Albums',
-                            selected: state.selectedPlaylist == null &&
-                                state.selectedView ==
-                                    LibraryView.offlineAlbums,
+                            selected: selectedPlaylistId == null &&
+                                selectedView == LibraryView.offlineAlbums,
                             onTap: () => _handleNavigate(
-                              () => state.selectLibraryView(
+                              () => appState.selectLibraryView(
                                 LibraryView.offlineAlbums,
                               ),
                             ),
                           ),
-                        if (state.isSidebarItemVisible(
-                          SidebarItem.offlineArtists,
-                        ))
+                        if (offlineArtistsVisible)
                           _NavTile(
                             icon: Icons.people_alt,
                             label: 'Artists',
-                            selected: state.selectedPlaylist == null &&
-                                state.selectedView ==
-                                    LibraryView.offlineArtists,
+                            selected: selectedPlaylistId == null &&
+                                selectedView == LibraryView.offlineArtists,
                             onTap: () => _handleNavigate(
-                              () => state.selectLibraryView(
+                              () => appState.selectLibraryView(
                                 LibraryView.offlineArtists,
                               ),
                             ),
                           ),
-                        if (state.isSidebarItemVisible(
-                          SidebarItem.offlinePlaylists,
-                        ))
+                        if (offlinePlaylistsVisible)
                           _NavTile(
                             icon: Icons.playlist_play,
                             label: 'Playlists',
-                            selected: state.selectedPlaylist == null &&
-                                state.selectedView ==
-                                    LibraryView.offlinePlaylists,
+                            selected: selectedPlaylistId == null &&
+                                selectedView == LibraryView.offlinePlaylists,
                             onTap: () => _handleNavigate(
-                              () => state.selectLibraryView(
+                              () => appState.selectLibraryView(
                                 LibraryView.offlinePlaylists,
                               ),
                             ),
                           ),
-                        if (state.isSidebarItemVisible(
-                          SidebarItem.offlineTracks,
-                        ))
+                        if (offlineTracksVisible)
                           _NavTile(
                             icon: Icons.music_note,
                             label: 'Tracks',
-                            selected: state.selectedPlaylist == null &&
-                                state.selectedView ==
-                                    LibraryView.offlineTracks,
+                            selected: selectedPlaylistId == null &&
+                                selectedView == LibraryView.offlineTracks,
                             onTap: () => _handleNavigate(
-                              () => state.selectLibraryView(
+                              () => appState.selectLibraryView(
                                 LibraryView.offlineTracks,
                               ),
                             ),
@@ -730,6 +770,7 @@ class _ToggleTile extends StatelessWidget {
     );
   }
 }
+
 
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({
