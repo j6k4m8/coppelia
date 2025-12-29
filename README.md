@@ -58,6 +58,7 @@ You will need to sideload the app using Xcode or a tool like AltStore for now...
 
 -   Jellyfin authentication
 -   Fast library browsing and search (albums, artists, genres, playlists)
+-   Playlist management with create, rename, delete, add/remove tracks, and drag reordering
 -   Audio playback with queue controls, play-next, and clear-queue
     -   macOS Now Playing integration + media key shortcuts
 -   Repeat playback (track or queue)
@@ -97,7 +98,6 @@ All shortcuts are configurable in the Settings screen. `^` indicates the Cmd key
 ## Roadmap
 
 -   Windows and Linux support (can you help??)
--   Playlist creation and editing
 -   More playback features (shuffle, repeat, etc)
 -   Your idea here?
 

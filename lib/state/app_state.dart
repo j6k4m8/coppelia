@@ -766,6 +766,238 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Creates a new playlist.
+  Future<Playlist?> createPlaylist({
+    required String name,
+    List<MediaItem> initialTracks = const [],
+  }) async {
+    if (_session == null || _offlineMode) {
+      return null;
+    }
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    try {
+      final playlist = await _client.createPlaylist(
+        name: trimmed,
+        itemIds: initialTracks.map((track) => track.id).toList(),
+      );
+      final created = playlist.id.isEmpty
+          ? Playlist(
+              id: playlist.id,
+              name: trimmed,
+              trackCount: initialTracks.length,
+              imageUrl: playlist.imageUrl,
+            )
+          : playlist;
+      _playlists = [..._playlists, created]..sort(_comparePlaylists);
+      await _cacheStore.savePlaylists(_playlists);
+      _updatePlaylistStats(1);
+      notifyListeners();
+      if (created.id.isNotEmpty && initialTracks.isNotEmpty) {
+        final tracks = await _client.fetchPlaylistTracks(created.id);
+        await _cacheStore.savePlaylistTracks(created.id, tracks);
+        if (_selectedPlaylist?.id == created.id) {
+          _playlistTracks = tracks;
+          notifyListeners();
+        }
+      }
+      return created;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Renames an existing playlist.
+  Future<String?> renamePlaylist(Playlist playlist, String name) async {
+    if (_session == null || _offlineMode) {
+      return 'Playlists are unavailable offline.';
+    }
+    final trimmed = name.trim();
+    if (trimmed.isEmpty || trimmed == playlist.name) {
+      return null;
+    }
+    final updated = Playlist(
+      id: playlist.id,
+      name: trimmed,
+      trackCount: playlist.trackCount,
+      imageUrl: playlist.imageUrl,
+    );
+    final previous = _playlists;
+    _playlists = _playlists
+        .map((item) => item.id == playlist.id ? updated : item)
+        .toList()
+      ..sort(_comparePlaylists);
+    await _cacheStore.savePlaylists(_playlists);
+    notifyListeners();
+    try {
+      await _client.renamePlaylist(playlistId: playlist.id, name: trimmed);
+      if (_selectedPlaylist?.id == playlist.id) {
+        _selectedPlaylist = updated;
+        notifyListeners();
+      }
+      return null;
+    } catch (error) {
+      _playlists = previous;
+      await _cacheStore.savePlaylists(_playlists);
+      notifyListeners();
+      return _playlistErrorMessage(
+        error,
+        fallback: 'Unable to rename playlist.',
+      );
+    }
+  }
+
+  /// Deletes a playlist.
+  Future<String?> deletePlaylist(Playlist playlist) async {
+    if (_session == null || _offlineMode) {
+      return 'Playlists are unavailable offline.';
+    }
+    final previous = _playlists;
+    _playlists = _playlists.where((item) => item.id != playlist.id).toList();
+    await _cacheStore.savePlaylists(_playlists);
+    _updatePlaylistStats(-1);
+    if (_selectedPlaylist?.id == playlist.id) {
+      clearPlaylistSelection();
+    } else {
+      notifyListeners();
+    }
+    try {
+      await _client.deletePlaylist(playlist.id);
+      return null;
+    } catch (error) {
+      _playlists = previous;
+      await _cacheStore.savePlaylists(_playlists);
+      _updatePlaylistStats(1);
+      notifyListeners();
+      return _playlistErrorMessage(
+        error,
+        fallback: 'Unable to delete playlist.',
+      );
+    }
+  }
+
+  /// Adds a track to the selected playlist.
+  Future<String?> addTrackToPlaylist(
+    MediaItem track,
+    Playlist playlist,
+  ) async {
+    return addTracksToPlaylist(playlist, [track]);
+  }
+
+  /// Adds tracks to a playlist.
+  Future<String?> addTracksToPlaylist(
+    Playlist playlist,
+    List<MediaItem> tracks,
+  ) async {
+    if (_session == null || _offlineMode || tracks.isEmpty) {
+      return 'Playlists are unavailable offline.';
+    }
+    try {
+      await _client.addToPlaylist(
+        playlistId: playlist.id,
+        itemIds: tracks.map((track) => track.id).toList(),
+      );
+      if (_selectedPlaylist?.id == playlist.id) {
+        final refreshed = await _client.fetchPlaylistTracks(playlist.id);
+        _playlistTracks = refreshed;
+        await _cacheStore.savePlaylistTracks(playlist.id, refreshed);
+        notifyListeners();
+      }
+      _updatePlaylistTrackCount(playlist, tracks.length);
+      return null;
+    } catch (error) {
+      return _playlistErrorMessage(
+        error,
+        fallback: 'Unable to add to playlist.',
+      );
+    }
+  }
+
+  /// Removes a track from a playlist.
+  Future<String?> removeTrackFromPlaylist(
+    MediaItem track,
+    Playlist playlist,
+  ) async {
+    if (_session == null || _offlineMode) {
+      return 'Playlists are unavailable offline.';
+    }
+    try {
+      await _client.removeFromPlaylist(
+        playlistId: playlist.id,
+        entryIds: track.playlistItemId == null
+            ? const []
+            : [track.playlistItemId!],
+        itemIds:
+            track.playlistItemId == null ? [track.id] : const [],
+      );
+      if (_selectedPlaylist?.id == playlist.id) {
+        final updated = List<MediaItem>.from(_playlistTracks);
+        if (track.playlistItemId != null) {
+          updated.removeWhere(
+            (item) => item.playlistItemId == track.playlistItemId,
+          );
+        } else {
+          final index =
+              updated.indexWhere((item) => item.id == track.id);
+          if (index != -1) {
+            updated.removeAt(index);
+          }
+        }
+        _playlistTracks = updated;
+        await _cacheStore.savePlaylistTracks(playlist.id, updated);
+        notifyListeners();
+      }
+      _updatePlaylistTrackCount(playlist, -1);
+      return null;
+    } catch (error) {
+      return _playlistErrorMessage(
+        error,
+        fallback: 'Unable to remove from playlist.',
+      );
+    }
+  }
+
+  /// Reorders tracks within a playlist.
+  Future<String?> reorderPlaylistTracks(
+    Playlist playlist,
+    List<MediaItem> orderedTracks,
+  ) async {
+    if (_session == null || _offlineMode) {
+      return 'Playlists are unavailable offline.';
+    }
+    final entryIds =
+        orderedTracks.map((track) => track.playlistItemId).toList();
+    if (entryIds.any((id) => id == null)) {
+      return 'Unable to reorder this playlist.';
+    }
+    final previous = _playlistTracks;
+    _playlistTracks = orderedTracks;
+    await _cacheStore.savePlaylistTracks(playlist.id, orderedTracks);
+    notifyListeners();
+    try {
+      await _client.reorderPlaylist(
+        playlistId: playlist.id,
+        entryIds: entryIds.whereType<String>().toList(),
+      );
+      return null;
+    } catch (error) {
+      final fallback = await _attemptPlaylistRebuildReorder(
+        playlist,
+        orderedTracks,
+        error,
+      );
+      if (fallback == null) {
+        return null;
+      }
+      _playlistTracks = previous;
+      await _cacheStore.savePlaylistTracks(playlist.id, previous);
+      notifyListeners();
+      return fallback;
+    }
+  }
+
   /// Navigates to a library view.
   void selectLibraryView(LibraryView view, {bool recordHistory = true}) {
     if (recordHistory && view != _selectedView) {
@@ -822,6 +1054,98 @@ class AppState extends ChangeNotifier {
     if (_viewHistory.length > 20) {
       _viewHistory.removeAt(0);
     }
+  }
+
+  int _comparePlaylists(Playlist a, Playlist b) {
+    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  }
+
+  String _playlistErrorMessage(Object error, {required String fallback}) {
+    if (error is JellyfinRequestException) {
+      return error.message;
+    }
+    return fallback;
+  }
+
+  bool _isPlaylistOrderUnsupported(Object error) {
+    if (error is! JellyfinRequestException) {
+      return false;
+    }
+    final message = error.message.toLowerCase();
+    return message.contains('404') || message.contains('not found');
+  }
+
+  Future<String?> _attemptPlaylistRebuildReorder(
+    Playlist playlist,
+    List<MediaItem> orderedTracks,
+    Object error,
+  ) async {
+    if (!_isPlaylistOrderUnsupported(error)) {
+      return _playlistErrorMessage(
+        error,
+        fallback: 'Unable to reorder playlist.',
+      );
+    }
+    final entryIds = orderedTracks
+        .map((track) => track.playlistItemId)
+        .whereType<String>()
+        .toList();
+    if (entryIds.length != orderedTracks.length) {
+      return 'Unable to reorder this playlist.';
+    }
+    try {
+      await _client.removeFromPlaylist(
+        playlistId: playlist.id,
+        entryIds: entryIds,
+      );
+      await _client.addToPlaylist(
+        playlistId: playlist.id,
+        itemIds: orderedTracks.map((track) => track.id).toList(),
+      );
+      final refreshed = await _client.fetchPlaylistTracks(playlist.id);
+      _playlistTracks = refreshed;
+      await _cacheStore.savePlaylistTracks(playlist.id, refreshed);
+      notifyListeners();
+      return null;
+    } catch (fallbackError) {
+      return _playlistErrorMessage(
+        fallbackError,
+        fallback: 'Unable to reorder playlist.',
+      );
+    }
+  }
+
+  void _updatePlaylistTrackCount(Playlist playlist, int delta) {
+    final updated = Playlist(
+      id: playlist.id,
+      name: playlist.name,
+      trackCount: (playlist.trackCount + delta).clamp(0, 1 << 31),
+      imageUrl: playlist.imageUrl,
+    );
+    _playlists = _playlists
+        .map((item) => item.id == playlist.id ? updated : item)
+        .toList()
+      ..sort(_comparePlaylists);
+    if (_selectedPlaylist?.id == playlist.id) {
+      _selectedPlaylist = updated;
+    }
+    unawaited(_cacheStore.savePlaylists(_playlists));
+    notifyListeners();
+  }
+
+  void _updatePlaylistStats(int delta) {
+    final stats = _libraryStats;
+    if (stats == null) {
+      return;
+    }
+    final next = LibraryStats(
+      trackCount: stats.trackCount,
+      albumCount: stats.albumCount,
+      artistCount: stats.artistCount,
+      playlistCount: (stats.playlistCount + delta).clamp(0, 1 << 31),
+    );
+    _libraryStats = next;
+    unawaited(_cacheStore.saveLibraryStats(next));
   }
 
   bool _isOfflineLibraryView(LibraryView view) {

@@ -12,3 +12,11 @@
 
 -   [ ] add AirPlay device picker + playback route integration (iOS/macOS)
 -   [ ] add Chromecast support + cast-friendly stream URLs (Android)
+
+## Playlists
+
+-   [x] create playlists
+-   [x] rename playlists
+-   [x] delete playlists
+-   [x] add/remove tracks in playlists
+-   [x] reorder playlist tracks via drag

@@ -9,6 +9,7 @@ import '../../state/layout_density.dart';
 import '../../state/sidebar_item.dart';
 import '../../core/color_tokens.dart';
 import 'compact_switch.dart';
+import 'playlist_dialogs.dart';
 
 /// Vertical navigation rail for playlists and actions.
 class SidebarNavigation extends StatefulWidget {
@@ -345,6 +346,19 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                   ? Column(
                       children: [
                         SizedBox(height: space(12)),
+                        _PlaylistActionTile(
+                          label: 'New playlist',
+                          enabled:
+                              state.session != null && !state.offlineMode,
+                          onTap: () async {
+                            final created =
+                                await showCreatePlaylistDialog(context);
+                            if (created != null) {
+                              state.selectPlaylist(created);
+                            }
+                          },
+                        ),
+                        SizedBox(height: space(6)),
                         ...state.playlists.map(
                           (playlist) => Padding(
                             padding: const EdgeInsets.only(bottom: 4),
@@ -621,6 +635,67 @@ class _PlaylistTile extends StatelessWidget {
               child: Text(
                 playlist.name,
                 overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PlaylistActionTile extends StatelessWidget {
+  const _PlaylistActionTile({
+    required this.label,
+    required this.onTap,
+    this.enabled = true,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    double clamped(double value, {double min = 0, double max = 999}) =>
+        (value * densityScale).clamp(min, max);
+    final labelStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: enabled
+              ? ColorTokens.textSecondary(context, 0.9)
+              : ColorTokens.textSecondary(context, 0.4),
+        );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: enabled ? onTap : null,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: space(12).clamp(8.0, 16.0),
+          vertical: space(8).clamp(6.0, 12.0),
+        ),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(
+            clamped(12, min: 8, max: 16),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.add,
+              size: clamped(16, min: 12, max: 18),
+              color: enabled
+                  ? ColorTokens.textSecondary(context, 0.9)
+                  : ColorTokens.textSecondary(context, 0.4),
+            ),
+            SizedBox(width: space(10).clamp(6.0, 14.0)),
+            Expanded(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: labelStyle,
               ),
             ),
           ],
