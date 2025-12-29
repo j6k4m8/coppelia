@@ -257,6 +257,322 @@ class JellyfinClient {
         .toList();
   }
 
+  /// Creates a new playlist with optional initial items.
+  Future<Playlist> createPlaylist({
+    required String name,
+    List<String> itemIds = const [],
+  }) async {
+    final session = _requireSession();
+    final params = <String, String>{
+      'Name': name,
+      'UserId': session.userId,
+      'api_key': session.accessToken,
+    };
+    if (itemIds.isNotEmpty) {
+      params['Ids'] = itemIds.join(',');
+    }
+    final uri = Uri.parse('${session.serverUrl}/Playlists').replace(
+      queryParameters: params,
+    );
+    final response = await _httpClient.post(uri);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw JellyfinRequestException(
+        _errorMessage(
+          response,
+          fallback: 'Unable to create playlist.',
+        ),
+      );
+    }
+    try {
+      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      if (payload.containsKey('Name')) {
+        return Playlist.fromJellyfin(payload, serverUrl: session.serverUrl);
+      }
+      final id = payload['Id']?.toString() ??
+          payload['PlaylistId']?.toString() ??
+          '';
+      return Playlist(
+        id: id,
+        name: name,
+        trackCount: itemIds.length,
+        imageUrl: null,
+      );
+    } catch (_) {
+      return Playlist(
+        id: '',
+        name: name,
+        trackCount: itemIds.length,
+        imageUrl: null,
+      );
+    }
+  }
+
+  /// Renames a playlist.
+  Future<void> renamePlaylist({
+    required String playlistId,
+    required String name,
+  }) async {
+    final session = _requireSession();
+    final headers = _playlistHeaders(session);
+    final uri = Uri.parse(
+      '${session.serverUrl}/Items/$playlistId',
+    ).replace(
+      queryParameters: {
+        'api_key': session.accessToken,
+        'UserId': session.userId,
+      },
+    );
+    final response = await _httpClient.post(
+      uri,
+      headers: headers,
+      body: jsonEncode({'Name': name}),
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    }
+    final fallbackUri = Uri.parse(
+      '${session.serverUrl}/Playlists/$playlistId',
+    ).replace(
+      queryParameters: {
+        'Name': name,
+        'UserId': session.userId,
+        'api_key': session.accessToken,
+      },
+    );
+    final fallbackResponse = await _httpClient.post(
+      fallbackUri,
+      headers: headers,
+      body: jsonEncode(<String, dynamic>{}),
+    );
+    if (fallbackResponse.statusCode < 200 ||
+        fallbackResponse.statusCode >= 300) {
+      throw JellyfinRequestException(
+        _errorMessage(
+          fallbackResponse,
+          fallback: 'Unable to rename playlist.',
+        ),
+      );
+    }
+  }
+
+  /// Deletes a playlist.
+  Future<void> deletePlaylist(String playlistId) async {
+    final session = _requireSession();
+    final headers = _playlistHeaders(session);
+    final uri = Uri.parse(
+      '${session.serverUrl}/Items/$playlistId',
+    ).replace(
+      queryParameters: {
+        'api_key': session.accessToken,
+        'UserId': session.userId,
+      },
+    );
+    final response = await _httpClient.delete(uri, headers: headers);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw JellyfinRequestException(
+        _errorMessage(
+          response,
+          fallback: 'Unable to delete playlist.',
+        ),
+      );
+    }
+  }
+
+  /// Adds items to a playlist.
+  Future<void> addToPlaylist({
+    required String playlistId,
+    required List<String> itemIds,
+  }) async {
+    if (itemIds.isEmpty) {
+      return;
+    }
+    final session = _requireSession();
+    final headers = _playlistHeaders(session);
+    final uri = Uri.parse(
+      '${session.serverUrl}/Playlists/$playlistId/Items',
+    ).replace(
+      queryParameters: {
+        'Ids': itemIds.join(','),
+        'UserId': session.userId,
+        'api_key': session.accessToken,
+      },
+    );
+    final response = await _httpClient.post(
+      uri,
+      headers: headers,
+      body: jsonEncode(<String, dynamic>{}),
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    }
+    final fallbackResponse = await _httpClient.post(
+      Uri.parse('${session.serverUrl}/Playlists/$playlistId/Items')
+          .replace(
+        queryParameters: {
+          'UserId': session.userId,
+          'api_key': session.accessToken,
+        },
+      ),
+      headers: headers,
+      body: jsonEncode({'Ids': itemIds}),
+    );
+    if (fallbackResponse.statusCode < 200 ||
+        fallbackResponse.statusCode >= 300) {
+      throw JellyfinRequestException(
+        _errorMessage(
+          fallbackResponse,
+          fallback: 'Unable to add to playlist.',
+        ),
+      );
+    }
+  }
+
+  /// Removes items from a playlist.
+  Future<void> removeFromPlaylist({
+    required String playlistId,
+    List<String> entryIds = const [],
+    List<String> itemIds = const [],
+  }) async {
+    if (entryIds.isEmpty && itemIds.isEmpty) {
+      return;
+    }
+    final session = _requireSession();
+    final headers = _playlistHeaders(session);
+    final params = <String, String>{
+      'api_key': session.accessToken,
+      'UserId': session.userId,
+    };
+    if (entryIds.isNotEmpty) {
+      params['EntryIds'] = entryIds.join(',');
+    } else if (itemIds.isNotEmpty) {
+      params['Ids'] = itemIds.join(',');
+    }
+    final uri = Uri.parse(
+      '${session.serverUrl}/Playlists/$playlistId/Items',
+    ).replace(queryParameters: params);
+    final response = await _httpClient.delete(uri, headers: headers);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    }
+    final fallbackResponse = await _httpClient.post(
+      Uri.parse('${session.serverUrl}/Playlists/$playlistId/Items/Delete')
+          .replace(
+        queryParameters: {
+          'UserId': session.userId,
+          'api_key': session.accessToken,
+        },
+      ),
+      headers: headers,
+      body: jsonEncode({
+        if (entryIds.isNotEmpty) 'EntryIds': entryIds,
+        if (entryIds.isEmpty && itemIds.isNotEmpty) 'Ids': itemIds,
+      }),
+    );
+    if (fallbackResponse.statusCode < 200 ||
+        fallbackResponse.statusCode >= 300) {
+      throw JellyfinRequestException(
+        _errorMessage(
+          fallbackResponse,
+          fallback: 'Unable to remove from playlist.',
+        ),
+      );
+    }
+  }
+
+  /// Reorders items in a playlist by entry identifiers.
+  Future<void> reorderPlaylist({
+    required String playlistId,
+    required List<String> entryIds,
+  }) async {
+    if (entryIds.isEmpty) {
+      return;
+    }
+    final session = _requireSession();
+    final headers = _playlistHeaders(session);
+    Future<http.Response> attempt(String paramName) async {
+      final uri = Uri.parse(
+        '${session.serverUrl}/Playlists/$playlistId/Items/Order',
+      ).replace(
+        queryParameters: {
+          paramName: entryIds.join(','),
+          'UserId': session.userId,
+          'api_key': session.accessToken,
+        },
+      );
+      return _httpClient.post(
+        uri,
+        headers: headers,
+        body: jsonEncode(<String, dynamic>{}),
+      );
+    }
+
+    final response = await attempt('Ids');
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    }
+    final fallbackResponse = await attempt('EntryIds');
+    if (fallbackResponse.statusCode < 200 ||
+        fallbackResponse.statusCode >= 300) {
+      final bodyResponse = await _httpClient.post(
+        Uri.parse(
+          '${session.serverUrl}/Playlists/$playlistId/Items/Order',
+        ).replace(
+          queryParameters: {
+            'UserId': session.userId,
+            'api_key': session.accessToken,
+          },
+        ),
+        headers: headers,
+        body: jsonEncode({'Ids': entryIds}),
+      );
+      if (bodyResponse.statusCode < 200 ||
+          bodyResponse.statusCode >= 300) {
+        throw JellyfinRequestException(
+          _errorMessage(
+            bodyResponse,
+            fallback: 'Unable to reorder playlist.',
+          ),
+        );
+      }
+    }
+  }
+
+  String _errorMessage(
+    http.Response response, {
+    required String fallback,
+  }) {
+    final body = response.body.trim();
+    if (body.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(body);
+        if (decoded is Map<String, dynamic>) {
+          final message =
+              decoded['Message'] ?? decoded['message'] ?? decoded['Error'];
+          if (message is String && message.trim().isNotEmpty) {
+            return message.trim();
+          }
+        } else if (decoded is String && decoded.trim().isNotEmpty) {
+          return decoded.trim();
+        }
+      } catch (_) {
+        final snippet =
+            body.length > 140 ? '${body.substring(0, 140)}…' : body;
+        if (snippet.isNotEmpty) {
+          return snippet;
+        }
+      }
+    }
+    return '$fallback (${response.statusCode}).';
+  }
+
+  Map<String, String> _playlistHeaders(AuthSession session) {
+    return {
+      'Content-Type': 'application/json; charset=utf-8',
+      'X-Emby-Authorization': _authorizationHeader(),
+      'X-Emby-Token': session.accessToken,
+    };
+  }
+
   /// Fetches tracks for an album.
   Future<List<MediaItem>> fetchAlbumTracks(String albumId) async {
     final session = _requireSession();
@@ -912,4 +1228,13 @@ class JellyfinClient {
       return;
     }
   }
+}
+
+class JellyfinRequestException implements Exception {
+  JellyfinRequestException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'JellyfinRequestException: $message';
 }

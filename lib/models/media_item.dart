@@ -11,6 +11,7 @@ class MediaItem {
     required this.streamUrl,
     this.albumId,
     this.artistIds = const [],
+    this.playlistItemId,
   });
 
   /// Jellyfin item identifier.
@@ -39,6 +40,9 @@ class MediaItem {
 
   /// Artist identifiers when available.
   final List<String> artistIds;
+
+  /// Playlist entry identifier when loaded from a playlist.
+  final String? playlistItemId;
 
   /// User-friendly subtitle.
   String get subtitle => artists.isEmpty ? album : artists.join(', ');
@@ -80,6 +84,7 @@ class MediaItem {
             .whereType<String>()
             .toList() ??
         const <String>[];
+    final playlistItemId = json['PlaylistItemId']?.toString();
 
     return MediaItem(
       id: id,
@@ -93,6 +98,7 @@ class MediaItem {
       streamUrl: streamUrl,
       albumId: albumId,
       artistIds: artistIds,
+      playlistItemId: playlistItemId,
     );
   }
 
@@ -107,6 +113,7 @@ class MediaItem {
         'streamUrl': streamUrl,
         'albumId': albumId,
         'artistIds': artistIds,
+        'playlistItemId': playlistItemId,
       };
 
   /// Restores a track from cached JSON.
@@ -126,5 +133,6 @@ class MediaItem {
                 ?.map((entry) => entry.toString())
                 .toList() ??
             const [],
+        playlistItemId: json['playlistItemId'] as String?,
       );
 }

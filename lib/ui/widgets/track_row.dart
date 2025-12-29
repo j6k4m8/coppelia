@@ -11,6 +11,7 @@ import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'artwork_image.dart';
 import 'context_menu.dart';
+import 'playlist_dialogs.dart';
 
 /// Row for a track listing.
 class TrackRow extends StatelessWidget {
@@ -30,6 +31,9 @@ class TrackRow extends StatelessWidget {
     this.onArtistTap,
     this.onGoToAlbum,
     this.onGoToArtist,
+    this.onRemoveFromPlaylist,
+    this.leading,
+    this.trailing,
   });
 
   /// Track metadata.
@@ -70,6 +74,15 @@ class TrackRow extends StatelessWidget {
 
   /// Optional handler for context menu navigation to artist.
   final VoidCallback? onGoToArtist;
+
+  /// Optional handler to remove this track from a playlist.
+  final Future<String?> Function()? onRemoveFromPlaylist;
+
+  /// Optional leading widget to show before the track index.
+  final Widget? leading;
+
+  /// Optional trailing widget to display at the end of the row.
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +140,10 @@ class TrackRow extends StatelessWidget {
           ),
           child: Row(
             children: [
+              if (leading != null) ...[
+                leading!,
+                SizedBox(width: space(8).clamp(4.0, 12.0)),
+              ],
               SizedBox(
                 width: indexWidth,
                 child: Text(
@@ -197,6 +214,10 @@ class TrackRow extends StatelessWidget {
                       color: ColorTokens.textSecondary(context),
                     ),
               ),
+              if (trailing != null) ...[
+                SizedBox(width: space(10).clamp(4.0, 14.0)),
+                trailing!,
+              ],
             ],
           ),
         ),
@@ -206,6 +227,8 @@ class TrackRow extends StatelessWidget {
 
   Future<void> _showMenu(BuildContext context, Offset position) async {
     final state = context.read<AppState>();
+    final canManagePlaylists =
+        state.session != null && !state.offlineMode;
     final isPinned = await state.isTrackPinned(track);
     if (!context.mounted) {
       return;
@@ -231,6 +254,22 @@ class TrackRow extends StatelessWidget {
           child: Text('Add to Queue'),
         ),
       );
+    }
+    if (canManagePlaylists) {
+      items.add(
+        const PopupMenuItem(
+          value: _TrackMenuAction.addToPlaylist,
+          child: Text('Add to Playlist'),
+        ),
+      );
+      if (onRemoveFromPlaylist != null) {
+        items.add(
+          const PopupMenuItem(
+            value: _TrackMenuAction.removeFromPlaylist,
+            child: Text('Remove from Playlist'),
+          ),
+        );
+      }
     }
     if (onToggleFavorite != null) {
       items.add(
@@ -291,17 +330,43 @@ class TrackRow extends StatelessWidget {
       onPlayNext?.call();
     } else if (action == _TrackMenuAction.addToQueue) {
       onAddToQueue?.call();
+    } else if (action == _TrackMenuAction.addToPlaylist) {
+      final result = await showPlaylistPickerDialog(
+        context,
+        initialTracks: [track],
+      );
+      if (result == null) {
+        return;
+      }
+      if (!result.isNew) {
+        final error =
+            await state.addTrackToPlaylist(track, result.playlist);
+        if (error != null && context.mounted) {
+          _showSnack(context, error);
+        }
+      }
     } else if (action == _TrackMenuAction.favorite) {
       await onToggleFavorite?.call();
     } else if (action == _TrackMenuAction.makeAvailableOffline) {
       await state.makeTrackAvailableOffline(track);
     } else if (action == _TrackMenuAction.unpinOffline) {
       await state.unpinTrackOffline(track);
+    } else if (action == _TrackMenuAction.removeFromPlaylist) {
+      final error = await onRemoveFromPlaylist?.call();
+      if (error != null && context.mounted) {
+        _showSnack(context, error);
+      }
     } else if (action == _TrackMenuAction.goToAlbum) {
       onGoToAlbum?.call();
     } else if (action == _TrackMenuAction.goToArtist) {
       onGoToArtist?.call();
     }
+  }
+
+  void _showSnack(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 }
 
@@ -309,9 +374,11 @@ enum _TrackMenuAction {
   play,
   playNext,
   addToQueue,
+  addToPlaylist,
   favorite,
   makeAvailableOffline,
   unpinOffline,
+  removeFromPlaylist,
   goToAlbum,
   goToArtist,
 }
