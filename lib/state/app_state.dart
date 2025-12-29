@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:flutter/scheduler.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -77,6 +78,10 @@ class AppState extends ChangeNotifier {
   SearchResults? _searchResults;
   int _searchFocusRequest = 0;
   LoopMode _repeatMode = LoopMode.off;
+
+  void _notifyListenersLater() {
+    SchedulerBinding.instance.addPostFrameCallback((_) => notifyListeners());
+  }
 
   List<Playlist> _playlists = [];
   List<MediaItem> _playlistTracks = [];
@@ -968,7 +973,7 @@ class AppState extends ChangeNotifier {
       _playlists = [..._playlists, created]..sort(_comparePlaylists);
       await _cacheStore.savePlaylists(_playlists);
       _updatePlaylistStats(1);
-      notifyListeners();
+      _notifyListenersLater();
       if (created.id.isNotEmpty && initialTracks.isNotEmpty) {
         final tracks = await _client.fetchPlaylistTracks(created.id);
         await _cacheStore.savePlaylistTracks(created.id, tracks);
