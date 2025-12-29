@@ -6,7 +6,7 @@ import '../../state/app_state.dart';
 import '../../state/library_view.dart';
 import 'context_menu.dart';
 import 'library_browse_view.dart';
-import 'library_card.dart';
+import 'library_cover_card.dart';
 import 'library_list_tile.dart';
 
 /// Displays favorited artists.
@@ -29,7 +29,7 @@ class FavoriteArtistsView extends StatelessWidget {
         final subtitle = artist.albumCount > 0
             ? '${artist.albumCount} albums'
             : '${artist.trackCount} tracks';
-        return LibraryCard(
+        return LibraryCoverCard(
           title: artist.name,
           subtitle: subtitle,
           imageUrl: artist.imageUrl,

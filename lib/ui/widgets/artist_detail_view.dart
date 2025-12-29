@@ -7,7 +7,7 @@ import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'artwork_image.dart';
 import 'context_menu.dart';
-import 'library_card.dart';
+import 'library_cover_card.dart';
 import 'section_header.dart';
 import 'track_row.dart';
 
@@ -508,7 +508,7 @@ class _ArtistAlbumsSection extends StatelessWidget {
               itemCount: albums.length,
               itemBuilder: (context, index) {
                 final album = albums[index];
-                return LibraryCard(
+                return LibraryCoverCard(
                   title: album.name,
                   subtitle: '${album.trackCount} tracks',
                   imageUrl: album.imageUrl,

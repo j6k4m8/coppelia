@@ -9,6 +9,7 @@ import '../../state/layout_density.dart';
 import '../../models/playlist.dart';
 import 'context_menu.dart';
 import 'library_card.dart';
+import 'library_cover_card.dart';
 import 'section_header.dart';
 import 'track_row.dart';
 
@@ -101,7 +102,7 @@ class SearchResultsView extends StatelessWidget {
               itemCount: results.albums.length,
               itemBuilder: (context, index) {
                 final album = results.albums[index];
-                return LibraryCard(
+                return LibraryCoverCard(
                   title: album.name,
                   subtitle: album.artistName,
                   imageUrl: album.imageUrl,
@@ -128,7 +129,7 @@ class SearchResultsView extends StatelessWidget {
               itemCount: results.artists.length,
               itemBuilder: (context, index) {
                 final artist = results.artists[index];
-                return LibraryCard(
+                return LibraryCoverCard(
                   title: artist.name,
                   subtitle: '${artist.trackCount} tracks',
                   imageUrl: artist.imageUrl,

@@ -6,7 +6,7 @@ import '../../state/app_state.dart';
 import '../../state/library_view.dart';
 import 'context_menu.dart';
 import 'library_browse_view.dart';
-import 'library_card.dart';
+import 'library_cover_card.dart';
 import 'library_list_tile.dart';
 import 'offline_empty_view.dart';
 
@@ -38,7 +38,7 @@ class OfflineAlbumsView extends StatelessWidget {
           items: albums,
           titleBuilder: (album) => album.name,
           subtitleBuilder: (album) => album.artistName,
-          gridItemBuilder: (context, album) => LibraryCard(
+          gridItemBuilder: (context, album) => LibraryCoverCard(
             title: album.name,
             subtitle: album.artistName,
             imageUrl: album.imageUrl,
