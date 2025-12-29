@@ -10,10 +10,10 @@
 
 -   [ ] [BUG] Favorites → Artists view sometimes empty
 -   [x] Gapless playback
--   [ ] Crossfade controls (requires dual-player mixing)
--   [ ] Smart Lists (local-only, not synced like playlists)
--   [ ] Smart Lists: add album/artist scopes
--   [ ] Smart Lists: add sidebar empty state and quick-create template picker
--   [ ] Smart Lists: add per-list context menu (rename, duplicate, delete)
--   [ ] Smart Lists: improve rule validation + input helpers (date/duration parsing)
+-   [x] Smart Lists (local-only, not synced like playlists)
+-   [x] Smart Lists: add album/artist scopes
+-   [x] Smart Lists: add sidebar empty state and quick-create template picker
+-   [x] Smart Lists: add per-list context menu (rename, duplicate, delete)
+-   [x] Smart Lists: improve rule validation + input helpers (date/duration parsing)
 -   [x] Download manager (per-item progress, prioritization, cellular rules)
+-   [ ] Crossfade controls (requires dual-player mixing probably?)

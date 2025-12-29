@@ -10,6 +10,8 @@
   <img src="https://img.shields.io/badge/Framework-Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter Framework"/>
 </p>
 
+---
+
 Coppelia is a cross-platform app designed for Jellyfin music libraries. I built it because I couldn't find an app that was:
 
 -   native / low-resource
@@ -18,33 +20,10 @@ Coppelia is a cross-platform app designed for Jellyfin music libraries. I built 
 
 If you hold in your heart other bulletpoints than these, please share and help make Coppelia better!
 
-## Downloads & Installation
-
-For macOS, iOS, and Android, you can download Coppelia from [the Releases page](https://github.com/j6k4m8/coppelia/releases).
-
-### macOS
-
-You will need to allow Coppelia to run from _System Preferences > Security & Privacy > General_, as it is not yet notarized by Apple. Alternatively from the terminal, you can run:
-
-```bash
-xattr -d com.apple.quarantine /path/to/Coppelia.app
-```
-
-### Android
-
-You may need to enable installation from unknown sources in your device settings.
-
-F-Droid listing coming soon!
-
-### iOS
-
-You will need to sideload the app using Xcode or a tool like AltStore for now...
-
-### Linux
-
-I am not sure! I don't have a linux machine handy. If you do, and you can get stuff to run, please let me know!
-
 ## Screenshots
+
+> [!NOTE] HEY BTW
+> Some of these screenshots are a little out of date, because I keep forgetting to make new ones. More soon :)
 
 ### macOS
 
@@ -90,6 +69,32 @@ I am not sure! I don't have a linux machine handy. If you do, and you can get st
 -   Artwork fallbacks and rich detail views with context actions
 -   Smart Lists (self-updating local playlists)
 -   **NO ELECTRON 🫦**
+
+## Downloads & Installation
+
+For macOS, iOS, and Android, you can download Coppelia from [the Releases page](https://github.com/j6k4m8/coppelia/releases).
+
+### macOS
+
+You will need to allow Coppelia to run from _System Preferences > Security & Privacy > General_, as it is not yet notarized by Apple. Alternatively from the terminal, you can run:
+
+```bash
+xattr -d com.apple.quarantine /path/to/Coppelia.app
+```
+
+### Android
+
+You may need to enable installation from unknown sources in your device settings.
+
+F-Droid listing coming soon!
+
+### iOS
+
+You will need to sideload the app using Xcode or a tool like AltStore for now...
+
+### Linux
+
+I am not sure! I don't have a linux machine handy. If you do, and you can get stuff to run, please let me know!
 
 ## Keyboard Shortcuts
 
