@@ -10,6 +10,7 @@ import '../../models/playlist.dart';
 import 'context_menu.dart';
 import 'library_card.dart';
 import 'library_cover_card.dart';
+import 'media_card.dart';
 import 'section_header.dart';
 import 'track_row.dart';
 
@@ -341,11 +342,12 @@ class _PlaylistResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LibraryCard(
+    return MediaCard(
+      layout: MediaCardLayout.vertical,
       title: playlist.name,
       subtitle: '${playlist.trackCount} tracks',
       imageUrl: playlist.imageUrl,
-      icon: Icons.queue_music,
+      fallbackIcon: Icons.queue_music,
       onTap: onTap,
     );
   }

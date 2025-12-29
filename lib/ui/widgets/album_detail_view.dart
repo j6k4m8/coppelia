@@ -42,7 +42,6 @@ class AlbumDetailView extends StatelessWidget {
     final offlineTracks = state.albumTracks
         .where((track) => pinned.contains(track.streamUrl))
         .toList();
-    final showOfflineFilter = offlineTracks.isNotEmpty;
     final displayTracks =
         state.offlineOnlyFilter ? offlineTracks : state.albumTracks;
     return CollectionDetailView(
@@ -126,12 +125,6 @@ class AlbumDetailView extends StatelessWidget {
             );
           },
         ),
-        if (showOfflineFilter)
-          FilterChip(
-            label: const Text('Offline only'),
-            selected: state.offlineOnlyFilter,
-            onSelected: state.setOfflineOnlyFilter,
-          ),
       ],
     );
   }

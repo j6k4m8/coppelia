@@ -106,6 +106,15 @@ class TrackRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(rowRadius),
         onTap: useSingleTap ? onTap : null,
         onDoubleTap: useSingleTap ? null : onTap,
+        onLongPress: () async {
+          final box = context.findRenderObject() as RenderBox?;
+          if (box == null) {
+            return;
+          }
+          final position =
+              box.localToGlobal(box.size.center(Offset.zero));
+          await _showMenu(context, position);
+        },
         onSecondaryTapDown: (details) =>
             _showMenu(context, details.globalPosition),
         hoverColor: ColorTokens.hoverRow(context),

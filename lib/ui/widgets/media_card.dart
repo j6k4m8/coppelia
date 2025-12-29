@@ -171,6 +171,9 @@ class MediaCard extends StatelessWidget {
           behavior: HitTestBehavior.opaque,
           onTap: onTap,
           onDoubleTap: onDoubleTap,
+          onLongPressStart: onContextMenu == null
+              ? null
+              : (details) => onContextMenu!.call(details.globalPosition),
           onSecondaryTapDown: onContextMenu == null
               ? null
               : (details) => onContextMenu!.call(details.globalPosition),

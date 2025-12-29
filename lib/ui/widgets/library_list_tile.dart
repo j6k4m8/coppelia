@@ -67,6 +67,8 @@ class LibraryListTile extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
+      onLongPressStart: (details) =>
+          onContextMenu?.call(details.globalPosition),
       onSecondaryTapDown: (details) =>
           onContextMenu?.call(details.globalPosition),
       child: Container(

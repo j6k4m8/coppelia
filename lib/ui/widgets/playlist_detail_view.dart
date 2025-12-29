@@ -27,7 +27,6 @@ class PlaylistDetailView extends StatelessWidget {
     final offlineTracks = state.playlistTracks
         .where((track) => pinned.contains(track.streamUrl))
         .toList();
-    final showOfflineFilter = offlineTracks.isNotEmpty;
     final displayTracks = state.offlineOnlyFilter
         ? offlineTracks
         : state.playlistTracks;
@@ -49,7 +48,6 @@ class PlaylistDetailView extends StatelessWidget {
                 return _PlaylistHeader(
                   playlist: playlist,
                   tracks: displayTracks,
-                  showOfflineFilter: showOfflineFilter,
                   offlineOnly: state.offlineOnlyFilter,
                   onToggleOfflineOnly: state.setOfflineOnlyFilter,
                 );
@@ -94,14 +92,12 @@ class _PlaylistHeader extends StatelessWidget {
   const _PlaylistHeader({
     required this.playlist,
     required this.tracks,
-    required this.showOfflineFilter,
     required this.offlineOnly,
     required this.onToggleOfflineOnly,
   });
 
   final Playlist playlist;
   final List<MediaItem> tracks;
-  final bool showOfflineFilter;
   final bool offlineOnly;
   final ValueChanged<bool> onToggleOfflineOnly;
 
@@ -182,12 +178,6 @@ class _PlaylistHeader extends StatelessWidget {
                       onPressed: () => state.playShuffledList(tracks),
                       icon: const Icon(Icons.shuffle),
                       label: const Text('Shuffle'),
-                    ),
-                  if (showOfflineFilter)
-                    FilterChip(
-                      label: const Text('Offline only'),
-                      selected: offlineOnly,
-                      onSelected: onToggleOfflineOnly,
                     ),
                 ],
               ),

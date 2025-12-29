@@ -55,7 +55,6 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
     final offlineTracks = tracks
         .where((track) => pinned.contains(track.streamUrl))
         .toList();
-    final showOfflineFilter = offlineTracks.isNotEmpty;
     final displayTracks =
         state.offlineOnlyFilter ? offlineTracks : tracks;
     final trackStartIndex = hasAlbums ? 2 : 1;
@@ -155,12 +154,6 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
                         );
                       },
                     ),
-                    if (showOfflineFilter)
-                      FilterChip(
-                        label: const Text('Offline only'),
-                        selected: state.offlineOnlyFilter,
-                        onSelected: state.setOfflineOnlyFilter,
-                      ),
                   ],
                 );
               }
