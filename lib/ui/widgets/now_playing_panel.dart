@@ -33,6 +33,23 @@ class NowPlayingPanel extends StatelessWidget {
   }
 }
 
+({MediaItem? previous, MediaItem? next}) _adjacentTracks(
+  List<MediaItem> queue,
+  MediaItem? current,
+) {
+  if (current == null) {
+    return (previous: null, next: null);
+  }
+  final index = queue.indexWhere((item) => item.id == current.id);
+  if (index == -1) {
+    return (previous: null, next: null);
+  }
+  return (
+    previous: index > 0 ? queue[index - 1] : null,
+    next: index + 1 < queue.length ? queue[index + 1] : null,
+  );
+}
+
 class _SidePanel extends StatelessWidget {
   const _SidePanel({required this.layout});
 
@@ -43,10 +60,15 @@ class _SidePanel extends StatelessWidget {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final isTouch = !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.fuchsia);
     final track = state.nowPlaying;
     final isFavorite = track == null ? false : state.isFavoriteTrack(track.id);
     final isUpdating =
         track == null ? false : state.isFavoriteTrackUpdating(track.id);
+    final neighbors = _adjacentTracks(state.queue, track);
     return Container(
       width: 320,
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 24).scale(densityScale),
@@ -75,20 +97,33 @@ class _SidePanel extends StatelessWidget {
             ],
           ),
           SizedBox(height: space(20)),
-          _Artwork(
-            track: track,
+          _SwipeTrackSwitcher(
+            current: track,
+            previous: neighbors.previous,
+            next: neighbors.next,
+            onNext: state.nextTrack,
+            onPrevious: state.previousTrack,
+            enabled: isTouch && track != null,
             onTap:
                 track == null ? null : () => _openExpandedNowPlaying(context),
+            builder: (item) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _Artwork(track: item),
+                  SizedBox(height: space(20)),
+                  Text(
+                    item?.title ?? 'Nothing queued',
+                    style: Theme.of(context).textTheme.titleLarge,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: space(6).clamp(4.0, 10.0)),
+                  _NowPlayingMeta(track: item),
+                ],
+              );
+            },
           ),
-          SizedBox(height: space(20)),
-          Text(
-            track?.title ?? 'Nothing queued',
-            style: Theme.of(context).textTheme.titleLarge,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          SizedBox(height: space(6).clamp(4.0, 10.0)),
-          _NowPlayingMeta(track: track),
           SizedBox(height: space(20)),
           AnimatedBuilder(
             animation: Listenable.merge([
@@ -155,6 +190,7 @@ class _BottomBar extends StatelessWidget {
     final isFavorite = track == null ? false : state.isFavoriteTrack(track.id);
     final isUpdating =
         track == null ? false : state.isFavoriteTrackUpdating(track.id);
+    final neighbors = _adjacentTracks(state.queue, track);
     final panel = Container(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 16).scale(densityScale),
       decoration: BoxDecoration(
@@ -167,34 +203,46 @@ class _BottomBar extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isNarrow = constraints.maxWidth < 680;
-            final titleBlock = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  track?.title ?? 'Nothing queued',
-                  style: Theme.of(context).textTheme.titleMedium,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: space(4).clamp(2.0, 6.0)),
-                _NowPlayingMeta(track: track),
-              ],
-            );
+            Widget buildTitleBlock(MediaItem? item) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item?.title ?? 'Nothing queued',
+                    style: Theme.of(context).textTheme.titleMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: space(4).clamp(2.0, 6.0)),
+                  _NowPlayingMeta(track: item),
+                ],
+              );
+            }
+
+            Widget buildMiniRow(MediaItem? item) {
+              return Row(
+                children: [
+                  _MiniArtwork(track: item),
+                  SizedBox(width: space(12).clamp(8.0, 16.0)),
+                  Expanded(child: buildTitleBlock(item)),
+                ],
+              );
+            }
             if (isNarrow) {
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    children: [
-                      _MiniArtwork(
-                        track: track,
-                        onTap: track == null
-                            ? null
-                            : () => _openExpandedNowPlaying(context),
-                      ),
-                      SizedBox(width: space(12).clamp(8.0, 16.0)),
-                      Expanded(child: titleBlock),
-                    ],
+                  _SwipeTrackSwitcher(
+                    current: track,
+                    previous: neighbors.previous,
+                    next: neighbors.next,
+                    onNext: state.nextTrack,
+                    onPrevious: state.previousTrack,
+                    enabled: isTouch && track != null,
+                    onTap: track == null
+                        ? null
+                        : () => _openExpandedNowPlaying(context),
+                    builder: buildMiniRow,
                   ),
                   SizedBox(height: space(10).clamp(6.0, 14.0)),
                   Row(
@@ -254,14 +302,30 @@ class _BottomBar extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    _MiniArtwork(
-                      track: track,
-                      onTap: track == null
-                          ? null
-                          : () => _openExpandedNowPlaying(context),
+                    Expanded(
+                      child: _SwipeTrackSwitcher(
+                        current: track,
+                        previous: neighbors.previous,
+                        next: neighbors.next,
+                        onNext: state.nextTrack,
+                        onPrevious: state.previousTrack,
+                        enabled: isTouch && track != null,
+                        onTap: track == null
+                            ? null
+                            : () => _openExpandedNowPlaying(context),
+                        builder: (item) {
+                          return Row(
+                            children: [
+                              _MiniArtwork(track: item),
+                              SizedBox(
+                                width: space(16).clamp(10.0, 20.0),
+                              ),
+                              Expanded(child: buildTitleBlock(item)),
+                            ],
+                          );
+                        },
+                      ),
                     ),
-                    SizedBox(width: space(16).clamp(10.0, 20.0)),
-                    Expanded(child: titleBlock),
                     if (track != null)
                       _FavoriteButton(
                         track: track,
@@ -652,6 +716,208 @@ class _ProgressScrubberState extends State<_ProgressScrubber>
   }
 }
 
+class _SwipeTrackSwitcher extends StatefulWidget {
+  const _SwipeTrackSwitcher({
+    required this.current,
+    required this.previous,
+    required this.next,
+    required this.onNext,
+    required this.onPrevious,
+    required this.builder,
+    this.onTap,
+    this.enabled = true,
+  });
+
+  final MediaItem? current;
+  final MediaItem? previous;
+  final MediaItem? next;
+  final VoidCallback onNext;
+  final VoidCallback onPrevious;
+  final Widget Function(MediaItem? track) builder;
+  final VoidCallback? onTap;
+  final bool enabled;
+
+  @override
+  State<_SwipeTrackSwitcher> createState() => _SwipeTrackSwitcherState();
+}
+
+class _SwipeTrackSwitcherState extends State<_SwipeTrackSwitcher>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  double _dragRange = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController.unbounded(vsync: this);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SwipeTrackSwitcher oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.current?.id != widget.current?.id) {
+      _controller.value = 0.0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  double _clampDrag(double value, {required bool hasPrevious, required bool hasNext}) {
+    final minDrag = hasNext ? -_dragRange : 0.0;
+    final maxDrag = hasPrevious ? _dragRange : 0.0;
+    return value.clamp(minDrag, maxDrag);
+  }
+
+  Future<void> _settleDrag({
+    required double target,
+    required VoidCallback action,
+  }) async {
+    await _controller.animateTo(
+      target,
+      duration: const Duration(milliseconds: 360),
+      curve: Curves.easeOutCubic,
+    );
+    action();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final hasPrevious = widget.previous != null;
+        final hasNext = widget.next != null;
+        _dragRange = (constraints.maxWidth * 1.0)
+            .clamp(220.0, 520.0)
+            .toDouble();
+        final canDrag = widget.enabled && (hasPrevious || hasNext);
+        final baseContent = ClipRect(
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) {
+              final offset = _clampDrag(
+                _controller.value,
+                hasPrevious: hasPrevious,
+                hasNext: hasNext,
+              );
+              final progress =
+                  _dragRange == 0 ? 0.0 : (offset / _dragRange).clamp(-1.0, 1.0);
+              final absProgress = progress.abs();
+              final scaledProgress =
+                  (absProgress + 0.3 * absProgress * absProgress)
+                      .clamp(0.0, 1.0);
+              final scaledOffset =
+                  _dragRange == 0 ? 0.0 : _dragRange * scaledProgress * progress.sign;
+              final currentOpacity =
+                  (1 - 0.35 * absProgress).clamp(0.55, 1.0);
+              const peekStart = 0.2;
+              final previousOpacity = progress > peekStart
+                  ? ((progress - peekStart) / (1 - peekStart))
+                      .clamp(0.0, 1.0)
+                  : 0.0;
+              final nextOpacity = progress < -peekStart
+                  ? ((-progress - peekStart) / (1 - peekStart))
+                      .clamp(0.0, 1.0)
+                  : 0.0;
+              Widget buildSlot(MediaItem? item) {
+                return SizedBox(
+                  width: constraints.maxWidth,
+                  child: widget.builder(item),
+                );
+              }
+
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (hasPrevious)
+                    IgnorePointer(
+                      child: Opacity(
+                        opacity: previousOpacity,
+                        child: Transform.translate(
+                          offset: Offset(scaledOffset - _dragRange, 0),
+                          child: buildSlot(widget.previous),
+                        ),
+                      ),
+                    ),
+                  if (hasNext)
+                    IgnorePointer(
+                      child: Opacity(
+                        opacity: nextOpacity,
+                        child: Transform.translate(
+                          offset: Offset(scaledOffset + _dragRange, 0),
+                          child: buildSlot(widget.next),
+                        ),
+                      ),
+                    ),
+                  Opacity(
+                    opacity: currentOpacity,
+                    child: Transform.translate(
+                      offset: Offset(scaledOffset, 0),
+                      child: buildSlot(widget.current),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+        final interactiveChild = GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          onHorizontalDragStart: canDrag
+              ? (_) {
+                  _controller.stop();
+                }
+              : null,
+          onHorizontalDragUpdate: canDrag
+              ? (details) {
+                  _controller.value = _clampDrag(
+                    _controller.value + details.delta.dx,
+                    hasPrevious: hasPrevious,
+                    hasNext: hasNext,
+                  );
+                }
+              : null,
+          onHorizontalDragEnd: canDrag
+              ? (details) {
+                  if (_dragRange == 0) {
+                    return;
+                  }
+                  final velocity = details.primaryVelocity ?? 0;
+                  final progress =
+                      (_controller.value / _dragRange).clamp(-1.0, 1.0);
+                  if (hasNext && (progress < -0.45 || velocity < -800)) {
+                    _settleDrag(target: -_dragRange, action: widget.onNext);
+                    return;
+                  }
+                  if (hasPrevious && (progress > 0.45 || velocity > 800)) {
+                    _settleDrag(target: _dragRange, action: widget.onPrevious);
+                    return;
+                  }
+                  _controller.animateTo(
+                    0.0,
+                    duration: const Duration(milliseconds: 140),
+                    curve: Curves.easeOutCubic,
+                  );
+                }
+              : null,
+          child: baseContent,
+        );
+        if (widget.onTap == null) {
+          return interactiveChild;
+        }
+        return MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: interactiveChild,
+        );
+      },
+    );
+  }
+}
+
 class _Artwork extends StatelessWidget {
   const _Artwork({this.track, this.onTap});
 
@@ -874,6 +1140,7 @@ class _NowPlayingExpandedView extends StatelessWidget {
     final isFavorite = track == null ? false : state.isFavoriteTrack(track.id);
     final isUpdating =
         track == null ? false : state.isFavoriteTrackUpdating(track.id);
+    final neighbors = _adjacentTracks(state.queue, track);
     final topBar = Row(
       children: [
         const Spacer(),
@@ -883,21 +1150,6 @@ class _NowPlayingExpandedView extends StatelessWidget {
         ),
       ],
     );
-
-    Widget buildPlayerColumn(double artworkSize) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Center(
-            child: _ExpandedArtwork(
-              track: track,
-              size: artworkSize,
-            ),
-          ),
-        ],
-      );
-    }
 
     Widget content = SafeArea(
       child: Container(
@@ -921,18 +1173,41 @@ class _NowPlayingExpandedView extends StatelessWidget {
                     constraints.maxWidth * 0.86,
                   );
                   final artworkSize = maxArt.clamp(240.0, 620.0).toDouble();
-                  return buildPlayerColumn(artworkSize);
+                  return _SwipeTrackSwitcher(
+                    current: track,
+                    previous: neighbors.previous,
+                    next: neighbors.next,
+                    onNext: state.nextTrack,
+                    onPrevious: state.previousTrack,
+                    enabled: isTouch && track != null,
+                    builder: (item) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Center(
+                              child: _ExpandedArtwork(
+                                track: item,
+                                size: artworkSize,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: space(12)),
+                          Text(
+                            item?.title ?? 'Nothing queued',
+                            style: theme.textTheme.headlineMedium,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: space(8)),
+                          _NowPlayingMeta(track: item),
+                        ],
+                      );
+                    },
+                  );
                 },
               ),
             ),
-            Text(
-              track?.title ?? 'Nothing queued',
-              style: theme.textTheme.headlineMedium,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            SizedBox(height: space(8)),
-            _NowPlayingMeta(track: track),
             SizedBox(height: space(20)),
             RepaintBoundary(
               child: AnimatedBuilder(

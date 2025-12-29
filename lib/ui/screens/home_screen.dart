@@ -78,6 +78,17 @@ class _MainContent extends StatefulWidget {
 
 class _MainContentState extends State<_MainContent> {
   bool _sidebarOverlayOpen = false;
+  double _sidebarOpenDrag = 0;
+  double _sidebarCloseDrag = 0;
+
+  void _setSidebarOverlayOpen(bool value) {
+    if (_sidebarOverlayOpen == value) {
+      return;
+    }
+    setState(() {
+      _sidebarOverlayOpen = value;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,9 +118,7 @@ class _MainContentState extends State<_MainContent> {
         if (!autoCollapsed && _sidebarOverlayOpen) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              setState(() {
-                _sidebarOverlayOpen = false;
-              });
+              _setSidebarOverlayOpen(false);
             }
           });
         }
@@ -212,13 +221,24 @@ class _MainContentState extends State<_MainContent> {
             elevation: 12,
             child: SizedBox(
               width: overlayWidth,
-              child: SidebarNavigation(
-                onCollapse: () => setState(() {
-                  _sidebarOverlayOpen = false;
-                }),
-                onNavigate: () => setState(() {
-                  _sidebarOverlayOpen = false;
-                }),
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onHorizontalDragStart: (_) {
+                  _sidebarCloseDrag = 0;
+                },
+                onHorizontalDragUpdate: (details) {
+                  _sidebarCloseDrag += details.delta.dx;
+                },
+                onHorizontalDragEnd: (details) {
+                  final velocity = details.primaryVelocity ?? 0;
+                  if (velocity < -300 || _sidebarCloseDrag < -24) {
+                    _setSidebarOverlayOpen(false);
+                  }
+                },
+                child: SidebarNavigation(
+                  onCollapse: () => _setSidebarOverlayOpen(false),
+                  onNavigate: () => _setSidebarOverlayOpen(false),
+                ),
               ),
             ),
           ),
@@ -236,9 +256,19 @@ class _MainContentState extends State<_MainContent> {
                     duration: const Duration(milliseconds: 180),
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTap: () => setState(() {
-                        _sidebarOverlayOpen = false;
-                      }),
+                      onTap: () => _setSidebarOverlayOpen(false),
+                      onHorizontalDragStart: (_) {
+                        _sidebarCloseDrag = 0;
+                      },
+                      onHorizontalDragUpdate: (details) {
+                        _sidebarCloseDrag += details.delta.dx;
+                      },
+                      onHorizontalDragEnd: (details) {
+                        final velocity = details.primaryVelocity ?? 0;
+                        if (velocity < -300 || _sidebarCloseDrag < -24) {
+                          _setSidebarOverlayOpen(false);
+                        }
+                      },
                       child: Container(
                         color: Colors.black.withOpacity(0.15),
                       ),
@@ -247,11 +277,33 @@ class _MainContentState extends State<_MainContent> {
                 ),
               ),
               overlayPanel,
+              if (!_sidebarOverlayOpen)
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  left: 0,
+                  width: 28,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onHorizontalDragStart: (_) {
+                      _sidebarOpenDrag = 0;
+                    },
+                    onHorizontalDragUpdate: (details) {
+                      _sidebarOpenDrag += details.delta.dx;
+                    },
+                    onHorizontalDragEnd: (details) {
+                      final velocity = details.primaryVelocity ?? 0;
+                      if (velocity > 300 || _sidebarOpenDrag > 24) {
+                        _setSidebarOverlayOpen(true);
+                      }
+                    },
+                  ),
+                ),
             ],
             if (allowManual && effectiveCollapsed)
               Positioned(
                 top: 28,
-                left: 4,
+                left: -10,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => state.setSidebarCollapsed(false),
@@ -269,12 +321,10 @@ class _MainContentState extends State<_MainContent> {
             if (autoCollapsed && !_sidebarOverlayOpen)
               Positioned(
                 top: 28,
-                left: 4,
+                left: -10,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => setState(() {
-                    _sidebarOverlayOpen = true;
-                  }),
+                  onTap: () => _setSidebarOverlayOpen(true),
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(

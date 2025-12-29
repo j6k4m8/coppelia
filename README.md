@@ -48,6 +48,7 @@ If you hold in your heart other bulletpoints than these, please share and help m
 -   Shuffle playback for albums, artists, genres, and playlists
 -   Jump in random picks with auto-refresh
 -   Full-screen Now Playing view with immersive artwork
+-   Mobile gestures: Now Playing swipes + edge-swipe sidebar
 -   Cached playlists/tracks/audio with size reporting and cache management
 -   Pin tracks, albums, and artists for offline playback via context menus
 -   Offline library sections for pinned albums, artists, playlists, and tracks
