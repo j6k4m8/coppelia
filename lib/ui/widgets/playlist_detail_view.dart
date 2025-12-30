@@ -271,6 +271,7 @@ class _PlaylistHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.read<AppState>();
+    final overflowKey = GlobalKey();
     final actionSpecs = <HeaderActionSpec>[
       HeaderActionSpec(
         icon: Icons.play_arrow,
@@ -294,9 +295,27 @@ class _PlaylistHeader extends StatelessWidget {
           label: 'Playlist options',
           tooltip: 'Playlist options',
           onPressed: () {
+            // In icon-only mode, we don't have a `PopupMenuButton` in the tree,
+            // so we must position the menu ourselves. Anchor it to the actual
+            // overflow icon instead of a hard-coded screen coordinate.
+            final box =
+                overflowKey.currentContext?.findRenderObject() as RenderBox?;
+            final overlay =
+                Overlay.of(context).context.findRenderObject() as RenderBox;
+            final position = box != null
+                ? RelativeRect.fromRect(
+                    Rect.fromPoints(
+                      box.localToGlobal(Offset.zero, ancestor: overlay),
+                      box.localToGlobal(box.size.bottomRight(Offset.zero),
+                          ancestor: overlay),
+                    ),
+                    Offset.zero & overlay.size,
+                  )
+                : const RelativeRect.fromLTRB(100, 100, 0, 0);
+
             showMenu<_PlaylistHeaderAction>(
               context: context,
-              position: const RelativeRect.fromLTRB(100, 100, 0, 0),
+              position: position,
               items: const [
                 PopupMenuItem(
                   value: _PlaylistHeaderAction.rename,
@@ -326,26 +345,29 @@ class _PlaylistHeader extends StatelessWidget {
       actionSpecs: actionSpecs,
       actions: [
         if (canEdit)
-          PopupMenuButton<_PlaylistHeaderAction>(
-            tooltip: 'Playlist options',
-            onSelected: (value) {
-              if (value == _PlaylistHeaderAction.rename) {
-                onRename?.call();
-              } else if (value == _PlaylistHeaderAction.delete) {
-                onDelete?.call();
-              }
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(
-                value: _PlaylistHeaderAction.rename,
-                child: Text('Rename'),
-              ),
-              PopupMenuItem(
-                value: _PlaylistHeaderAction.delete,
-                child: Text('Delete'),
-              ),
-            ],
-            icon: const Icon(Icons.more_horiz),
+          KeyedSubtree(
+            key: overflowKey,
+            child: PopupMenuButton<_PlaylistHeaderAction>(
+              tooltip: 'Playlist options',
+              onSelected: (value) {
+                if (value == _PlaylistHeaderAction.rename) {
+                  onRename?.call();
+                } else if (value == _PlaylistHeaderAction.delete) {
+                  onDelete?.call();
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: _PlaylistHeaderAction.rename,
+                  child: Text('Rename'),
+                ),
+                PopupMenuItem(
+                  value: _PlaylistHeaderAction.delete,
+                  child: Text('Delete'),
+                ),
+              ],
+              icon: const Icon(Icons.more_horiz),
+            ),
           ),
       ],
     );

@@ -27,45 +27,87 @@ Future<String?> promptPlaylistName(
   String? initialName,
   String confirmLabel = 'Save',
 }) async {
-  final controller = TextEditingController(text: initialName ?? '');
-  String value = controller.text;
   final result = await showDialog<String>(
     context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setState) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          onChanged: (text) => setState(() {
-            value = text;
-          }),
-          onSubmitted: (_) => Navigator.of(context).pop(value),
-          decoration: const InputDecoration(
-            hintText: 'Playlist name',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: value.trim().isEmpty
-                ? null
-                : () => Navigator.of(context).pop(value),
-            child: Text(confirmLabel),
-          ),
-        ],
-      ),
+    builder: (context) => _PlaylistNameDialog(
+      title: title,
+      initialName: initialName,
+      confirmLabel: confirmLabel,
     ),
   );
-  controller.dispose();
   final trimmed = result?.trim();
   if (trimmed == null || trimmed.isEmpty) {
     return null;
   }
   return trimmed;
+}
+
+class _PlaylistNameDialog extends StatefulWidget {
+  const _PlaylistNameDialog({
+    required this.title,
+    required this.initialName,
+    required this.confirmLabel,
+  });
+
+  final String title;
+  final String? initialName;
+  final String confirmLabel;
+
+  @override
+  State<_PlaylistNameDialog> createState() => _PlaylistNameDialogState();
+}
+
+class _PlaylistNameDialogState extends State<_PlaylistNameDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialName ?? '');
+    _controller.addListener(_onTextChanged);
+  }
+
+  void _onTextChanged() {
+    if (!mounted) return;
+    setState(() {
+      // Rebuild to update enabled/disabled state of the confirm button.
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onTextChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final value = _controller.text;
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        onSubmitted: (_) => Navigator.of(context).pop(value),
+        decoration: const InputDecoration(
+          hintText: 'Playlist name',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: value.trim().isEmpty
+              ? null
+              : () => Navigator.of(context).pop(value),
+          child: Text(widget.confirmLabel),
+        ),
+      ],
+    );
+  }
 }
 
 /// Shows a confirmation dialog for deleting a playlist.
