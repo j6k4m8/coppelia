@@ -22,21 +22,16 @@ If you hold in your heart other bulletpoints than these, please share and help m
 
 ## Screenshots
 
-> [!NOTE] HEY BTW
-> Some of these screenshots are a little out of date, because I keep forgetting to make new ones. More soon :)
-
 ### macOS
 
-| ![](./docs/Screenshot-Artist.jpg)   | ![](./docs/Screenshot-Queue.jpg)    |
-| ----------------------------------- | ----------------------------------- |
-| ![](./docs/Screenshot-Settings.jpg) | ![](./docs/Screenshot-Homepage.jpg) |
+<img width="512"  alt="themes" src="https://github.com/user-attachments/assets/4fd0ced0-f558-4cdb-81c6-1fc27e76b2be" />
 
 ### Mobile (iOS + Android)
 
-|                             |                            |                              |
-| --------------------------- | -------------------------- | ---------------------------- |
-| ![](docs/iPhone-Auth.png)   | ![](docs/iPhone-Cache.png) | ![](docs/iPhone-Home.png)    |
-| ![](docs/iPhone-Tracks.png) | ![](docs/Android-Home.png) | ![](docs/Android-Tracks.png) |
+|                             |                            |                              |   |
+| --------------------------- | -------------------------- | ---------------------------- |---|
+| ![](docs/iPhone-Auth.png)   | ![](docs/iPhone-Cache.png) | ![](https://github.com/user-attachments/assets/ca1209c1-5a98-4280-a71a-3f0618c2a234)    | ![](https://github.com/user-attachments/assets/201e392a-bb47-47a2-997b-29fc17a0fc06)
+| ![](docs/iPhone-Tracks.png) | ![](docs/Android-Home.png) | ![](docs/Android-Tracks.png) | ![](https://github.com/user-attachments/assets/c90fcac9-9b07-4de7-bbac-95a381fce5bf) |
 
 ## Features
 
