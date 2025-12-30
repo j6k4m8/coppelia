@@ -30,10 +30,8 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
-    final leftGutter =
-        (32 * densityScale).clamp(16.0, 40.0).toDouble();
-    final rightGutter =
-        (24 * densityScale).clamp(12.0, 32.0).toDouble();
+    final leftGutter = (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
     final playlist = state.selectedPlaylist;
     if (playlist == null) {
       return const SizedBox.shrink();
@@ -41,16 +39,14 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
     if (playlist.id != _activePlaylistId) {
       _activePlaylistId = playlist.id;
     }
-    final canEdit = state.session != null &&
-        !state.offlineMode &&
-        !state.offlineOnlyFilter;
+    final canEdit =
+        state.session != null && !state.offlineMode && !state.offlineOnlyFilter;
     final pinned = state.pinnedAudio;
     final offlineTracks = state.playlistTracks
         .where((track) => pinned.contains(track.streamUrl))
         .toList();
-    final displayTracks = state.offlineOnlyFilter
-        ? offlineTracks
-        : state.playlistTracks;
+    final displayTracks =
+        state.offlineOnlyFilter ? offlineTracks : state.playlistTracks;
     final canReorder = canEdit &&
         displayTracks.isNotEmpty &&
         displayTracks.every((track) => track.playlistItemId != null);
@@ -61,8 +57,7 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
           child: canReorder
               ? ReorderableListView.builder(
                   itemCount: displayTracks.length + 1,
-                  padding:
-                      EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
+                  padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
                   buildDefaultDragHandles: false,
                   onReorder: (oldIndex, newIndex) {
                     if (oldIndex == 0 || newIndex == 0) {
@@ -151,13 +146,11 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
                 )
               : ListView.separated(
                   itemCount: displayTracks.length + 1,
-                  padding:
-                      EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
+                  padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
                   separatorBuilder: (_, index) {
                     return SizedBox(
-                      height: index == 0
-                          ? space(24)
-                          : space(6).clamp(4.0, 10.0),
+                      height:
+                          index == 0 ? space(24) : space(6).clamp(4.0, 10.0),
                     );
                   },
                   itemBuilder: (context, index) {
@@ -194,8 +187,7 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
                           : () => state.selectAlbumById(track.albumId!),
                       onArtistTap: track.artistIds.isEmpty
                           ? null
-                          : () =>
-                              state.selectArtistById(track.artistIds.first),
+                          : () => state.selectArtistById(track.artistIds.first),
                       onGoToAlbum: track.albumId == null
                           ? null
                           : () => state.selectAlbumById(track.albumId!),
@@ -222,9 +214,7 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
     unawaited(() async {
       await runWithSnack(
         context,
-        () => context
-            .read<AppState>()
-            .reorderPlaylistTracks(playlist, tracks),
+        () => context.read<AppState>().reorderPlaylistTracks(playlist, tracks),
       );
     }());
   }
@@ -281,40 +271,51 @@ class _PlaylistHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.read<AppState>();
-    final actions = <Widget>[
-      FilledButton.icon(
-        onPressed:
-            tracks.isEmpty ? null : () => state.playFromList(tracks, tracks.first),
-        icon: const Icon(Icons.play_arrow),
-        label: const Text('Play'),
+    final actionSpecs = <HeaderActionSpec>[
+      HeaderActionSpec(
+        icon: Icons.play_arrow,
+        label: 'Play',
+        tooltip: 'Play',
+        onPressed: tracks.isEmpty
+            ? null
+            : () => state.playFromList(tracks, tracks.first),
       ),
       if (tracks.isNotEmpty)
-        FilledButton.tonalIcon(
+        HeaderActionSpec(
+          icon: Icons.shuffle,
+          label: 'Shuffle',
+          tooltip: 'Shuffle',
+          tonal: true,
           onPressed: () => state.playShuffledList(tracks),
-          icon: const Icon(Icons.shuffle),
-          label: const Text('Shuffle'),
         ),
       if (canEdit)
-        PopupMenuButton<_PlaylistHeaderAction>(
+        HeaderActionSpec(
+          icon: Icons.more_horiz,
+          label: 'Playlist options',
           tooltip: 'Playlist options',
-          onSelected: (value) {
-            if (value == _PlaylistHeaderAction.rename) {
-              onRename?.call();
-            } else if (value == _PlaylistHeaderAction.delete) {
-              onDelete?.call();
-            }
+          onPressed: () {
+            showMenu<_PlaylistHeaderAction>(
+              context: context,
+              position: const RelativeRect.fromLTRB(100, 100, 0, 0),
+              items: const [
+                PopupMenuItem(
+                  value: _PlaylistHeaderAction.rename,
+                  child: Text('Rename'),
+                ),
+                PopupMenuItem(
+                  value: _PlaylistHeaderAction.delete,
+                  child: Text('Delete'),
+                ),
+              ],
+            ).then((value) {
+              if (value == null) return;
+              if (value == _PlaylistHeaderAction.rename) {
+                onRename?.call();
+              } else if (value == _PlaylistHeaderAction.delete) {
+                onDelete?.call();
+              }
+            });
           },
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: _PlaylistHeaderAction.rename,
-              child: Text('Rename'),
-            ),
-            const PopupMenuItem(
-              value: _PlaylistHeaderAction.delete,
-              child: Text('Delete'),
-            ),
-          ],
-          icon: const Icon(Icons.more_horiz),
         ),
     ];
     return CollectionHeader(
@@ -322,7 +323,31 @@ class _PlaylistHeader extends StatelessWidget {
       subtitle: '${playlist.trackCount} tracks',
       imageUrl: playlist.imageUrl,
       fallbackIcon: Icons.queue_music,
-      actions: actions,
+      actionSpecs: actionSpecs,
+      actions: [
+        if (canEdit)
+          PopupMenuButton<_PlaylistHeaderAction>(
+            tooltip: 'Playlist options',
+            onSelected: (value) {
+              if (value == _PlaylistHeaderAction.rename) {
+                onRename?.call();
+              } else if (value == _PlaylistHeaderAction.delete) {
+                onDelete?.call();
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: _PlaylistHeaderAction.rename,
+                child: Text('Rename'),
+              ),
+              PopupMenuItem(
+                value: _PlaylistHeaderAction.delete,
+                child: Text('Delete'),
+              ),
+            ],
+            icon: const Icon(Icons.more_horiz),
+          ),
+      ],
     );
   }
 }

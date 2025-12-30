@@ -401,7 +401,7 @@ class _CardGrid extends StatelessWidget {
     double space(double value) => value * densityScale;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final targetWidth = space(220).clamp(160.0, 260.0);
+        final targetWidth = space(190).clamp(150.0, 240.0);
         final crossAxisCount = (constraints.maxWidth / targetWidth).floor();
         final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
         return GridView.builder(

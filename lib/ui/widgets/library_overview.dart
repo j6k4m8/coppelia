@@ -297,7 +297,7 @@ class LibraryOverview extends StatelessWidget {
               padding: sectionPadding(),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final targetWidth = space(220).clamp(160.0, 260.0);
+                  final targetWidth = space(190).clamp(150.0, 240.0);
                   final columns =
                       (constraints.maxWidth / targetWidth).floor().clamp(1, 3);
                   final spacing = space(16);
@@ -349,7 +349,7 @@ class LibraryOverview extends StatelessWidget {
             padding: sectionPadding(),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final targetWidth = space(220).clamp(160.0, 260.0);
+                final targetWidth = space(190).clamp(150.0, 240.0);
                 final crossAxisCount =
                     (constraints.maxWidth / targetWidth).floor();
                 final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
@@ -397,7 +397,7 @@ class LibraryOverview extends StatelessWidget {
             padding: sectionPadding(),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final targetWidth = space(220).clamp(160.0, 260.0);
+                final targetWidth = space(190).clamp(150.0, 240.0);
                 final crossAxisCount =
                     (constraints.maxWidth / targetWidth).floor();
                 final columns = crossAxisCount < 1 ? 1 : crossAxisCount;

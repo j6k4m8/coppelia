@@ -59,8 +59,6 @@ class LibraryBrowseView<T> extends StatefulWidget {
 }
 
 class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
-  static const double _listItemExtent = 74;
-
   late final ScrollController _controller;
   bool _showBackToTop = false;
 
@@ -107,26 +105,30 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
     final layout = context
         .select((AppState state) => state.browseLayoutFor(widget.view));
     double space(double value) => value * densityScale;
-    final leftGutter =
-        (32 * densityScale).clamp(16.0, 40.0).toDouble();
-    final rightGutter =
-        (24 * densityScale).clamp(12.0, 32.0).toDouble();
+  final isCompactWidth = MediaQuery.of(context).size.width < 420;
+  final leftGutter = isCompactWidth
+    ? (20 * densityScale).clamp(12.0, 24.0).toDouble()
+    : (32 * densityScale).clamp(16.0, 40.0).toDouble();
+  final rightGutter = isCompactWidth
+    ? (18 * densityScale).clamp(10.0, 22.0).toDouble()
+    : (24 * densityScale).clamp(12.0, 32.0).toDouble();
     final itemCount = widget.items.length;
     final letterIndex = _buildLetterIndex(widget.items);
     final letters = letterIndex.keys.toList(growable: false);
-    final contentRightPadding =
-        letters.isNotEmpty ? space(48).clamp(32.0, 64.0) : 0.0;
+  final alphaWidth = space(26).clamp(20.0, 32.0).toDouble();
+  final alphaGap = space(6).clamp(4.0, 10.0).toDouble();
+  final contentRightPadding = letters.isNotEmpty ? alphaWidth + alphaGap : 0.0;
     final titleStyle = density == LayoutDensity.sardine
         ? Theme.of(context).textTheme.titleSmall
         : Theme.of(context).textTheme.titleMedium;
     final subtitleStyle = Theme.of(context).textTheme.bodySmall;
     final titleHeight = _textHeight(titleStyle);
     final subtitleHeight = _textHeight(subtitleStyle);
-    final subtitleGap = density == LayoutDensity.sardine
-        ? space(2).clamp(0.0, 3.0)
+  final subtitleGap = density == LayoutDensity.sardine
+    ? space(1.5).clamp(0.0, 2.0)
         : space(4).clamp(2.0, 6.0);
-    final verticalPadding = density == LayoutDensity.sardine
-        ? space(6).clamp(2.0, 8.0)
+  final verticalPadding = density == LayoutDensity.sardine
+    ? space(5).clamp(2.0, 7.0)
         : space(10).clamp(4.0, 12.0);
     final artSize = (48 * densityScale).clamp(24.0, 56.0);
     final textBlock = titleHeight + subtitleHeight + subtitleGap;
@@ -188,7 +190,7 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
               final gridMetrics = _GridMetrics.fromWidth(
                 width: constraints.maxWidth,
                 itemAspectRatio: 1.05,
-                itemMinWidth: space(220).clamp(160.0, 260.0),
+                itemMinWidth: space(190).clamp(150.0, 240.0),
                 spacing: space(16),
               );
               return Stack(
@@ -312,7 +314,7 @@ class _AlphabetScroller extends StatelessWidget {
             .clamp(1, letters.length);
         final displayLetters = _subsampleLetters(letters, maxSlots);
         return Container(
-          width: space(28).clamp(22.0, 36.0),
+          width: space(26).clamp(20.0, 32.0),
           padding: EdgeInsets.symmetric(vertical: space(8)),
           decoration: BoxDecoration(
             color: ColorTokens.cardFill(context, 0.04),

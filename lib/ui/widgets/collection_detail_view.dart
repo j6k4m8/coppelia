@@ -6,6 +6,7 @@ import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'artwork_image.dart';
+import 'collection_header.dart';
 import 'track_row.dart';
 
 /// Generic detail view for albums, artists, or genres.
@@ -28,6 +29,7 @@ class CollectionDetailView extends StatelessWidget {
     this.onArtistTap,
     this.headerFooter,
     this.headerActions = const [],
+    this.headerActionSpecs = const [],
   });
 
   /// Title for the collection.
@@ -75,15 +77,18 @@ class CollectionDetailView extends StatelessWidget {
   /// Optional extra actions for the header.
   final List<Widget> headerActions;
 
+  /// Preferred action model for consistent responsive rendering.
+  ///
+  /// When provided, these actions will be rendered instead of [headerActions].
+  final List<HeaderActionSpec> headerActionSpecs;
+
   @override
   Widget build(BuildContext context) {
     final state = context.read<AppState>();
     final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
-    final leftGutter =
-        (32 * densityScale).clamp(16.0, 40.0).toDouble();
-    final rightGutter =
-        (24 * densityScale).clamp(12.0, 32.0).toDouble();
+    final leftGutter = (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -107,16 +112,15 @@ class CollectionDetailView extends StatelessWidget {
                   onPlayAll: onPlayAll,
                   onShuffle: onShuffle,
                   actions: headerActions,
+                  actionSpecs: headerActionSpecs,
                 );
               }
               if (headerFooter != null && index == 1) {
                 return headerFooter!;
               }
-              final trackIndex =
-                  index - (headerFooter == null ? 1 : 2);
+              final trackIndex = index - (headerFooter == null ? 1 : 2);
               final track = tracks[trackIndex];
-              final canGoToAlbum =
-                  onAlbumTap != null && track.albumId != null;
+              final canGoToAlbum = onAlbumTap != null && track.albumId != null;
               final canGoToArtist =
                   onArtistTap != null && track.artistIds.isNotEmpty;
               return TrackRow(
@@ -124,9 +128,8 @@ class CollectionDetailView extends StatelessWidget {
                 index: trackIndex,
                 isActive: nowPlaying?.id == track.id,
                 onTap: () => onTrackTap(track),
-                onPlayNext: onPlayNext == null
-                    ? null
-                    : () => onPlayNext!.call(track),
+                onPlayNext:
+                    onPlayNext == null ? null : () => onPlayNext!.call(track),
                 onAddToQueue: onAddToQueue == null
                     ? null
                     : () => onAddToQueue!.call(track),
@@ -136,18 +139,13 @@ class CollectionDetailView extends StatelessWidget {
                   track,
                   !state.isFavoriteTrack(track.id),
                 ),
-                onAlbumTap: canGoToAlbum
-                    ? () => onAlbumTap!.call(track)
-                    : null,
-                onArtistTap: canGoToArtist
-                    ? () => onArtistTap!.call(track)
-                    : null,
-                onGoToAlbum: canGoToAlbum
-                    ? () => onAlbumTap!.call(track)
-                    : null,
-                onGoToArtist: canGoToArtist
-                    ? () => onArtistTap!.call(track)
-                    : null,
+                onAlbumTap: canGoToAlbum ? () => onAlbumTap!.call(track) : null,
+                onArtistTap:
+                    canGoToArtist ? () => onArtistTap!.call(track) : null,
+                onGoToAlbum:
+                    canGoToAlbum ? () => onAlbumTap!.call(track) : null,
+                onGoToArtist:
+                    canGoToArtist ? () => onArtistTap!.call(track) : null,
               );
             },
           ),
@@ -166,6 +164,7 @@ class _Header extends StatelessWidget {
     this.onPlayAll,
     this.onShuffle,
     this.actions = const [],
+    this.actionSpecs = const [],
   });
 
   final String title;
@@ -175,6 +174,7 @@ class _Header extends StatelessWidget {
   final VoidCallback? onPlayAll;
   final VoidCallback? onShuffle;
   final List<Widget> actions;
+  final List<HeaderActionSpec> actionSpecs;
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +186,41 @@ class _Header extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 720;
+        final iconOnlyActions = constraints.maxWidth < 420;
         final theme = Theme.of(context);
+
+        final resolvedHeaderActions =
+            (iconOnlyActions && actionSpecs.isNotEmpty)
+                ? CollectionHeader.buildActionsFromSpecs(
+                    context,
+                    actionSpecs,
+                    iconOnly: true,
+                    densityScale: densityScale,
+                  )
+                : null;
+
+        Widget _iconOnlyButton({
+          required String tooltip,
+          required VoidCallback? onPressed,
+          required Widget icon,
+          bool tonal = false,
+        }) {
+          final button = tonal
+              ? IconButton.filledTonal(
+                  onPressed: onPressed,
+                  icon: icon,
+                  iconSize: clamped(22, min: 18, max: 24),
+                  padding: EdgeInsets.all(space(10).clamp(8.0, 12.0)),
+                )
+              : IconButton.filled(
+                  onPressed: onPressed,
+                  icon: icon,
+                  iconSize: clamped(22, min: 18, max: 24),
+                  padding: EdgeInsets.all(space(10).clamp(8.0, 12.0)),
+                );
+          return Tooltip(message: tooltip, child: button);
+        }
+
         Widget buildArtworkFallback() => Container(
               color: ColorTokens.cardFillStrong(context),
               child: Center(
@@ -218,18 +252,32 @@ class _Header extends StatelessWidget {
                 spacing: space(12),
                 runSpacing: space(8),
                 children: [
-                  FilledButton.icon(
-                    onPressed: onPlayAll,
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('Play'),
-                  ),
+                  iconOnlyActions
+                      ? _iconOnlyButton(
+                          tooltip: 'Play',
+                          onPressed: onPlayAll,
+                          icon: const Icon(Icons.play_arrow),
+                        )
+                      : FilledButton.icon(
+                          onPressed: onPlayAll,
+                          icon: const Icon(Icons.play_arrow),
+                          label: const Text('Play'),
+                        ),
                   if (onShuffle != null)
-                    FilledButton.tonalIcon(
-                      onPressed: onShuffle,
-                      icon: const Icon(Icons.shuffle),
-                      label: const Text('Shuffle'),
-                    ),
-                  ...actions,
+                    iconOnlyActions
+                        ? _iconOnlyButton(
+                            tooltip: 'Shuffle',
+                            onPressed: onShuffle,
+                            icon: const Icon(Icons.shuffle),
+                            tonal: true,
+                          )
+                        : FilledButton.tonalIcon(
+                            onPressed: onShuffle,
+                            icon: const Icon(Icons.shuffle),
+                            label: const Text('Shuffle'),
+                          ),
+                  if (resolvedHeaderActions != null) ...resolvedHeaderActions,
+                  if (resolvedHeaderActions == null) ...actions,
                 ],
               ),
             ],
