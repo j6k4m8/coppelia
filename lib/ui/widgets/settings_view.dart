@@ -236,7 +236,7 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
     final accentSource = state.accentColorSource;
     final segmentedStyle = ButtonStyle(
       textStyle: MaterialStatePropertyAll(
-        Theme.of(context).textTheme.bodyLarge,
+        Theme.of(context).textTheme.bodySmall,
       ),
     );
     return Column(
@@ -486,7 +486,7 @@ class _LayoutSettings extends StatelessWidget {
     double space(double value) => value * densityScale;
     final segmentedStyle = ButtonStyle(
       textStyle: MaterialStatePropertyAll(
-        Theme.of(context).textTheme.bodyLarge,
+        Theme.of(context).textTheme.bodySmall,
       ),
     );
     return Column(
