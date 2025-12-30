@@ -26,10 +26,8 @@ class SearchResultsView extends StatelessWidget {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
-    final leftGutter =
-        (32 * densityScale).clamp(16.0, 40.0).toDouble();
-    final rightGutter =
-        (24 * densityScale).clamp(12.0, 32.0).toDouble();
+    final leftGutter = (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
     if (state.isSearching && state.searchResults == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -375,13 +373,7 @@ enum _AlbumAction {
   goToArtist
 }
 
-enum _ArtistAction {
-  play,
-  open,
-  favorite,
-  makeAvailableOffline,
-  unpinOffline
-}
+enum _ArtistAction { play, open, favorite, makeAvailableOffline, unpinOffline }
 
 bool _canLinkArtist(Album album) {
   final artist = album.artistName;
@@ -396,8 +388,7 @@ class _CardGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     return LayoutBuilder(
       builder: (context, constraints) {

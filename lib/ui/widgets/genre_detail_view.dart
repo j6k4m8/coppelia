@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
 import 'collection_detail_view.dart';
+import 'collection_header.dart';
 
 /// Detail view for a single genre.
 class GenreDetailView extends StatelessWidget {
@@ -22,18 +23,22 @@ class GenreDetailView extends StatelessWidget {
         .toList();
     final displayTracks =
         state.offlineOnlyFilter ? offlineTracks : state.genreTracks;
+
+    final onPlayAll = displayTracks.isEmpty
+        ? null
+        : () => state.playFromList(displayTracks, displayTracks.first);
+    final onShuffle = displayTracks.isEmpty
+        ? null
+        : () => state.playShuffledList(displayTracks);
+
     return CollectionDetailView(
       title: genre.name,
       subtitle: '${genre.trackCount} tracks',
       imageUrl: genre.imageUrl,
       tracks: displayTracks,
       nowPlaying: state.nowPlaying,
-      onPlayAll: displayTracks.isEmpty
-          ? null
-          : () => state.playFromList(displayTracks, displayTracks.first),
-      onShuffle: displayTracks.isEmpty
-          ? null
-          : () => state.playShuffledList(displayTracks),
+      onPlayAll: onPlayAll,
+      onShuffle: onShuffle,
       onTrackTap: (track) => state.playFromList(displayTracks, track),
       onPlayNext: state.playNext,
       onAddToQueue: state.enqueueTrack,
@@ -47,6 +52,21 @@ class GenreDetailView extends StatelessWidget {
           state.selectArtistById(track.artistIds.first);
         }
       },
+      headerActionSpecs: [
+        HeaderActionSpec(
+          icon: Icons.play_arrow,
+          label: 'Play',
+          tooltip: 'Play',
+          onPressed: onPlayAll,
+        ),
+        HeaderActionSpec(
+          icon: Icons.shuffle,
+          label: 'Shuffle',
+          tooltip: 'Shuffle',
+          tonal: true,
+          onPressed: onShuffle,
+        ),
+      ],
     );
   }
 }

@@ -8,7 +8,6 @@ import '../../state/browse_layout.dart';
 import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
 import '../../core/color_tokens.dart';
-import 'section_header.dart';
 
 extension BrowseLayoutLabel on BrowseLayout {
   /// Display label for the layout picker.
@@ -99,36 +98,36 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
 
   @override
   Widget build(BuildContext context) {
-    final density =
-        context.select((AppState state) => state.layoutDensity);
+    final density = context.select((AppState state) => state.layoutDensity);
     final densityScale = density.scaleDouble;
-    final layout = context
-        .select((AppState state) => state.browseLayoutFor(widget.view));
+    final layout =
+        context.select((AppState state) => state.browseLayoutFor(widget.view));
     double space(double value) => value * densityScale;
-  final isCompactWidth = MediaQuery.of(context).size.width < 420;
-  final leftGutter = isCompactWidth
-    ? (20 * densityScale).clamp(12.0, 24.0).toDouble()
-    : (32 * densityScale).clamp(16.0, 40.0).toDouble();
-  final rightGutter = isCompactWidth
-    ? (18 * densityScale).clamp(10.0, 22.0).toDouble()
-    : (24 * densityScale).clamp(12.0, 32.0).toDouble();
+    final isCompactWidth = MediaQuery.of(context).size.width < 420;
+    final leftGutter = isCompactWidth
+        ? (20 * densityScale).clamp(12.0, 24.0).toDouble()
+        : (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter = isCompactWidth
+        ? (18 * densityScale).clamp(10.0, 22.0).toDouble()
+        : (24 * densityScale).clamp(12.0, 32.0).toDouble();
     final itemCount = widget.items.length;
     final letterIndex = _buildLetterIndex(widget.items);
     final letters = letterIndex.keys.toList(growable: false);
-  final alphaWidth = space(26).clamp(20.0, 32.0).toDouble();
-  final alphaGap = space(6).clamp(4.0, 10.0).toDouble();
-  final contentRightPadding = letters.isNotEmpty ? alphaWidth + alphaGap : 0.0;
+    final alphaWidth = space(26).clamp(20.0, 32.0).toDouble();
+    final alphaGap = space(6).clamp(4.0, 10.0).toDouble();
+    final contentRightPadding =
+        letters.isNotEmpty ? alphaWidth + alphaGap : 0.0;
     final titleStyle = density == LayoutDensity.sardine
         ? Theme.of(context).textTheme.titleSmall
         : Theme.of(context).textTheme.titleMedium;
     final subtitleStyle = Theme.of(context).textTheme.bodySmall;
     final titleHeight = _textHeight(titleStyle);
     final subtitleHeight = _textHeight(subtitleStyle);
-  final subtitleGap = density == LayoutDensity.sardine
-    ? space(1.5).clamp(0.0, 2.0)
+    final subtitleGap = density == LayoutDensity.sardine
+        ? space(1.5).clamp(0.0, 2.0)
         : space(4).clamp(2.0, 6.0);
-  final verticalPadding = density == LayoutDensity.sardine
-    ? space(5).clamp(2.0, 7.0)
+    final verticalPadding = density == LayoutDensity.sardine
+        ? space(5).clamp(2.0, 7.0)
         : space(10).clamp(4.0, 12.0);
     final artSize = (48 * densityScale).clamp(24.0, 56.0);
     final textBlock = titleHeight + subtitleHeight + subtitleGap;
@@ -136,8 +135,7 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
     final listItemExtent =
         math.max(contentHeight + verticalPadding * 2, 28).toDouble();
 
-    final contentPadding =
-        EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0);
+    final contentPadding = EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0);
     final listPadding = EdgeInsets.fromLTRB(
       leftGutter,
       0,
@@ -150,37 +148,50 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
       children: [
         Padding(
           padding: contentPadding,
-          child: SectionHeader(
-            title: widget.title,
-            action: Row(
-              children: [
-                Text(
-                  '$itemCount items',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: ColorTokens.textSecondary(context)),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    SizedBox(
+                      height: (density == LayoutDensity.sardine
+                              ? space(2)
+                              : space(4))
+                          .clamp(2.0, 8.0),
+                    ),
+                    Text(
+                      '$itemCount items',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: ColorTokens.textSecondary(context),
+                          ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                SegmentedButton<BrowseLayout>(
-                  segments: BrowseLayout.values
-                      .map(
-                        (mode) => ButtonSegment(
-                          value: mode,
-                          label: Text(mode.label),
-                          icon: Icon(mode.icon, size: 16),
-                        ),
-                      )
-                      .toList(),
-                  selected: {layout},
-                  onSelectionChanged: (selection) {
-                    context
-                        .read<AppState>()
-                        .setBrowseLayout(widget.view, selection.first);
-                  },
-                ),
-              ],
-            ),
+              ),
+              SegmentedButton<BrowseLayout>(
+                segments: BrowseLayout.values
+                    .map(
+                      (mode) => ButtonSegment(
+                        value: mode,
+                        label: Text(mode.label),
+                        icon: Icon(mode.icon, size: 16),
+                      ),
+                    )
+                    .toList(),
+                selected: {layout},
+                onSelectionChanged: (selection) {
+                  context
+                      .read<AppState>()
+                      .setBrowseLayout(widget.view, selection.first);
+                },
+              ),
+            ],
           ),
         ),
         SizedBox(height: space(16)),
@@ -303,8 +314,7 @@ class _AlphabetScroller extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -371,16 +381,14 @@ class _AlphabetLetter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final baseStyle = Theme.of(context).textTheme.labelSmall;
     return TextButton(
       onPressed: onTap,
       style: ButtonStyle(
         padding: MaterialStateProperty.all(EdgeInsets.zero),
-        minimumSize:
-            MaterialStateProperty.all(Size(space(20), space(20))),
+        minimumSize: MaterialStateProperty.all(Size(space(20), space(20))),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         foregroundColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.hovered)) {
