@@ -261,23 +261,27 @@ class CollectionHeader extends StatelessWidget {
         (value * densityScale).clamp(min, max);
 
     Widget iconOnlyButton(HeaderActionSpec spec) {
+      final iconWidget = Icon(spec.icon);
       final button = spec.outlined
           ? IconButton.outlined(
+              key: spec.iconKey,
               onPressed: spec.onPressed,
-              icon: Icon(spec.icon),
+              icon: iconWidget,
               iconSize: clamped(22, min: 18, max: 24),
               padding: EdgeInsets.all(space(10).clamp(8.0, 12.0)),
             )
           : spec.tonal
               ? IconButton.filledTonal(
+                  key: spec.iconKey,
                   onPressed: spec.onPressed,
-                  icon: Icon(spec.icon),
+                  icon: iconWidget,
                   iconSize: clamped(22, min: 18, max: 24),
                   padding: EdgeInsets.all(space(10).clamp(8.0, 12.0)),
                 )
               : IconButton.filled(
+                  key: spec.iconKey,
                   onPressed: spec.onPressed,
-                  icon: Icon(spec.icon),
+                  icon: iconWidget,
                   iconSize: clamped(22, min: 18, max: 24),
                   padding: EdgeInsets.all(space(10).clamp(8.0, 12.0)),
                 );
@@ -321,6 +325,7 @@ class HeaderActionSpec {
     required this.label,
     required this.onPressed,
     this.tooltip,
+    this.iconKey,
     this.tonal = false,
     this.outlined = false,
   });
@@ -329,6 +334,7 @@ class HeaderActionSpec {
   final String label;
   final VoidCallback? onPressed;
   final String? tooltip;
+  final Key? iconKey;
   final bool tonal;
   final bool outlined;
 }
