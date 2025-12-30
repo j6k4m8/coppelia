@@ -281,6 +281,7 @@ class _BottomBar extends StatelessWidget {
                           duration: state.duration,
                           onSeek: state.seek,
                           compact: true,
+                          inlineTimes: true,
                         );
                       },
                     ),
@@ -349,12 +350,13 @@ class _BottomBar extends StatelessWidget {
                       state.durationListenable,
                     ]),
                     builder: (context, _) {
-                      return _ProgressScrubber(
-                        position: state.position,
-                        duration: state.duration,
-                        onSeek: state.seek,
-                        compact: true,
-                      );
+                        return _ProgressScrubber(
+                          position: state.position,
+                          duration: state.duration,
+                          onSeek: state.seek,
+                          compact: true,
+                          inlineTimes: true,
+                        );
                     },
                   ),
                 ),
@@ -570,12 +572,14 @@ class _ProgressScrubber extends StatelessWidget {
     required this.duration,
     required this.onSeek,
     this.compact = false,
+    this.inlineTimes = false,
   });
 
   final Duration position;
   final Duration duration;
   final ValueChanged<Duration> onSeek;
   final bool compact;
+  final bool inlineTimes;
 
   @override
   Widget build(BuildContext context) {
@@ -593,33 +597,48 @@ class _ProgressScrubber extends StatelessWidget {
         ((compact ? 10.0 : 12.0) * densityScale).clamp(6.0, 14.0);
     final primary = Theme.of(context).colorScheme.primary;
 
+    final textStyle = Theme.of(context)
+        .textTheme
+        .bodySmall
+        ?.copyWith(color: ColorTokens.textSecondary(context));
+    final slider = SizedBox(
+      height: height,
+      child: SliderTheme(
+        data: SliderTheme.of(context).copyWith(
+          trackHeight: trackHeight,
+          activeTrackColor: primary,
+          inactiveTrackColor: primary.withOpacity(0.2),
+          thumbColor: primary,
+          overlayColor: primary.withOpacity(0.15),
+          thumbShape: RoundSliderThumbShape(enabledThumbRadius: thumbRadius),
+          overlayShape: RoundSliderOverlayShape(overlayRadius: overlayRadius),
+        ),
+        child: Slider(
+          value: value,
+          onChanged: totalMs <= 0
+              ? null
+              : (newValue) {
+                  final targetMs = (totalMs * newValue).round();
+                  onSeek(Duration(milliseconds: targetMs));
+                },
+        ),
+      ),
+    );
+    if (inlineTimes) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(formatDuration(position), style: textStyle),
+          SizedBox(width: (8 * densityScale).clamp(4.0, 12.0)),
+          Expanded(child: slider),
+          SizedBox(width: (8 * densityScale).clamp(4.0, 12.0)),
+          Text(formatDuration(duration), style: textStyle),
+        ],
+      );
+    }
     return Column(
       children: [
-        SizedBox(
-          height: height,
-          child: SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackHeight: trackHeight,
-              activeTrackColor: primary,
-              inactiveTrackColor: primary.withOpacity(0.2),
-              thumbColor: primary,
-              overlayColor: primary.withOpacity(0.15),
-              thumbShape:
-                  RoundSliderThumbShape(enabledThumbRadius: thumbRadius),
-              overlayShape:
-                  RoundSliderOverlayShape(overlayRadius: overlayRadius),
-            ),
-            child: Slider(
-              value: value,
-              onChanged: totalMs <= 0
-                  ? null
-                  : (newValue) {
-                      final targetMs = (totalMs * newValue).round();
-                      onSeek(Duration(milliseconds: targetMs));
-                    },
-            ),
-          ),
-        ),
+        slider,
         SizedBox(
           height: (6 * densityScale).clamp(4.0, 10.0),
         ),
@@ -628,17 +647,11 @@ class _ProgressScrubber extends StatelessWidget {
           children: [
             Text(
               formatDuration(position),
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: ColorTokens.textSecondary(context)),
+              style: textStyle,
             ),
             Text(
               formatDuration(duration),
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: ColorTokens.textSecondary(context)),
+              style: textStyle,
             ),
           ],
         ),
