@@ -137,6 +137,9 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
     final settingsVisible = context.select(
       (AppState s) => s.isSidebarItemVisible(SidebarItem.settings),
     );
+    final searchVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.search),
+    );
     final favoritesAlbumsVisible = context.select(
       (AppState s) => s.isSidebarItemVisible(SidebarItem.favoritesAlbums),
     );
@@ -210,8 +213,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
         browseGenresVisible ||
         browsePlaylistsVisible ||
         browseTracksVisible;
-    final showPlaybackSection =
-        playbackHistoryVisible || playbackQueueVisible;
+    final showPlaybackSection = playbackHistoryVisible || playbackQueueVisible;
     final showSmartListsSection = smartLists.isNotEmpty || sessionPresent;
     final showPlaylistsSection = playlistsVisible;
     final appState = context.read<AppState>();
@@ -291,6 +293,16 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
               ),
             ),
             SizedBox(height: space(8)),
+            if (searchVisible) ...[
+              _NavTile(
+                icon: Icons.search,
+                label: 'Search',
+                selected: selectedPlaylistId == null &&
+                    (appState.searchQuery.isNotEmpty || appState.isSearching),
+                onTap: () => _handleNavigate(appState.requestSearchFocus),
+              ),
+              SizedBox(height: space(8)),
+            ],
             _ToggleTile(
               icon: Icons.cloud_off,
               label: 'Offline mode',
@@ -690,8 +702,7 @@ class _NavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
@@ -736,8 +747,7 @@ class _ToggleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
@@ -755,7 +765,7 @@ class _ToggleTile extends StatelessWidget {
             clamped(16, min: 10, max: 20),
           ),
         ),
-            child: Row(
+        child: Row(
           children: [
             Icon(icon, size: clamped(18, min: 14, max: 20)),
             SizedBox(width: space(12).clamp(8.0, 16.0)),
@@ -771,7 +781,6 @@ class _ToggleTile extends StatelessWidget {
   }
 }
 
-
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({
     required this.title,
@@ -783,8 +792,7 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -819,8 +827,7 @@ class _PlaylistTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
@@ -876,8 +883,7 @@ class _SmartListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
@@ -991,8 +997,7 @@ class _PlaylistActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);

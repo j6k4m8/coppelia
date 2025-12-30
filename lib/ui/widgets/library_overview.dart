@@ -18,15 +18,30 @@ class LibraryOverview extends StatelessWidget {
   /// Creates the library overview widget.
   const LibraryOverview({super.key});
 
+  String _greetingFor(DateTime time) {
+    final hour = time.hour;
+    if (hour >= 4 && hour < 6) {
+      return 'Some early bird tunes';
+    }
+    if (hour >= 22 || hour < 4) {
+      return 'Late night vibes';
+    }
+    if (hour >= 5 && hour < 12) {
+      return 'Good morning';
+    }
+    if (hour >= 12 && hour < 18) {
+      return 'Good afternoon';
+    }
+    return 'Welcome back';
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
-    final leftGutter =
-        (32 * densityScale).clamp(16.0, 40.0).toDouble();
-    final rightGutter =
-        (24 * densityScale).clamp(12.0, 32.0).toDouble();
+    final leftGutter = (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
     EdgeInsets sectionPadding() =>
         EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0);
     EdgeInsets leftPadding() => EdgeInsets.only(left: leftGutter);
@@ -35,6 +50,34 @@ class LibraryOverview extends StatelessWidget {
         : state.recentTracks;
     final smartLists = state.smartListsOnHome;
     final children = <Widget>[];
+
+    final greeting = _greetingFor(DateTime.now());
+    final userName = state.session?.userName ?? 'Listener';
+    children.addAll([
+      Padding(
+        padding: sectionPadding(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$greeting, $userName',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            SizedBox(height: space(4)),
+            Text(
+              '${state.libraryTracks.length} tracks • '
+              '${state.albums.length} albums • '
+              '${state.artists.length} artists • '
+              '${state.playlists.length} playlists',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: ColorTokens.textSecondary(context, 0.7),
+                  ),
+            ),
+          ],
+        ),
+      ),
+      SizedBox(height: space(28)),
+    ]);
 
     void addSection(List<Widget> section) {
       if (children.isNotEmpty) {
@@ -95,8 +138,7 @@ class LibraryOverview extends StatelessWidget {
         ]);
       },
       HomeSection.recent: () {
-        if (!state.isHomeSectionVisible(HomeSection.recent) ||
-            recent.isEmpty) {
+        if (!state.isHomeSectionVisible(HomeSection.recent) || recent.isEmpty) {
           return;
         }
         addSection([
@@ -259,9 +301,9 @@ class LibraryOverview extends StatelessWidget {
                   final columns =
                       (constraints.maxWidth / targetWidth).floor().clamp(1, 3);
                   final spacing = space(16);
-                  final width = (constraints.maxWidth -
-                          spacing * (columns - 1)) /
-                      columns;
+                  final width =
+                      (constraints.maxWidth - spacing * (columns - 1)) /
+                          columns;
                   return Wrap(
                     spacing: spacing,
                     runSpacing: spacing,
@@ -346,8 +388,7 @@ class LibraryOverview extends StatelessWidget {
               title: 'Playlists',
               action: _HeaderAction(
                 label: 'View all',
-                onTap: () =>
-                    state.selectLibraryView(LibraryView.homePlaylists),
+                onTap: () => state.selectLibraryView(LibraryView.homePlaylists),
               ),
             ),
           ),

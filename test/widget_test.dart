@@ -11,20 +11,25 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:coppelia/app.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  testWidgets('Search is accessible from sidebar', (WidgetTester tester) async {
     await tester.pumpWidget(const CoppeliaApp());
+    await tester.pumpAndSettle();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Make the layout narrow enough that the UI is stable for the test.
+    tester.view.physicalSize = const Size(900, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpAndSettle();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Tap the new sidebar Search item.
+    expect(find.text('Search'), findsWidgets);
+    await tester.tap(find.text('Search').first);
+    await tester.pumpAndSettle();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Search page should always have a visible search field at the top.
+    expect(find.byType(TextField), findsOneWidget);
+    final textField = tester.widget<TextField>(find.byType(TextField));
+    expect(textField.focusNode?.hasFocus ?? false, isTrue);
   });
 }

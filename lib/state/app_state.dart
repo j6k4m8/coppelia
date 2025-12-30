@@ -131,10 +131,8 @@ class AppState extends ChangeNotifier {
       ValueNotifier(Duration.zero);
   final ValueNotifier<bool> _isPlayingNotifier = ValueNotifier(false);
   final ValueNotifier<bool> _isBufferingNotifier = ValueNotifier(false);
-  final ValueNotifier<int> _mediaCacheBytesNotifier =
-      ValueNotifier(0);
-  final ValueNotifier<int> _pinnedCacheBytesNotifier =
-      ValueNotifier(0);
+  final ValueNotifier<int> _mediaCacheBytesNotifier = ValueNotifier(0);
+  final ValueNotifier<int> _pinnedCacheBytesNotifier = ValueNotifier(0);
   final Random _random = Random();
   ThemeMode _themeMode = ThemeMode.dark;
   String? _fontFamily = 'SF Pro Display';
@@ -454,7 +452,6 @@ class AppState extends ChangeNotifier {
 
   /// True when gapless playback is enabled.
   bool get gaplessPlaybackEnabled => _gaplessPlayback;
-
 
   /// True when favorites should be auto-downloaded for offline playback.
   bool get autoDownloadFavoritesEnabled => _autoDownloadFavoritesEnabled;
@@ -1105,11 +1102,9 @@ class AppState extends ChangeNotifier {
     try {
       await _client.removeFromPlaylist(
         playlistId: playlist.id,
-        entryIds: track.playlistItemId == null
-            ? const []
-            : [track.playlistItemId!],
-        itemIds:
-            track.playlistItemId == null ? [track.id] : const [],
+        entryIds:
+            track.playlistItemId == null ? const [] : [track.playlistItemId!],
+        itemIds: track.playlistItemId == null ? [track.id] : const [],
       );
       if (_selectedPlaylist?.id == playlist.id) {
         final updated = List<MediaItem>.from(_playlistTracks);
@@ -1118,8 +1113,7 @@ class AppState extends ChangeNotifier {
             (item) => item.playlistItemId == track.playlistItemId,
           );
         } else {
-          final index =
-              updated.indexWhere((item) => item.id == track.id);
+          final index = updated.indexWhere((item) => item.id == track.id);
           if (index != -1) {
             updated.removeAt(index);
           }
@@ -1416,8 +1410,7 @@ class AppState extends ChangeNotifier {
           .toList();
       final albums = _albums
           .where(
-            (album) =>
-                matches(album.name) || matches(album.artistName),
+            (album) => matches(album.name) || matches(album.artistName),
           )
           .toList();
       final artists = _artists.where((artist) => matches(artist.name)).toList();
@@ -1485,6 +1478,10 @@ class AppState extends ChangeNotifier {
 
   /// Requests focus for the search field.
   void requestSearchFocus() {
+    if (_searchQuery.isEmpty && !_isSearching) {
+      // Enter the search view without needing a query.
+      _isSearching = true;
+    }
     _searchFocusRequest += 1;
     notifyListeners();
   }
@@ -1707,9 +1704,8 @@ class AppState extends ChangeNotifier {
     if (_offlineMode) {
       final offlineAlbums = await loadOfflineAlbums();
       final offlineIds = offlineAlbums.map((album) => album.id).toSet();
-      _favoriteAlbums = cached
-          .where((album) => offlineIds.contains(album.id))
-          .toList();
+      _favoriteAlbums =
+          cached.where((album) => offlineIds.contains(album.id)).toList();
       notifyListeners();
       return;
     }
@@ -1726,9 +1722,8 @@ class AppState extends ChangeNotifier {
     if (_offlineMode) {
       final offlineArtists = await loadOfflineArtists();
       final offlineIds = offlineArtists.map((artist) => artist.id).toSet();
-      _favoriteArtists = cached
-          .where((artist) => offlineIds.contains(artist.id))
-          .toList();
+      _favoriteArtists =
+          cached.where((artist) => offlineIds.contains(artist.id)).toList();
       notifyListeners();
       return;
     }
@@ -2161,9 +2156,8 @@ class AppState extends ChangeNotifier {
     }
     if (_offlineMode) {
       final filtered = _filterPinnedTracks(_albumTracks);
-      _albumTracks = filtered.isNotEmpty
-          ? filtered
-          : await _offlineTracksForAlbum(album);
+      _albumTracks =
+          filtered.isNotEmpty ? filtered : await _offlineTracksForAlbum(album);
       notifyListeners();
       return;
     }
@@ -2712,7 +2706,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-
   /// Updates the sidebar width preference.
   Future<void> setSidebarWidth(
     double width, {
@@ -3256,7 +3249,8 @@ class AppState extends ChangeNotifier {
     }
     final artists = await _cacheStore.loadArtists();
     final offline = artists
-        .where((artist) => pinnedArtists.contains(artist.name.trim().toLowerCase()))
+        .where((artist) =>
+            pinnedArtists.contains(artist.name.trim().toLowerCase()))
         .toList();
     offline.sort((a, b) => a.name.compareTo(b.name));
     return offline;
@@ -3367,8 +3361,7 @@ class AppState extends ChangeNotifier {
     _genres = await _cacheStore.loadGenres();
     _libraryStats = await _cacheStore.loadLibraryStats();
     final offlineAlbumIds = offlineAlbums.map((album) => album.id).toSet();
-    final offlineArtistIds =
-        offlineArtists.map((artist) => artist.id).toSet();
+    final offlineArtistIds = offlineArtists.map((artist) => artist.id).toSet();
     _libraryTracks = offlineTracks;
     _tracksOffset = offlineTracks.length;
     _hasMoreTracks = false;
@@ -3406,24 +3399,21 @@ class AppState extends ChangeNotifier {
           await _cacheStore.loadPlaylistTracks(_selectedPlaylist!.id);
     }
     if (_selectedAlbum != null) {
-      final cached =
-          await _cacheStore.loadAlbumTracks(_selectedAlbum!.id);
+      final cached = await _cacheStore.loadAlbumTracks(_selectedAlbum!.id);
       final filtered = _filterPinnedTracks(cached);
       _albumTracks = filtered.isNotEmpty
           ? filtered
           : await _offlineTracksForAlbum(_selectedAlbum!);
     }
     if (_selectedArtist != null) {
-      final cached =
-          await _cacheStore.loadArtistTracks(_selectedArtist!.id);
+      final cached = await _cacheStore.loadArtistTracks(_selectedArtist!.id);
       final filtered = _filterPinnedTracks(cached);
       _artistTracks = filtered.isNotEmpty
           ? filtered
           : await _offlineTracksForArtist(_selectedArtist!);
     }
     if (_selectedGenre != null) {
-      final cached =
-          await _cacheStore.loadGenreTracks(_selectedGenre!.id);
+      final cached = await _cacheStore.loadGenreTracks(_selectedGenre!.id);
       _genreTracks = _filterPinnedTracks(cached);
     }
   }
@@ -3443,8 +3433,7 @@ class AppState extends ChangeNotifier {
     });
     _playerStateSubscription = _playback.playerStateStream.listen((state) {
       final nextPlaying = state.playing;
-      final nextBuffering =
-          state.processingState == ProcessingState.loading ||
+      final nextBuffering = state.processingState == ProcessingState.loading ||
           state.processingState == ProcessingState.buffering;
       final playingChanged = _isPlaying != nextPlaying;
       final bufferingChanged = _isBuffering != nextBuffering;
@@ -3472,8 +3461,7 @@ class AppState extends ChangeNotifier {
         _maybeReportStopped(completed: true);
       }
     });
-    _currentIndexSubscription =
-        _playback.currentIndexStream.listen((index) {
+    _currentIndexSubscription = _playback.currentIndexStream.listen((index) {
       if (index != null && index >= 0 && index < _queue.length) {
         final next = _queue[index];
         _setNowPlaying(next, notify: false);
@@ -3611,12 +3599,10 @@ class AppState extends ChangeNotifier {
       }
     }
     _lastNowPlayingUpdateAt = now;
-    final duration =
-        _duration == Duration.zero ? track.duration : _duration;
-    final position =
-        duration.inMilliseconds > 0 && _position > duration
-            ? duration
-            : _position;
+    final duration = _duration == Duration.zero ? track.duration : _duration;
+    final position = duration.inMilliseconds > 0 && _position > duration
+        ? duration
+        : _position;
     unawaited(
       _nowPlayingService.update(
         track: track,

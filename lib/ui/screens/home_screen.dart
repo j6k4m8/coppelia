@@ -31,7 +31,6 @@ import '../widgets/smart_list_detail_view.dart';
 import '../widgets/playlist_card.dart';
 import '../widgets/track_row.dart';
 import '../widgets/search_results_view.dart';
-import '../../core/formatters.dart';
 import '../widgets/settings_view.dart';
 import '../widgets/sidebar_navigation.dart';
 import '../widgets/sidebar_resize_handle.dart';
@@ -83,27 +82,12 @@ class _MainContentState extends State<_MainContent> {
   Widget build(BuildContext context) {
     final state = widget.state;
     final densityScale = state.layoutDensity.scaleDouble;
-    double space(double value) => value * densityScale;
     final safeTop = MediaQuery.of(context).padding.top;
     final chromeInset = (14 * densityScale).clamp(12.0, 20.0).toDouble();
     final topInset = safeTop + chromeInset;
-    final leftGutter =
-        (32 * densityScale).clamp(16.0, 40.0).toDouble();
-    final rightGutter =
-        (24 * densityScale).clamp(12.0, 32.0).toDouble();
-    final topGutter =
-        (24 * densityScale).clamp(12.0, 32.0).toDouble() + topInset;
+    final topGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
     final overlayButtonTop =
         (28 * densityScale).clamp(20.0, 34.0).toDouble() + topInset;
-    final stats = state.libraryStats;
-    final playlistCount = stats?.playlistCount ?? state.playlists.length;
-    final int trackCount = stats?.trackCount ??
-        state.playlists.fold<int>(
-          0,
-          (total, playlist) => total + playlist.trackCount,
-        );
-    final albumCount = stats?.albumCount ?? state.albums.length;
-    final artistCount = stats?.artistCount ?? state.artists.length;
     final bodyContent = LayoutBuilder(
       builder: (context, constraints) {
         const autoCollapseWidth = 640.0;
@@ -111,8 +95,7 @@ class _MainContentState extends State<_MainContent> {
         final autoCollapsed = constraints.maxWidth < autoCollapseWidth;
         final allowManual = !autoCollapsed;
         final effectiveCollapsed = autoCollapsed || state.isSidebarCollapsed;
-        final currentWidth =
-            effectiveCollapsed ? 0.0 : state.sidebarWidth;
+        final currentWidth = effectiveCollapsed ? 0.0 : state.sidebarWidth;
         final overlayWidth = state.sidebarWidth.clamp(220.0, 320.0);
 
         if (!autoCollapsed && _sidebarOverlayOpen) {
@@ -170,37 +153,13 @@ class _MainContentState extends State<_MainContent> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding:
-                    EdgeInsets.fromLTRB(leftGutter, topGutter, rightGutter, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _Header(
-                      userName: state.session?.userName ?? 'Listener',
-                      playlistCount: playlistCount,
-                      trackCount: trackCount,
-                      albumCount: albumCount,
-                      artistCount: artistCount,
-                      state: state,
-                    ),
-                    SizedBox(height: space(24)),
-                    SizedBox(
-                      height: 6,
-                      child: AnimatedOpacity(
-                        opacity: state.isLoadingLibrary ? 1 : 0,
-                        duration: const Duration(milliseconds: 200),
-                        child: const LinearProgressIndicator(minHeight: 2),
-                      ),
-                    ),
-                    SizedBox(height: space(12)),
-                  ],
-                ),
-              ),
               Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 350),
-                  child: _LibraryContent(state: state),
+                child: Padding(
+                  padding: EdgeInsets.only(top: topInset + topGutter),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 350),
+                    child: _LibraryContent(state: state),
+                  ),
                 ),
               ),
             ],
@@ -364,366 +323,6 @@ class _MainContentState extends State<_MainContent> {
   }
 }
 
-class _Header extends StatefulWidget {
-  const _Header({
-    required this.userName,
-    required this.playlistCount,
-    required this.trackCount,
-    required this.albumCount,
-    required this.artistCount,
-    required this.state,
-  });
-
-  final String userName;
-  final int playlistCount;
-  final int trackCount;
-  final int albumCount;
-  final int artistCount;
-  final AppState state;
-
-  @override
-  State<_Header> createState() => _HeaderState();
-}
-
-class _HeaderState extends State<_Header> {
-  late final TextEditingController _searchController;
-  final FocusNode _searchFocusNode = FocusNode();
-  Timer? _debounce;
-  late VoidCallback _stateListener;
-  late int _lastSearchFocusRequest;
-
-  @override
-  void initState() {
-    super.initState();
-    _searchController = TextEditingController(text: widget.state.searchQuery);
-    _lastSearchFocusRequest = widget.state.searchFocusRequest;
-    _stateListener = () {
-      if (widget.state.searchQuery.isEmpty &&
-          _searchController.text.isNotEmpty) {
-        _searchController.clear();
-        setState(() {});
-      }
-      if (widget.state.searchFocusRequest != _lastSearchFocusRequest) {
-        _lastSearchFocusRequest = widget.state.searchFocusRequest;
-        _searchFocusNode.requestFocus();
-      }
-    };
-    widget.state.addListener(_stateListener);
-  }
-
-  @override
-  void didUpdateWidget(covariant _Header oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.state != widget.state) {
-      oldWidget.state.removeListener(_stateListener);
-      _lastSearchFocusRequest = widget.state.searchFocusRequest;
-      widget.state.addListener(_stateListener);
-    }
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    widget.state.removeListener(_stateListener);
-    _searchController.dispose();
-    _searchFocusNode.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final state = widget.state;
-    final isSearch = state.searchQuery.isNotEmpty || state.isSearching;
-    final hasSelection = state.selectedPlaylist != null ||
-        state.selectedSmartList != null ||
-        state.selectedAlbum != null ||
-        state.selectedArtist != null ||
-        state.selectedGenre != null;
-    final isHome = state.selectedView == LibraryView.home &&
-        !hasSelection &&
-        !isSearch;
-
-    String title;
-    String? subtitle;
-    Widget? subtitleWidget;
-    TextStyle? titleStyle;
-
-    if (isSearch) {
-      title = 'Search';
-      subtitle = state.searchQuery.isEmpty
-          ? 'Find tracks, albums, artists, and genres'
-          : 'Results for "${state.searchQuery}"';
-      titleStyle = theme.textTheme.headlineMedium;
-    } else if (state.selectedPlaylist != null) {
-      final playlist = state.selectedPlaylist!;
-      title = playlist.name;
-      subtitle = '${playlist.trackCount} tracks';
-      titleStyle = theme.textTheme.headlineMedium;
-    } else if (state.selectedSmartList != null) {
-      final smartList = state.selectedSmartList!;
-      title = smartList.name;
-      subtitle = state.isLoadingSmartList
-          ? 'Building smart list...'
-          : '${state.smartListTracks.length} tracks';
-      titleStyle = theme.textTheme.headlineMedium;
-    } else if (state.selectedAlbum != null) {
-      final album = state.selectedAlbum!;
-      title = album.name;
-      subtitle = '${album.trackCount} tracks • ${album.artistName}';
-      titleStyle = theme.textTheme.headlineMedium;
-      final artistName = album.artistName;
-      final canLinkArtist =
-          artistName.isNotEmpty && artistName != 'Unknown Artist';
-      subtitleWidget = _AlbumHeaderSubtitle(
-        trackCount: album.trackCount,
-        artistName: artistName,
-        onArtistTap:
-            canLinkArtist ? () => state.selectArtistByName(artistName) : null,
-      );
-    } else if (state.selectedArtist != null) {
-      final artist = state.selectedArtist!;
-      title = artist.name;
-      subtitle = formatArtistSubtitle(
-        artist,
-        fallbackTrackCount: state.artistTracks.length,
-      );
-      titleStyle = theme.textTheme.headlineMedium;
-    } else if (state.selectedGenre != null) {
-      final genre = state.selectedGenre!;
-      title = genre.name;
-      subtitle = '${genre.trackCount} tracks';
-      titleStyle = theme.textTheme.headlineMedium;
-    } else if (isHome) {
-      final greeting = _greetingFor(DateTime.now());
-      title = '$greeting, ${widget.userName}';
-      subtitle = '${widget.trackCount} tracks • '
-          '${widget.albumCount} albums • '
-          '${widget.artistCount} artists • '
-          '${widget.playlistCount} playlists';
-      titleStyle = theme.textTheme.headlineLarge;
-    } else {
-      title = state.selectedView.title;
-      subtitle = state.selectedView.subtitle;
-      titleStyle = theme.textTheme.headlineMedium;
-    }
-
-    final VoidCallback? backAction = state.selectedPlaylist != null
-        ? (state.canGoBack ? state.goBack : state.clearPlaylistSelection)
-        : state.selectedSmartList != null
-            ? (state.canGoBack ? state.goBack : state.clearSmartListSelection)
-            : state.selectedAlbum != null ||
-                    state.selectedArtist != null ||
-                    state.selectedGenre != null
-                ? state.clearBrowseSelection
-                : state.canGoBack && state.selectedView != LibraryView.home
-                    ? state.goBack
-                    : null;
-    final titleRow = backAction == null
-        ? Text(title, style: titleStyle)
-        : Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _BackButton(onPressed: backAction),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: titleStyle,
-                ),
-              ),
-            ],
-          );
-
-    final heading = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        titleRow,
-        if (subtitleWidget != null) ...[
-          const SizedBox(height: 4),
-          subtitleWidget!,
-        ] else if (subtitle != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            subtitle!,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: ColorTokens.textSecondary(context, 0.7),
-            ),
-          ),
-        ],
-      ],
-    );
-
-    final searchField = TextField(
-      controller: _searchController,
-      focusNode: _searchFocusNode,
-      onChanged: _onSearchChanged,
-      decoration: InputDecoration(
-        hintText: 'Search',
-        prefixIcon: const Icon(Icons.search, size: 18),
-        suffixIcon: _searchController.text.isEmpty
-            ? null
-            : IconButton(
-                icon: const Icon(Icons.close, size: 18),
-                onPressed: _clearSearch,
-              ),
-        filled: true,
-        fillColor: ColorTokens.cardFill(context, 0.06),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 560;
-        final controls = isNarrow
-            ? SizedBox(width: double.infinity, child: searchField)
-            : ConstrainedBox(
-                constraints:
-                    const BoxConstraints(minWidth: 200, maxWidth: 280),
-                child: searchField,
-              );
-        if (isNarrow) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              heading,
-              const SizedBox(height: 12),
-              controls,
-            ],
-          );
-        }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: heading),
-            const SizedBox(width: 24),
-            Align(
-              alignment: Alignment.topRight,
-              child: controls,
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _onSearchChanged(String value) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      widget.state.searchLibrary(value);
-    });
-    setState(() {});
-  }
-
-  void _clearSearch() {
-    _searchController.clear();
-    widget.state.clearSearch();
-    setState(() {});
-  }
-}
-
-String _greetingFor(DateTime time) {
-  final hour = time.hour;
-  if (hour >= 4 && hour < 6) {
-    return 'Some early bird tunes';
-  }
-  if (hour >= 22 || hour < 4) {
-    return 'Late night vibes';
-  }
-  if (hour >= 5 && hour < 12) {
-    return 'Good morning';
-  }
-  if (hour >= 12 && hour < 18) {
-    return 'Good afternoon';
-  }
-  return 'Welcome back';
-}
-
-class _BackButton extends StatelessWidget {
-  const _BackButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: ColorTokens.cardFill(context, 0.12),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onPressed,
-        child: const SizedBox(
-          width: 36,
-          height: 36,
-          child: Icon(Icons.chevron_left),
-        ),
-      ),
-    );
-  }
-}
-
-class _AlbumHeaderSubtitle extends StatelessWidget {
-  const _AlbumHeaderSubtitle({
-    required this.trackCount,
-    required this.artistName,
-    this.onArtistTap,
-  });
-
-  final int trackCount;
-  final String artistName;
-  final VoidCallback? onArtistTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final baseStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: ColorTokens.textSecondary(context, 0.7),
-        );
-    final linkStyle = baseStyle?.copyWith(
-      color: Theme.of(context).colorScheme.primary,
-      fontWeight: FontWeight.w600,
-    );
-    return Row(
-      children: [
-        Text('$trackCount tracks', style: baseStyle),
-        const SizedBox(width: 6),
-        Text(
-          '•',
-          style: TextStyle(
-            color: ColorTokens.textSecondary(context, 0.4),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Flexible(
-          child: onArtistTap == null
-              ? Text(
-                  artistName,
-                  style: baseStyle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                )
-              : MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: onArtistTap,
-                    child: Text(
-                      artistName,
-                      style: linkStyle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-        ),
-      ],
-    );
-  }
-}
-
 class _LibraryContent extends StatelessWidget {
   const _LibraryContent({required this.state});
 
@@ -732,7 +331,7 @@ class _LibraryContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (state.searchQuery.isNotEmpty || state.isSearching) {
-      return const SearchResultsView();
+      return const _SearchView();
     }
     if (state.selectedPlaylist != null) {
       return const PlaylistDetailView();
@@ -756,7 +355,8 @@ class _LibraryContent extends StatelessWidget {
       return _HomeFeaturedView(tracks: state.featuredTracks);
     }
     if (state.selectedView == LibraryView.homeRecent) {
-      return _HomeRecentView(tracks: state.playHistory, fallback: state.recentTracks);
+      return _HomeRecentView(
+          tracks: state.playHistory, fallback: state.recentTracks);
     }
     if (state.selectedView == LibraryView.homePlaylists) {
       return _HomePlaylistsView(playlists: state.playlists);
@@ -804,6 +404,126 @@ class _LibraryContent extends StatelessWidget {
       return const SettingsView();
     }
     return LibraryPlaceholderView(view: state.selectedView);
+  }
+}
+
+class _SearchView extends StatefulWidget {
+  const _SearchView();
+
+  @override
+  State<_SearchView> createState() => _SearchViewState();
+}
+
+class _SearchViewState extends State<_SearchView> {
+  late final TextEditingController _controller;
+  final FocusNode _focusNode = FocusNode();
+  Timer? _debounce;
+  late int _lastSearchFocusRequest;
+
+  @override
+  void initState() {
+    super.initState();
+    final state = context.read<AppState>();
+    _controller = TextEditingController(text: state.searchQuery);
+    _lastSearchFocusRequest = state.searchFocusRequest;
+
+    state.addListener(_handleAppStateChange);
+
+    // When entering the search page, focus inside the field.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _focusNode.requestFocus();
+      }
+    });
+  }
+
+  void _handleAppStateChange() {
+    final state = context.read<AppState>();
+    if (state.searchQuery != _controller.text) {
+      _controller.value = _controller.value.copyWith(text: state.searchQuery);
+    }
+    if (state.searchFocusRequest != _lastSearchFocusRequest) {
+      _lastSearchFocusRequest = state.searchFocusRequest;
+      _focusNode.requestFocus();
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    context.read<AppState>().removeListener(_handleAppStateChange);
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _onChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 250), () {
+      context.read<AppState>().searchLibrary(value);
+    });
+    setState(() {});
+  }
+
+  void _clear() {
+    _controller.clear();
+    context.read<AppState>().clearSearch();
+    _focusNode.requestFocus();
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    final leftGutter = (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
+
+    final searchField = TextField(
+      controller: _controller,
+      focusNode: _focusNode,
+      onChanged: _onChanged,
+      decoration: InputDecoration(
+        hintText: 'Search',
+        prefixIcon: const Icon(Icons.search, size: 18),
+        suffixIcon: _controller.text.isEmpty
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                onPressed: _clear,
+              ),
+        filled: true,
+        fillColor: ColorTokens.cardFill(context, 0.06),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
+          child: SizedBox(width: double.infinity, child: searchField),
+        ),
+        SizedBox(height: space(16)),
+        Expanded(
+          child: state.searchQuery.isEmpty
+              ? Center(
+                  child: Text(
+                    'Search your library',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: ColorTokens.textSecondary(context),
+                        ),
+                  ),
+                )
+              : const SearchResultsView(),
+        ),
+      ],
+    );
   }
 }
 
@@ -913,12 +633,9 @@ class _HomePlaylistsView extends StatelessWidget {
     if (playlists.isEmpty) {
       return const LibraryPlaceholderView(view: LibraryView.homePlaylists);
     }
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
-    final leftGutter =
-        (32 * densityScale).clamp(16.0, 40.0).toDouble();
-    final rightGutter =
-        (24 * densityScale).clamp(12.0, 32.0).toDouble();
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    final leftGutter = (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossAxisCount = (constraints.maxWidth / 220).floor();
@@ -936,10 +653,8 @@ class _HomePlaylistsView extends StatelessWidget {
             final playlist = playlists[index];
             return PlaylistCard(
               playlist: playlist,
-              onTap: () =>
-                  context.read<AppState>().selectPlaylist(playlist),
-              onPlay: () =>
-                  context.read<AppState>().playPlaylist(playlist),
+              onTap: () => context.read<AppState>().selectPlaylist(playlist),
+              onPlay: () => context.read<AppState>().playPlaylist(playlist),
             );
           },
         );

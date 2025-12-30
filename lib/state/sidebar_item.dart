@@ -3,6 +3,9 @@ enum SidebarItem {
   /// Home view.
   home,
 
+  /// Search view.
+  search,
+
   /// Settings view.
   settings,
 
@@ -58,6 +61,8 @@ extension SidebarItemMetadata on SidebarItem {
     switch (this) {
       case SidebarItem.home:
         return 'home';
+      case SidebarItem.search:
+        return 'search';
       case SidebarItem.settings:
         return 'settings';
       case SidebarItem.favoritesAlbums:
@@ -98,6 +103,8 @@ extension SidebarItemMetadata on SidebarItem {
     switch (this) {
       case SidebarItem.home:
         return 'Home';
+      case SidebarItem.search:
+        return 'Search';
       case SidebarItem.settings:
         return 'Settings';
       case SidebarItem.favoritesAlbums:
