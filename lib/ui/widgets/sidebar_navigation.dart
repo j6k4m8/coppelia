@@ -217,11 +217,13 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
     final showSmartListsSection = smartLists.isNotEmpty || sessionPresent;
     final showPlaylistsSection = playlistsVisible;
     final appState = context.read<AppState>();
+    final effectiveHorizontalPadding =
+        (horizontalPadding * 0.6).clamp(10.0, horizontalPadding);
     return Container(
       padding: EdgeInsets.fromLTRB(
-        (horizontalPadding * 0.6).clamp(10.0, horizontalPadding),
+        effectiveHorizontalPadding,
         verticalPadding + topInset,
-        (horizontalPadding * 0.6).clamp(10.0, horizontalPadding),
+        0,
         0,
       ),
       decoration: BoxDecoration(
@@ -232,456 +234,467 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
           ),
         ),
       ),
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: MouseRegion(
-                  cursor: homeVisible
-                      ? SystemMouseCursors.click
-                      : SystemMouseCursors.basic,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: homeVisible
-                        ? () => _handleNavigate(
-                              () => appState.selectLibraryView(
-                                LibraryView.home,
-                              ),
-                            )
-                        : null,
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: space(36).clamp(28.0, 42.0),
-                          height: space(36).clamp(28.0, 42.0),
-                          child: Image.asset(
-                            'assets/logo.png',
+      child: RawScrollbar(
+        thickness: 10,
+        radius: const Radius.circular(12),
+        interactive: true,
+        thumbVisibility: true,
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(
+            0,
+            0,
+            effectiveHorizontalPadding,
+            0,
+          ),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: MouseRegion(
+                    cursor: homeVisible
+                        ? SystemMouseCursors.click
+                        : SystemMouseCursors.basic,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: homeVisible
+                          ? () => _handleNavigate(
+                                () => appState.selectLibraryView(
+                                  LibraryView.home,
+                                ),
+                              )
+                          : null,
+                      child: Row(
+                        children: [
+                          SizedBox(
                             width: space(36).clamp(28.0, 42.0),
                             height: space(36).clamp(28.0, 42.0),
-                            fit: BoxFit.contain,
+                            child: Image.asset(
+                              'assets/logo.png',
+                              width: space(36).clamp(28.0, 42.0),
+                              height: space(36).clamp(28.0, 42.0),
+                              fit: BoxFit.contain,
+                            ),
                           ),
-                        ),
-                        SizedBox(width: space(12).clamp(8.0, 16.0)),
-                        Text(
-                          'Coppelia',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ],
+                          SizedBox(width: space(12).clamp(8.0, 16.0)),
+                          Text(
+                            'Coppelia',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              if (widget.onCollapse != null)
-                IconButton(
-                  onPressed: widget.onCollapse,
-                  icon: const Icon(Icons.chevron_left, size: 18),
-                  tooltip: 'Collapse sidebar',
-                ),
-            ],
-          ),
-          SizedBox(height: space(32)),
-          if (settingsVisible) ...[
-            _NavTile(
-              icon: Icons.menu,
-              label: 'Settings',
-              selected: selectedPlaylistId == null &&
-                  selectedView == LibraryView.settings,
-              onTap: () => _handleNavigate(
-                () => appState.selectLibraryView(LibraryView.settings),
-              ),
+                if (widget.onCollapse != null)
+                  IconButton(
+                    onPressed: widget.onCollapse,
+                    icon: const Icon(Icons.chevron_left, size: 18),
+                    tooltip: 'Collapse sidebar',
+                  ),
+              ],
             ),
-            SizedBox(height: space(8)),
-            if (searchVisible) ...[
+            SizedBox(height: space(32)),
+            if (settingsVisible) ...[
               _NavTile(
-                icon: Icons.search,
-                label: 'Search',
+                icon: Icons.menu,
+                label: 'Settings',
                 selected: selectedPlaylistId == null &&
-                    (appState.searchQuery.isNotEmpty || appState.isSearching),
-                onTap: () => _handleNavigate(appState.requestSearchFocus),
+                    selectedView == LibraryView.settings,
+                onTap: () => _handleNavigate(
+                  () => appState.selectLibraryView(LibraryView.settings),
+                ),
               ),
               SizedBox(height: space(8)),
+              if (searchVisible) ...[
+                _NavTile(
+                  icon: Icons.search,
+                  label: 'Search',
+                  selected: selectedPlaylistId == null &&
+                      (appState.searchQuery.isNotEmpty || appState.isSearching),
+                  onTap: () => _handleNavigate(appState.requestSearchFocus),
+                ),
+                SizedBox(height: space(8)),
+              ],
+              _ToggleTile(
+                icon: Icons.cloud_off,
+                label: 'Offline mode',
+                value: offlineMode,
+                onChanged: (value) => appState.setOfflineMode(value),
+              ),
             ],
-            _ToggleTile(
-              icon: Icons.cloud_off,
-              label: 'Offline mode',
-              value: offlineMode,
-              onChanged: (value) => appState.setOfflineMode(value),
-            ),
-          ],
-          SizedBox(height: space(20)),
-          if (showFavoritesSection) ...[
-            _SectionHeader(
-              title: 'Favorites',
-              onTap: () => setState(() {
-                _favoritesExpanded = !_favoritesExpanded;
-              }),
-            ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              child: _favoritesExpanded
-                  ? Column(
-                      children: [
-                        SizedBox(height: space(8)),
-                        if (favoritesAlbumsVisible)
-                          _NavTile(
-                            icon: Icons.album,
-                            label: 'Albums',
-                            selected: selectedPlaylistId == null &&
-                                selectedView == LibraryView.favoritesAlbums,
-                            onTap: () => _handleNavigate(
-                              () => appState.selectLibraryView(
-                                LibraryView.favoritesAlbums,
-                              ),
-                            ),
-                          ),
-                        if (favoritesArtistsVisible)
-                          _NavTile(
-                            icon: Icons.people_alt,
-                            label: 'Artists',
-                            selected: selectedPlaylistId == null &&
-                                selectedView == LibraryView.favoritesArtists,
-                            onTap: () => _handleNavigate(
-                              () => appState.selectLibraryView(
-                                LibraryView.favoritesArtists,
-                              ),
-                            ),
-                          ),
-                        if (favoritesTracksVisible)
-                          _NavTile(
-                            icon: Icons.music_note,
-                            label: 'Tracks',
-                            selected: selectedPlaylistId == null &&
-                                selectedView == LibraryView.favoritesSongs,
-                            onTap: () => _handleNavigate(
-                              () => appState.selectLibraryView(
-                                LibraryView.favoritesSongs,
-                              ),
-                            ),
-                          ),
-                      ],
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ],
-          if (showBrowseSection) ...[
-            _SectionHeader(
-              title: 'Browse',
-              onTap: () => setState(() {
-                _browseExpanded = !_browseExpanded;
-              }),
-            ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              child: _browseExpanded
-                  ? Column(
-                      children: [
-                        SizedBox(height: space(8)),
-                        if (browseAlbumsVisible)
-                          _NavTile(
-                            icon: Icons.album,
-                            label: 'Albums',
-                            selected: selectedPlaylistId == null &&
-                                selectedView == LibraryView.albums,
-                            onTap: () => _handleNavigate(
-                              () => appState.selectLibraryView(
-                                LibraryView.albums,
-                              ),
-                            ),
-                          ),
-                        if (browseArtistsVisible)
-                          _NavTile(
-                            icon: Icons.people_alt,
-                            label: 'Artists',
-                            selected: selectedPlaylistId == null &&
-                                selectedView == LibraryView.artists,
-                            onTap: () => _handleNavigate(
-                              () => appState.selectLibraryView(
-                                LibraryView.artists,
-                              ),
-                            ),
-                          ),
-                        if (browseGenresVisible)
-                          _NavTile(
-                            icon: Icons.auto_awesome_motion,
-                            label: 'Genres',
-                            selected: selectedPlaylistId == null &&
-                                selectedView == LibraryView.genres,
-                            onTap: () => _handleNavigate(
-                              () => appState.selectLibraryView(
-                                LibraryView.genres,
-                              ),
-                            ),
-                          ),
-                        if (browsePlaylistsVisible)
-                          _NavTile(
-                            icon: Icons.queue_music,
-                            label: 'Playlists',
-                            selected: selectedPlaylistId == null &&
-                                selectedView == LibraryView.homePlaylists,
-                            onTap: () => _handleNavigate(
-                              () => appState.selectLibraryView(
-                                LibraryView.homePlaylists,
-                              ),
-                            ),
-                          ),
-                        if (browseTracksVisible)
-                          _NavTile(
-                            icon: Icons.music_note,
-                            label: 'Tracks',
-                            selected: selectedPlaylistId == null &&
-                                selectedView == LibraryView.tracks,
-                            onTap: () => _handleNavigate(
-                              () => appState.selectLibraryView(
-                                LibraryView.tracks,
-                              ),
-                            ),
-                          ),
-                      ],
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ],
-          SizedBox(height: space(16)),
-          if (showPlaybackSection) ...[
-            _SectionHeader(
-              title: 'Playback',
-              onTap: () => setState(() {
-                _playbackExpanded = !_playbackExpanded;
-              }),
-            ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              child: _playbackExpanded
-                  ? Column(
-                      children: [
-                        SizedBox(height: space(8)),
-                        if (playbackHistoryVisible)
-                          _NavTile(
-                            icon: Icons.history,
-                            label: 'History',
-                            selected: selectedPlaylistId == null &&
-                                selectedView == LibraryView.history,
-                            onTap: () => _handleNavigate(
-                              () => appState.selectLibraryView(
-                                LibraryView.history,
-                              ),
-                            ),
-                          ),
-                        if (playbackQueueVisible)
-                          _NavTile(
-                            icon: Icons.queue_music,
-                            label: 'Queue',
-                            selected: selectedPlaylistId == null &&
-                                selectedView == LibraryView.queue,
-                            onTap: () => _handleNavigate(
-                              () => appState.selectLibraryView(
-                                LibraryView.queue,
-                              ),
-                            ),
-                          ),
-                      ],
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ],
-          SizedBox(height: space(16)),
-          if (showPlaylistsSection) ...[
-            _SectionHeader(
-              title: 'Playlists',
-              onTap: () => setState(() {
-                _playlistsExpanded = !_playlistsExpanded;
-              }),
-            ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              child: _playlistsExpanded
-                  ? Column(
-                      children: [
-                        SizedBox(height: space(12)),
-                        _PlaylistActionTile(
-                          label: 'New playlist',
-                          enabled: sessionPresent && !offlineMode,
-                          onTap: () async {
-                            final created =
-                                await showCreatePlaylistDialog(context);
-                            if (created != null) {
-                              appState.selectPlaylist(created);
-                            }
-                          },
-                        ),
-                        SizedBox(height: space(6)),
-                        ...playlists.map(
-                          (playlist) => Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: _PlaylistTile(
-                              playlist: playlist,
-                              selected: selectedPlaylistId == playlist.id,
+            SizedBox(height: space(20)),
+            if (showFavoritesSection) ...[
+              _SectionHeader(
+                title: 'Favorites',
+                onTap: () => setState(() {
+                  _favoritesExpanded = !_favoritesExpanded;
+                }),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                child: _favoritesExpanded
+                    ? Column(
+                        children: [
+                          SizedBox(height: space(8)),
+                          if (favoritesAlbumsVisible)
+                            _NavTile(
+                              icon: Icons.album,
+                              label: 'Albums',
+                              selected: selectedPlaylistId == null &&
+                                  selectedView == LibraryView.favoritesAlbums,
                               onTap: () => _handleNavigate(
-                                () => appState.selectPlaylist(
-                                  playlist,
+                                () => appState.selectLibraryView(
+                                  LibraryView.favoritesAlbums,
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ],
-          if (showSmartListsSection) ...[
+                          if (favoritesArtistsVisible)
+                            _NavTile(
+                              icon: Icons.people_alt,
+                              label: 'Artists',
+                              selected: selectedPlaylistId == null &&
+                                  selectedView == LibraryView.favoritesArtists,
+                              onTap: () => _handleNavigate(
+                                () => appState.selectLibraryView(
+                                  LibraryView.favoritesArtists,
+                                ),
+                              ),
+                            ),
+                          if (favoritesTracksVisible)
+                            _NavTile(
+                              icon: Icons.music_note,
+                              label: 'Tracks',
+                              selected: selectedPlaylistId == null &&
+                                  selectedView == LibraryView.favoritesSongs,
+                              onTap: () => _handleNavigate(
+                                () => appState.selectLibraryView(
+                                  LibraryView.favoritesSongs,
+                                ),
+                              ),
+                            ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+            if (showBrowseSection) ...[
+              _SectionHeader(
+                title: 'Browse',
+                onTap: () => setState(() {
+                  _browseExpanded = !_browseExpanded;
+                }),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                child: _browseExpanded
+                    ? Column(
+                        children: [
+                          SizedBox(height: space(8)),
+                          if (browseAlbumsVisible)
+                            _NavTile(
+                              icon: Icons.album,
+                              label: 'Albums',
+                              selected: selectedPlaylistId == null &&
+                                  selectedView == LibraryView.albums,
+                              onTap: () => _handleNavigate(
+                                () => appState.selectLibraryView(
+                                  LibraryView.albums,
+                                ),
+                              ),
+                            ),
+                          if (browseArtistsVisible)
+                            _NavTile(
+                              icon: Icons.people_alt,
+                              label: 'Artists',
+                              selected: selectedPlaylistId == null &&
+                                  selectedView == LibraryView.artists,
+                              onTap: () => _handleNavigate(
+                                () => appState.selectLibraryView(
+                                  LibraryView.artists,
+                                ),
+                              ),
+                            ),
+                          if (browseGenresVisible)
+                            _NavTile(
+                              icon: Icons.auto_awesome_motion,
+                              label: 'Genres',
+                              selected: selectedPlaylistId == null &&
+                                  selectedView == LibraryView.genres,
+                              onTap: () => _handleNavigate(
+                                () => appState.selectLibraryView(
+                                  LibraryView.genres,
+                                ),
+                              ),
+                            ),
+                          if (browsePlaylistsVisible)
+                            _NavTile(
+                              icon: Icons.queue_music,
+                              label: 'Playlists',
+                              selected: selectedPlaylistId == null &&
+                                  selectedView == LibraryView.homePlaylists,
+                              onTap: () => _handleNavigate(
+                                () => appState.selectLibraryView(
+                                  LibraryView.homePlaylists,
+                                ),
+                              ),
+                            ),
+                          if (browseTracksVisible)
+                            _NavTile(
+                              icon: Icons.music_note,
+                              label: 'Tracks',
+                              selected: selectedPlaylistId == null &&
+                                  selectedView == LibraryView.tracks,
+                              onTap: () => _handleNavigate(
+                                () => appState.selectLibraryView(
+                                  LibraryView.tracks,
+                                ),
+                              ),
+                            ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
             SizedBox(height: space(16)),
-            _SectionHeader(
-              title: 'Smart Lists',
-              onTap: () => setState(() {
-                _smartListsExpanded = !_smartListsExpanded;
-              }),
-            ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              child: _smartListsExpanded
-                  ? Column(
-                      children: [
-                        SizedBox(height: space(12)),
-                        _PlaylistActionTile(
-                          label: 'New smart list',
-                          enabled: sessionPresent && !offlineMode,
-                          onTap: () async {
-                            final created =
-                                await showSmartListEditorDialog(context);
-                            if (created != null) {
-                              final stored =
-                                  await appState.createSmartList(created);
-                              await appState.selectSmartList(stored);
-                            }
-                          },
-                        ),
-                        SizedBox(height: space(6)),
-                        if (smartLists.isEmpty)
-                          Padding(
-                            padding: EdgeInsets.only(
-                              left: space(12).clamp(8.0, 16.0),
-                              right: space(12).clamp(8.0, 16.0),
-                              bottom: space(8),
-                            ),
-                            child: Text(
-                              'Build playlists that update themselves.',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color:
-                                        ColorTokens.textSecondary(context, 0.6),
-                                  ),
-                            ),
-                          )
-                        else
-                          ...smartLists.map(
-                            (smartList) => Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: _SmartListTile(
-                                smartList: smartList,
-                                selected: selectedSmartListId == smartList.id,
-                                onTap: () => _handleNavigate(
-                                  () => appState.selectSmartList(smartList),
+            if (showPlaybackSection) ...[
+              _SectionHeader(
+                title: 'Playback',
+                onTap: () => setState(() {
+                  _playbackExpanded = !_playbackExpanded;
+                }),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                child: _playbackExpanded
+                    ? Column(
+                        children: [
+                          SizedBox(height: space(8)),
+                          if (playbackHistoryVisible)
+                            _NavTile(
+                              icon: Icons.history,
+                              label: 'History',
+                              selected: selectedPlaylistId == null &&
+                                  selectedView == LibraryView.history,
+                              onTap: () => _handleNavigate(
+                                () => appState.selectLibraryView(
+                                  LibraryView.history,
                                 ),
-                                onRename: () =>
-                                    _renameSmartList(context, smartList),
-                                onDuplicate: () =>
-                                    _duplicateSmartList(context, smartList),
-                                onToggleHome: () {
-                                  final updated = smartList.copyWith(
-                                    showOnHome: !smartList.showOnHome,
-                                  );
-                                  appState.updateSmartList(updated);
-                                },
-                                onDelete: () =>
-                                    _deleteSmartList(context, smartList),
+                              ),
+                            ),
+                          if (playbackQueueVisible)
+                            _NavTile(
+                              icon: Icons.queue_music,
+                              label: 'Queue',
+                              selected: selectedPlaylistId == null &&
+                                  selectedView == LibraryView.queue,
+                              onTap: () => _handleNavigate(
+                                () => appState.selectLibraryView(
+                                  LibraryView.queue,
+                                ),
+                              ),
+                            ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+            SizedBox(height: space(16)),
+            if (showPlaylistsSection) ...[
+              _SectionHeader(
+                title: 'Playlists',
+                onTap: () => setState(() {
+                  _playlistsExpanded = !_playlistsExpanded;
+                }),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                child: _playlistsExpanded
+                    ? Column(
+                        children: [
+                          SizedBox(height: space(12)),
+                          _PlaylistActionTile(
+                            label: 'New playlist',
+                            enabled: sessionPresent && !offlineMode,
+                            onTap: () async {
+                              final created =
+                                  await showCreatePlaylistDialog(context);
+                              if (created != null) {
+                                appState.selectPlaylist(created);
+                              }
+                            },
+                          ),
+                          SizedBox(height: space(6)),
+                          ...playlists.map(
+                            (playlist) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: _PlaylistTile(
+                                playlist: playlist,
+                                selected: selectedPlaylistId == playlist.id,
+                                onTap: () => _handleNavigate(
+                                  () => appState.selectPlaylist(
+                                    playlist,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                      ],
-                    )
-                  : const SizedBox.shrink(),
-            ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+            if (showSmartListsSection) ...[
+              SizedBox(height: space(16)),
+              _SectionHeader(
+                title: 'Smart Lists',
+                onTap: () => setState(() {
+                  _smartListsExpanded = !_smartListsExpanded;
+                }),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                child: _smartListsExpanded
+                    ? Column(
+                        children: [
+                          SizedBox(height: space(12)),
+                          _PlaylistActionTile(
+                            label: 'New smart list',
+                            enabled: sessionPresent && !offlineMode,
+                            onTap: () async {
+                              final created =
+                                  await showSmartListEditorDialog(context);
+                              if (created != null) {
+                                final stored =
+                                    await appState.createSmartList(created);
+                                await appState.selectSmartList(stored);
+                              }
+                            },
+                          ),
+                          SizedBox(height: space(6)),
+                          if (smartLists.isEmpty)
+                            Padding(
+                              padding: EdgeInsets.only(
+                                left: space(12).clamp(8.0, 16.0),
+                                right: space(12).clamp(8.0, 16.0),
+                                bottom: space(8),
+                              ),
+                              child: Text(
+                                'Build playlists that update themselves.',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: ColorTokens.textSecondary(
+                                          context, 0.6),
+                                    ),
+                              ),
+                            )
+                          else
+                            ...smartLists.map(
+                              (smartList) => Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: _SmartListTile(
+                                  smartList: smartList,
+                                  selected: selectedSmartListId == smartList.id,
+                                  onTap: () => _handleNavigate(
+                                    () => appState.selectSmartList(smartList),
+                                  ),
+                                  onRename: () =>
+                                      _renameSmartList(context, smartList),
+                                  onDuplicate: () =>
+                                      _duplicateSmartList(context, smartList),
+                                  onToggleHome: () {
+                                    final updated = smartList.copyWith(
+                                      showOnHome: !smartList.showOnHome,
+                                    );
+                                    appState.updateSmartList(updated);
+                                  },
+                                  onDelete: () =>
+                                      _deleteSmartList(context, smartList),
+                                ),
+                              ),
+                            ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+            SizedBox(height: space(20)),
+            if (showOfflineSection) ...[
+              _SectionHeader(
+                title: 'Available Offline',
+                onTap: () => setState(() {
+                  _offlineExpanded = !_offlineExpanded;
+                }),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                child: _offlineExpanded
+                    ? Column(
+                        children: [
+                          SizedBox(height: space(8)),
+                          if (offlineAlbumsVisible)
+                            _NavTile(
+                              icon: Icons.album,
+                              label: 'Albums',
+                              selected: selectedPlaylistId == null &&
+                                  selectedView == LibraryView.offlineAlbums,
+                              onTap: () => _handleNavigate(
+                                () => appState.selectLibraryView(
+                                  LibraryView.offlineAlbums,
+                                ),
+                              ),
+                            ),
+                          if (offlineArtistsVisible)
+                            _NavTile(
+                              icon: Icons.people_alt,
+                              label: 'Artists',
+                              selected: selectedPlaylistId == null &&
+                                  selectedView == LibraryView.offlineArtists,
+                              onTap: () => _handleNavigate(
+                                () => appState.selectLibraryView(
+                                  LibraryView.offlineArtists,
+                                ),
+                              ),
+                            ),
+                          if (offlinePlaylistsVisible)
+                            _NavTile(
+                              icon: Icons.playlist_play,
+                              label: 'Playlists',
+                              selected: selectedPlaylistId == null &&
+                                  selectedView == LibraryView.offlinePlaylists,
+                              onTap: () => _handleNavigate(
+                                () => appState.selectLibraryView(
+                                  LibraryView.offlinePlaylists,
+                                ),
+                              ),
+                            ),
+                          if (offlineTracksVisible)
+                            _NavTile(
+                              icon: Icons.music_note,
+                              label: 'Tracks',
+                              selected: selectedPlaylistId == null &&
+                                  selectedView == LibraryView.offlineTracks,
+                              onTap: () => _handleNavigate(
+                                () => appState.selectLibraryView(
+                                  LibraryView.offlineTracks,
+                                ),
+                              ),
+                            ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+            SizedBox(height: space(16)),
           ],
-          SizedBox(height: space(20)),
-          if (showOfflineSection) ...[
-            _SectionHeader(
-              title: 'Available Offline',
-              onTap: () => setState(() {
-                _offlineExpanded = !_offlineExpanded;
-              }),
-            ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              child: _offlineExpanded
-                  ? Column(
-                      children: [
-                        SizedBox(height: space(8)),
-                        if (offlineAlbumsVisible)
-                          _NavTile(
-                            icon: Icons.album,
-                            label: 'Albums',
-                            selected: selectedPlaylistId == null &&
-                                selectedView == LibraryView.offlineAlbums,
-                            onTap: () => _handleNavigate(
-                              () => appState.selectLibraryView(
-                                LibraryView.offlineAlbums,
-                              ),
-                            ),
-                          ),
-                        if (offlineArtistsVisible)
-                          _NavTile(
-                            icon: Icons.people_alt,
-                            label: 'Artists',
-                            selected: selectedPlaylistId == null &&
-                                selectedView == LibraryView.offlineArtists,
-                            onTap: () => _handleNavigate(
-                              () => appState.selectLibraryView(
-                                LibraryView.offlineArtists,
-                              ),
-                            ),
-                          ),
-                        if (offlinePlaylistsVisible)
-                          _NavTile(
-                            icon: Icons.playlist_play,
-                            label: 'Playlists',
-                            selected: selectedPlaylistId == null &&
-                                selectedView == LibraryView.offlinePlaylists,
-                            onTap: () => _handleNavigate(
-                              () => appState.selectLibraryView(
-                                LibraryView.offlinePlaylists,
-                              ),
-                            ),
-                          ),
-                        if (offlineTracksVisible)
-                          _NavTile(
-                            icon: Icons.music_note,
-                            label: 'Tracks',
-                            selected: selectedPlaylistId == null &&
-                                selectedView == LibraryView.offlineTracks,
-                            onTap: () => _handleNavigate(
-                              () => appState.selectLibraryView(
-                                LibraryView.offlineTracks,
-                              ),
-                            ),
-                          ),
-                      ],
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ],
-          SizedBox(height: space(16)),
-        ],
+        ),
       ),
     );
   }
