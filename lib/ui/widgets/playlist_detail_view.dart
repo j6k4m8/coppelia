@@ -226,6 +226,9 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
       initialName: playlist.name,
       confirmLabel: 'Rename',
     );
+    if (!context.mounted) {
+      return;
+    }
     if (name == null) {
       return;
     }
@@ -237,6 +240,9 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
 
   Future<void> _handleDelete(BuildContext context, Playlist playlist) async {
     final confirmed = await confirmPlaylistDelete(context, playlist);
+    if (!context.mounted) {
+      return;
+    }
     if (!confirmed) {
       return;
     }
@@ -295,16 +301,29 @@ class _PlaylistHeader extends StatelessWidget {
           label: 'Playlist options',
           tooltip: 'Playlist options',
           iconKey: overflowKey,
+          menuItems: const [
+            PopupMenuItem(
+              value: _PlaylistHeaderAction.rename,
+              child: Text('Rename'),
+            ),
+            PopupMenuItem(
+              value: _PlaylistHeaderAction.delete,
+              child: Text('Delete'),
+            ),
+          ],
+          onMenuSelected: (value) {
+            if (value == _PlaylistHeaderAction.rename) {
+              onRename?.call();
+            } else if (value == _PlaylistHeaderAction.delete) {
+              onDelete?.call();
+            }
+          },
           onPressed: () {
-            // In icon-only mode, we don't have a `PopupMenuButton` in the tree,
-            // so we must position the menu ourselves. Anchor it to the actual
-            // overflow icon instead of a hard-coded screen coordinate.
+            // Icon-only mode: manually anchor the menu to the overflow icon.
             final box =
                 overflowKey.currentContext?.findRenderObject() as RenderBox?;
             final overlay =
                 Overlay.of(context).context.findRenderObject() as RenderBox;
-            // Small positioning tweaks so the menu feels "attached" to the
-            // overflow icon.
             const menuDx = -8.0;
             const menuDy = 6.0;
             final position = box != null
@@ -314,8 +333,10 @@ class _PlaylistHeader extends StatelessWidget {
                         const Offset(menuDx, menuDy),
                         ancestor: overlay,
                       ),
-                      box.localToGlobal(box.size.bottomRight(Offset.zero),
-                          ancestor: overlay),
+                      box.localToGlobal(
+                        box.size.bottomRight(Offset.zero),
+                        ancestor: overlay,
+                      ),
                     ),
                     Offset.zero & overlay.size,
                   )
@@ -351,30 +372,7 @@ class _PlaylistHeader extends StatelessWidget {
       imageUrl: playlist.imageUrl,
       fallbackIcon: Icons.queue_music,
       actionSpecs: actionSpecs,
-      actions: [
-        if (canEdit)
-          PopupMenuButton<_PlaylistHeaderAction>(
-            tooltip: 'Playlist options',
-            onSelected: (value) {
-              if (value == _PlaylistHeaderAction.rename) {
-                onRename?.call();
-              } else if (value == _PlaylistHeaderAction.delete) {
-                onDelete?.call();
-              }
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(
-                value: _PlaylistHeaderAction.rename,
-                child: Text('Rename'),
-              ),
-              PopupMenuItem(
-                value: _PlaylistHeaderAction.delete,
-                child: Text('Delete'),
-              ),
-            ],
-            icon: const Icon(Icons.more_horiz),
-          ),
-      ],
+      actions: const [],
     );
   }
 }
