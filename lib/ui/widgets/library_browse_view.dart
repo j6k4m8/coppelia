@@ -123,12 +123,14 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
     final subtitleStyle = Theme.of(context).textTheme.bodySmall;
     final titleHeight = _textHeight(titleStyle);
     final subtitleHeight = _textHeight(subtitleStyle);
-    final subtitleGap = density == LayoutDensity.sardine
-        ? space(1.5).clamp(0.0, 2.0)
-        : space(4).clamp(2.0, 6.0);
-    final verticalPadding = density == LayoutDensity.sardine
-        ? space(5).clamp(2.0, 7.0)
-        : space(10).clamp(4.0, 12.0);
+  // Keep these in sync with `LibraryListTile` to avoid sub-pixel overflow
+  // when we size list rows via `SizedBox(height: listItemExtent)`.
+  final subtitleGap = density == LayoutDensity.sardine
+    ? space(2).clamp(0.0, 3.0)
+    : space(4).clamp(2.0, 6.0);
+  final verticalPadding = density == LayoutDensity.sardine
+    ? space(6).clamp(2.0, 8.0)
+    : space(10).clamp(4.0, 12.0);
     final artSize = (48 * densityScale).clamp(24.0, 56.0);
     final textBlock = titleHeight + subtitleHeight + subtitleGap;
     final contentHeight = math.max(artSize, textBlock);
@@ -231,10 +233,11 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                               SizedBox(height: space(6).clamp(4.0, 10.0)),
                           itemBuilder: (context, index) {
                             final item = widget.items[index];
-                            return SizedBox(
-                              height: listItemExtent,
-                              child: widget.listItemBuilder(context, item),
-                            );
+                            // Allow the tile to size itself. This prevents
+                            // sub-pixel overflows at very tight densities
+                            // ("sardine" mode) caused by rounding differences
+                            // between computed extents and actual render size.
+                            return widget.listItemBuilder(context, item);
                           },
                         ),
                   if (letters.isNotEmpty)
