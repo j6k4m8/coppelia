@@ -22,6 +22,8 @@ If you hold in your heart other bulletpoints than these, please share and help m
 
 ## Screenshots
 
+For more screenshots and info about themes, see [the wiki](https://github.com/j6k4m8/coppelia/wiki/Themes).
+
 ### macOS
 
 <img width="512"  alt="themes" src="https://github.com/user-attachments/assets/4fd0ced0-f558-4cdb-81c6-1fc27e76b2be" />
