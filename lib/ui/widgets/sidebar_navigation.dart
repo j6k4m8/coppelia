@@ -219,10 +219,10 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
     final appState = context.read<AppState>();
     return Container(
       padding: EdgeInsets.fromLTRB(
-        horizontalPadding,
+        (horizontalPadding * 0.6).clamp(10.0, horizontalPadding),
         verticalPadding + topInset,
-        horizontalPadding,
-        verticalPadding,
+        (horizontalPadding * 0.6).clamp(10.0, horizontalPadding),
+        0,
       ),
       decoration: BoxDecoration(
         color: ColorTokens.panelBackground(context),
