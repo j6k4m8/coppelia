@@ -18,6 +18,39 @@ class LibraryOverview extends StatelessWidget {
   /// Creates the library overview widget.
   const LibraryOverview({super.key});
 
+  /// Computes a responsive grid column count.
+  ///
+  /// - Uses the available content width (constraints).
+  /// - Forces at least [minColumnsOnPhone] columns for phone-sized screens,
+  ///   unless the content width is too small to feasibly fit them.
+  int _homeGridColumns(
+    BuildContext context, {
+    required double maxWidth,
+    required double targetWidth,
+    int maxColumns = 3,
+    int minColumnsOnPhone = 2,
+    double phoneWidthBreakpoint = 420,
+    double absoluteMinItemWidth = 120,
+  }) {
+    final computed = (maxWidth / targetWidth).floor();
+    final clamped = computed.clamp(1, maxColumns);
+
+    final isPhoneWidth =
+        MediaQuery.of(context).size.width < phoneWidthBreakpoint;
+    if (!isPhoneWidth) {
+      return clamped;
+    }
+
+    // If we can't realistically fit N columns at all, fall back to 1.
+    final canFitMinColumns =
+        maxWidth >= (absoluteMinItemWidth * minColumnsOnPhone);
+    if (!canFitMinColumns) {
+      return 1;
+    }
+
+    return clamped < minColumnsOnPhone ? minColumnsOnPhone : clamped;
+  }
+
   String _greetingFor(DateTime time) {
     final hour = time.hour;
     if (hour >= 4 && hour < 6) {
@@ -298,8 +331,14 @@ class LibraryOverview extends StatelessWidget {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final targetWidth = space(190).clamp(150.0, 240.0);
-                  final columns =
-                      (constraints.maxWidth / targetWidth).floor().clamp(1, 3);
+                  final columns = _homeGridColumns(
+                    context,
+                    maxWidth: constraints.maxWidth,
+                    targetWidth: targetWidth,
+                    maxColumns: 3,
+                    minColumnsOnPhone: 2,
+                    absoluteMinItemWidth: space(140).clamp(120.0, 170.0),
+                  );
                   final spacing = space(16);
                   final width =
                       (constraints.maxWidth - spacing * (columns - 1)) /
@@ -349,7 +388,9 @@ class LibraryOverview extends StatelessWidget {
             padding: sectionPadding(),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final targetWidth = space(190).clamp(150.0, 240.0);
+                // Slightly smaller target width so phones can hit 2 columns
+                // without making cards too tiny.
+                final targetWidth = space(170).clamp(140.0, 220.0);
                 final crossAxisCount =
                     (constraints.maxWidth / targetWidth).floor();
                 final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
@@ -397,10 +438,18 @@ class LibraryOverview extends StatelessWidget {
             padding: sectionPadding(),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final targetWidth = space(190).clamp(150.0, 240.0);
-                final crossAxisCount =
-                    (constraints.maxWidth / targetWidth).floor();
-                final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
+                // Phones often end up with a content width that makes the
+                // naive floor division yield 1 column. Force 2 columns for
+                // compact widths to avoid giant, single-row playlist cards.
+                final targetWidth = space(170).clamp(140.0, 220.0);
+                final columns = _homeGridColumns(
+                  context,
+                  maxWidth: constraints.maxWidth,
+                  targetWidth: targetWidth,
+                  maxColumns: 4,
+                  minColumnsOnPhone: 2,
+                  absoluteMinItemWidth: space(150).clamp(120.0, 180.0),
+                );
                 return GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
