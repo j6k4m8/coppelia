@@ -292,46 +292,25 @@ class CollectionHeader extends StatelessWidget {
 
     Widget expandedButton(HeaderActionSpec spec) {
       if (spec.menuItems != null && spec.onMenuSelected != null) {
-        // Big-screen menu action is a *pill* (icon + caption) that opens a menu.
-        // We can't use a disabled button as the child (it looks greyed out),
-        // and we can't use an enabled button (it would steal the tap).
-        // So: use PopupMenuButton as the tap handler and provide a non-button
-        // visual child.
         final tooltip = spec.tooltip ?? spec.label;
+        // Use the exact same Material button widget as the other actions so it
+        // matches size/shape, but open the menu via the PopupMenuButton state.
         return PopupMenuButton<Object?>(
           tooltip: tooltip,
           onSelected: spec.onMenuSelected!,
           itemBuilder: (context) => spec.menuItems!,
-          child: Tooltip(
-            message: tooltip,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.secondaryContainer,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      spec.icon,
-                      size: 18,
-                      color: Theme.of(context).colorScheme.onSecondaryContainer,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      spec.label,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSecondaryContainer,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          child: Builder(
+            builder: (context) {
+              return FilledButton.tonalIcon(
+                onPressed: () {
+                  final state =
+                      context.findAncestorStateOfType<PopupMenuButtonState>();
+                  state?.showButtonMenu();
+                },
+                icon: Icon(spec.icon),
+                label: Text(spec.label),
+              );
+            },
           ),
         );
       }
