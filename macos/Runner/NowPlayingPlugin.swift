@@ -6,6 +6,8 @@ import MediaPlayer
 final class NowPlayingPlugin: NSObject, FlutterPlugin {
   private let channel: FlutterMethodChannel
   private var didSetupRemoteCommands = false
+  private let artworkCache = NSCache<NSString, MPMediaItemArtwork>()
+  private var currentTrackId: String?
 
   private init(channel: FlutterMethodChannel) {
     self.channel = channel
@@ -51,6 +53,10 @@ final class NowPlayingPlugin: NSObject, FlutterPlugin {
     let duration = args["duration"] as? Double ?? 0
     let position = max(0, args["position"] as? Double ?? 0)
     let isPlaying = args["isPlaying"] as? Bool ?? false
+    let imageUrl = args["imageUrl"] as? String
+    let trackId = args["id"] as? String
+
+    currentTrackId = trackId
 
     var info: [String: Any] = [
       MPMediaItemPropertyTitle: title,
@@ -61,14 +67,32 @@ final class NowPlayingPlugin: NSObject, FlutterPlugin {
       MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0
     ]
 
-    if let artwork = loadAppArtwork() {
-      info[MPMediaItemPropertyArtwork] = artwork
+    if let imageUrl, let cached = artworkCache.object(forKey: imageUrl as NSString) {
+      info[MPMediaItemPropertyArtwork] = cached
+    } else if let fallback = loadAppArtwork() {
+      info[MPMediaItemPropertyArtwork] = fallback
     }
 
     MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     if #available(macOS 10.13.2, *) {
       MPNowPlayingInfoCenter.default().playbackState =
         isPlaying ? .playing : .paused
+    }
+
+    if let imageUrl {
+      fetchArtwork(imageUrl: imageUrl, trackId: trackId) { [weak self] artwork in
+        guard
+          let self,
+          let artwork,
+          self.currentTrackId == trackId
+        else { return }
+
+        DispatchQueue.main.async {
+          var refreshed = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? info
+          refreshed[MPMediaItemPropertyArtwork] = artwork
+          MPNowPlayingInfoCenter.default().nowPlayingInfo = refreshed
+        }
+      }
     }
     result(nil)
   }
@@ -136,5 +160,43 @@ final class NowPlayingPlugin: NSObject, FlutterPlugin {
     return MPMediaItemArtwork(boundsSize: image.size) { _ in
       return image
     }
+  }
+
+  private func fetchArtwork(
+    imageUrl: String,
+    trackId: String?,
+    completion: @escaping (MPMediaItemArtwork?) -> Void
+  ) {
+    guard let url = URL(string: imageUrl) else {
+      completion(nil)
+      return
+    }
+
+    if let cached = artworkCache.object(forKey: imageUrl as NSString) {
+      completion(cached)
+      return
+    }
+
+    let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 10)
+    URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+      guard let self else {
+        completion(nil)
+        return
+      }
+      guard
+        error == nil,
+        let data = data,
+        let image = NSImage(data: data)
+      else {
+        completion(nil)
+        return
+      }
+
+      let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in
+        return image
+      }
+      self.artworkCache.setObject(artwork, forKey: imageUrl as NSString)
+      completion(artwork)
+    }.resume()
   }
 }

@@ -123,14 +123,14 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
     final subtitleStyle = Theme.of(context).textTheme.bodySmall;
     final titleHeight = _textHeight(titleStyle);
     final subtitleHeight = _textHeight(subtitleStyle);
-  // Keep these in sync with `LibraryListTile` to avoid sub-pixel overflow
-  // when we size list rows via `SizedBox(height: listItemExtent)`.
-  final subtitleGap = density == LayoutDensity.sardine
-    ? space(2).clamp(0.0, 3.0)
-    : space(4).clamp(2.0, 6.0);
-  final verticalPadding = density == LayoutDensity.sardine
-    ? space(6).clamp(2.0, 8.0)
-    : space(10).clamp(4.0, 12.0);
+    // Keep these in sync with `LibraryListTile` to avoid sub-pixel overflow
+    // when we size list rows via `SizedBox(height: listItemExtent)`.
+    final subtitleGap = density == LayoutDensity.sardine
+        ? space(2).clamp(0.0, 3.0)
+        : space(4).clamp(2.0, 6.0);
+    final verticalPadding = density == LayoutDensity.sardine
+        ? space(6).clamp(2.0, 8.0)
+        : space(10).clamp(4.0, 12.0);
     final artSize = (48 * densityScale).clamp(24.0, 56.0);
     final textBlock = titleHeight + subtitleHeight + subtitleGap;
     final contentHeight = math.max(artSize, textBlock);
