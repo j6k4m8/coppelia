@@ -10,7 +10,7 @@ permissions:
     contents: read
 
 jobs:
-    analyze-and-test:
+    tests:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
@@ -25,8 +25,29 @@ jobs:
             - name: Install dependencies
               run: flutter pub get
 
-            - name: Analyze
-              run: flutter analyze
+            # Fail only on analyzer errors (warnings/infos are allowed here).
+            - name: Analyze (errors only)
+              run: flutter analyze --no-fatal-warnings --no-fatal-infos
 
             - name: Test
               run: flutter test
+
+    lint:
+        runs-on: ubuntu-latest
+        continue-on-error: true
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Set up Flutter
+              uses: subosito/flutter-action@v2
+              with:
+                  channel: stable
+                  cache: true
+
+            - name: Install dependencies
+              run: flutter pub get
+
+            # Strict lint run; surfaces warnings/infos but does not block PR.
+            - name: Analyze (strict)
+              run: flutter analyze

@@ -33,6 +33,7 @@ dev_dependencies:
         sdk: flutter
     mocktail: ^1.0.3
     sqflite_common_ffi: ^2.3.3
+    path_provider_platform_interface: ^2.1.2
 
 flutter:
     uses-material-design: true
