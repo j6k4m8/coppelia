@@ -1,11 +1,20 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:coppelia/models/media_item.dart';
 import 'package:coppelia/models/playlist.dart';
 import 'package:coppelia/services/cache_store.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  PathProviderPlatform.instance = _FakePathProvider();
+  sqfliteFfiInit();
+  databaseFactory = databaseFactoryFfi;
+
   test('cache store saves and restores playlists', () async {
     SharedPreferences.setMockInitialValues({});
     final cacheStore = CacheStore();
@@ -46,4 +55,13 @@ void main() {
     expect(restored, hasLength(1));
     expect(restored.first.title, 'Evergreen');
   });
+}
+
+class _FakePathProvider extends PathProviderPlatform {
+  @override
+  Future<String?> getTemporaryPath() async => Directory.systemTemp.path;
+
+  @override
+  Future<String?> getApplicationSupportPath() async =>
+      Directory.systemTemp.path;
 }
