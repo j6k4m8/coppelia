@@ -63,12 +63,14 @@ class NowPlayingService {
         ? track.artists.join(', ')
         : 'Unknown Artist';
     await _channel.invokeMethod('update', {
+      'id': track.id,
       'title': track.title,
       'artist': artist,
       'album': track.album,
       'duration': duration.inMilliseconds / 1000,
       'position': position.inMilliseconds / 1000,
       'isPlaying': isPlaying,
+      'imageUrl': track.imageUrl,
     });
   }
 
