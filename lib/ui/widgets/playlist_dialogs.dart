@@ -205,6 +205,9 @@ Future<PlaylistPickerResult?> showPlaylistPickerDialog(
       ],
     ),
   );
+  if (!context.mounted) {
+    return null;
+  }
   if (choice == null) {
     return null;
   }
