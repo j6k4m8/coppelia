@@ -6,11 +6,9 @@ import 'cache_store.dart';
 
 /// Wraps audio playback with queue and state helpers.
 class PlaybackController {
-  /// Creates a playback controller.
   PlaybackController({AudioPlayer? player}) : _player = player ?? AudioPlayer();
 
   final AudioPlayer _player;
-  ConcatenatingAudioSource? _queueSource;
   bool _gaplessPlayback = true;
 
   /// Stream of playback position updates.
@@ -30,7 +28,7 @@ class PlaybackController {
 
   /// The current media item from the queue.
   MediaItem? get currentMediaItem {
-    final tag = _player.sequenceState?.currentSource?.tag;
+    final tag = _player.sequenceState.currentSource?.tag;
     if (tag is MediaItem) {
       return tag;
     }
@@ -63,18 +61,24 @@ class PlaybackController {
     for (final item in items) {
       sources.add(await _buildSource(item, cacheStore, headers));
     }
-    _queueSource = ConcatenatingAudioSource(
-      children: sources,
-      useLazyPreparation: !_gaplessPlayback,
+    if (sources.isEmpty) {
+      await _player.stop();
+      await _player.clearAudioSources();
+      return;
+    }
+    final targetIndex = startIndex.clamp(0, sources.length - 1);
+    await _player.setAudioSources(
+      sources,
+      initialIndex: targetIndex,
+      preload: _gaplessPlayback,
     );
-    await _player.setAudioSource(_queueSource!, initialIndex: startIndex);
   }
 
   /// Enables or disables gapless playback behavior.
   Future<void> setGaplessPlayback(bool enabled) async {
     _gaplessPlayback = enabled;
-    final queue = _queueSource;
-    if (queue == null || queue.length == 0) {
+    final sources = List<AudioSource>.from(_player.audioSources);
+    if (sources.isEmpty) {
       return;
     }
     final currentIndex = _player.currentIndex;
@@ -83,15 +87,11 @@ class PlaybackController {
     }
     final position = _player.position;
     final wasPlaying = _player.playing;
-    final rebuilt = ConcatenatingAudioSource(
-      children: List<AudioSource>.from(queue.children),
-      useLazyPreparation: !_gaplessPlayback,
-    );
-    _queueSource = rebuilt;
-    await _player.setAudioSource(
-      rebuilt,
+    await _player.setAudioSources(
+      sources,
       initialIndex: currentIndex,
       initialPosition: position,
+      preload: _gaplessPlayback,
     );
     if (wasPlaying) {
       await _player.play();
@@ -105,7 +105,7 @@ class PlaybackController {
     Map<String, String>? headers,
   }) async {
     final source = await _buildSource(item, cacheStore, headers);
-    await _queueSource?.add(source);
+    await _player.addAudioSource(source);
   }
 
   /// Inserts a track after the current item.
@@ -116,9 +116,9 @@ class PlaybackController {
   }) async {
     final source = await _buildSource(item, cacheStore, headers);
     final insertIndex = (currentIndex ?? -1) + 1;
-    final queueLength = _queueSource?.length ?? 0;
+    final queueLength = _player.audioSources.length;
     final targetIndex = insertIndex.clamp(0, queueLength);
-    await _queueSource?.insert(targetIndex, source);
+    await _player.insertAudioSource(targetIndex, source);
   }
 
   /// Starts playback.
@@ -163,25 +163,20 @@ class PlaybackController {
 
   /// Clears upcoming items from the queue.
   Future<void> clearQueue({bool keepCurrent = true}) async {
-    final source = _queueSource;
-    if (source == null || source.length == 0) {
+    final sources = _player.audioSources;
+    if (sources.isEmpty) {
       await _player.stop();
-      final emptyQueue = ConcatenatingAudioSource(children: []);
-      await _player.setAudioSource(emptyQueue);
-      _queueSource = emptyQueue;
       return;
     }
     final index = currentIndex ?? -1;
     if (keepCurrent && index >= 0) {
-      if (index + 1 < source.length) {
-        await source.removeRange(index + 1, source.length);
+      if (index + 1 < sources.length) {
+        await _player.removeAudioSourceRange(index + 1, sources.length);
       }
       return;
     }
     await _player.stop();
-    final emptyQueue = ConcatenatingAudioSource(children: []);
-    await _player.setAudioSource(emptyQueue);
-    _queueSource = emptyQueue;
+    await _player.clearAudioSources();
   }
 
   Future<AudioSource> _buildSource(
