@@ -23,8 +23,7 @@ class _SmartListEditorDialog extends StatefulWidget {
   final SmartList? initial;
 
   @override
-  State<_SmartListEditorDialog> createState() =>
-      _SmartListEditorDialogState();
+  State<_SmartListEditorDialog> createState() => _SmartListEditorDialogState();
 }
 
 class _SmartListEditorDialogState extends State<_SmartListEditorDialog> {
@@ -96,8 +95,7 @@ class _SmartListEditorDialogState extends State<_SmartListEditorDialog> {
               ),
               SizedBox(height: space(16)),
               if (!isEditing) ...[
-                Text('Templates',
-                    style: Theme.of(context).textTheme.bodyLarge),
+                Text('Templates', style: Theme.of(context).textTheme.bodyLarge),
                 SizedBox(height: space(8)),
                 Wrap(
                   spacing: space(8),
@@ -209,8 +207,7 @@ class _SmartListGroupEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final borderColor = ColorTokens.border(context);
     return Container(
@@ -225,8 +222,7 @@ class _SmartListGroupEditor extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text('Match',
-                  style: Theme.of(context).textTheme.bodySmall),
+              Text('Match', style: Theme.of(context).textTheme.bodySmall),
               SizedBox(width: space(8)),
               DropdownButton<SmartListGroupMode>(
                 value: group.mode,
@@ -291,8 +287,7 @@ class _SmartListGroupEditor extends StatelessWidget {
                     SmartListRuleNode(
                       rule: SmartListRule(
                         field: SmartListField.title,
-                        operatorType:
-                            SmartListField.title.operators.first,
+                        operatorType: SmartListField.title.operators.first,
                         value: '',
                       ),
                     ),
@@ -352,20 +347,17 @@ class _SmartListRuleEditorState extends State<_SmartListRuleEditor> {
   void initState() {
     super.initState();
     _valueController = TextEditingController(text: widget.rule.value);
-    _value2Controller =
-        TextEditingController(text: widget.rule.value2 ?? '');
+    _value2Controller = TextEditingController(text: widget.rule.value2 ?? '');
   }
 
   @override
   void didUpdateWidget(covariant _SmartListRuleEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!_valueFocus.hasFocus &&
-        widget.rule.value != _valueController.text) {
+    if (!_valueFocus.hasFocus && widget.rule.value != _valueController.text) {
       _valueController.text = widget.rule.value;
     }
     final nextValue2 = widget.rule.value2 ?? '';
-    if (!_value2Focus.hasFocus &&
-        nextValue2 != _value2Controller.text) {
+    if (!_value2Focus.hasFocus && nextValue2 != _value2Controller.text) {
       _value2Controller.text = nextValue2;
     }
   }
@@ -381,22 +373,18 @@ class _SmartListRuleEditorState extends State<_SmartListRuleEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final rule = widget.rule;
     final operators = rule.field.operators;
     if (!operators.contains(rule.operatorType)) {
       rule.operatorType = operators.first;
     }
-    final showValue =
-        rule.field.valueType != SmartListValueType.boolean;
-    final showSecondValue =
-        rule.operatorType == SmartListOperator.between;
+    final showValue = rule.field.valueType != SmartListValueType.boolean;
+    final showSecondValue = rule.operatorType == SmartListOperator.between;
     final hint = _hintForRule(rule);
-    final dropdownStyle =
-        Theme.of(context).textTheme.bodySmall ??
-            Theme.of(context).textTheme.bodyMedium;
+    final dropdownStyle = Theme.of(context).textTheme.bodySmall ??
+        Theme.of(context).textTheme.bodyMedium;
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 520;
@@ -447,14 +435,14 @@ class _SmartListRuleEditorState extends State<_SmartListRuleEditor> {
               }
               widget.onChanged();
             },
-          items: operators
-              .map(
-                (op) => DropdownMenuItem(
-                  value: op,
-                  child: Text(op.label, style: dropdownStyle),
-                ),
-              )
-              .toList(),
+            items: operators
+                .map(
+                  (op) => DropdownMenuItem(
+                    value: op,
+                    child: Text(op.label, style: dropdownStyle),
+                  ),
+                )
+                .toList(),
           ),
         );
         final valueField = TextField(
@@ -570,8 +558,7 @@ class _SmartListSortEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     return Column(
       children: [

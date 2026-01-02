@@ -224,6 +224,7 @@ class _BottomBar extends StatelessWidget {
                 ],
               );
             }
+
             if (isNarrow) {
               return Column(
                 mainAxisSize: MainAxisSize.min,
@@ -350,13 +351,13 @@ class _BottomBar extends StatelessWidget {
                       state.durationListenable,
                     ]),
                     builder: (context, _) {
-                        return _ProgressScrubber(
-                          position: state.position,
-                          duration: state.duration,
-                          onSeek: state.seek,
-                          compact: true,
-                          inlineTimes: true,
-                        );
+                      return _ProgressScrubber(
+                        position: state.position,
+                        duration: state.duration,
+                        onSeek: state.seek,
+                        compact: true,
+                        inlineTimes: true,
+                      );
                     },
                   ),
                 ),
@@ -587,12 +588,9 @@ class _ProgressScrubber extends StatelessWidget {
     final currentMs = position.inMilliseconds.clamp(0, totalMs);
     final value = totalMs > 0 ? currentMs / totalMs : 0.0;
     final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
-    final height =
-        ((compact ? 32.0 : 40.0) * densityScale).clamp(24.0, 52.0);
-    final trackHeight =
-        ((compact ? 4.0 : 6.0) * densityScale).clamp(2.0, 8.0);
-    final thumbRadius =
-        ((compact ? 6.0 : 8.0) * densityScale).clamp(4.0, 10.0);
+    final height = ((compact ? 32.0 : 40.0) * densityScale).clamp(24.0, 52.0);
+    final trackHeight = ((compact ? 4.0 : 6.0) * densityScale).clamp(2.0, 8.0);
+    final thumbRadius = ((compact ? 6.0 : 8.0) * densityScale).clamp(4.0, 10.0);
     final overlayRadius =
         ((compact ? 10.0 : 12.0) * densityScale).clamp(6.0, 14.0);
     final primary = Theme.of(context).colorScheme.primary;
@@ -710,7 +708,8 @@ class _SwipeTrackSwitcherState extends State<_SwipeTrackSwitcher>
     super.dispose();
   }
 
-  double _clampDrag(double value, {required bool hasPrevious, required bool hasNext}) {
+  double _clampDrag(double value,
+      {required bool hasPrevious, required bool hasNext}) {
     final minDrag = hasNext ? -_dragRange : 0.0;
     final maxDrag = hasPrevious ? _dragRange : 0.0;
     return value.clamp(minDrag, maxDrag);
@@ -734,9 +733,8 @@ class _SwipeTrackSwitcherState extends State<_SwipeTrackSwitcher>
       builder: (context, constraints) {
         final hasPrevious = widget.previous != null;
         final hasNext = widget.next != null;
-        _dragRange = (constraints.maxWidth * 1.0)
-            .clamp(220.0, 520.0)
-            .toDouble();
+        _dragRange =
+            (constraints.maxWidth * 1.0).clamp(220.0, 520.0).toDouble();
         final canDrag = widget.enabled && (hasPrevious || hasNext);
         final baseContent = ClipRect(
           child: AnimatedBuilder(
@@ -747,24 +745,23 @@ class _SwipeTrackSwitcherState extends State<_SwipeTrackSwitcher>
                 hasPrevious: hasPrevious,
                 hasNext: hasNext,
               );
-              final progress =
-                  _dragRange == 0 ? 0.0 : (offset / _dragRange).clamp(-1.0, 1.0);
+              final progress = _dragRange == 0
+                  ? 0.0
+                  : (offset / _dragRange).clamp(-1.0, 1.0);
               final absProgress = progress.abs();
               final scaledProgress =
                   (absProgress + 0.3 * absProgress * absProgress)
                       .clamp(0.0, 1.0);
-              final scaledOffset =
-                  _dragRange == 0 ? 0.0 : _dragRange * scaledProgress * progress.sign;
-              final currentOpacity =
-                  (1 - 0.35 * absProgress).clamp(0.55, 1.0);
+              final scaledOffset = _dragRange == 0
+                  ? 0.0
+                  : _dragRange * scaledProgress * progress.sign;
+              final currentOpacity = (1 - 0.35 * absProgress).clamp(0.55, 1.0);
               const peekStart = 0.2;
               final previousOpacity = progress > peekStart
-                  ? ((progress - peekStart) / (1 - peekStart))
-                      .clamp(0.0, 1.0)
+                  ? ((progress - peekStart) / (1 - peekStart)).clamp(0.0, 1.0)
                   : 0.0;
               final nextOpacity = progress < -peekStart
-                  ? ((-progress - peekStart) / (1 - peekStart))
-                      .clamp(0.0, 1.0)
+                  ? ((-progress - peekStart) / (1 - peekStart)).clamp(0.0, 1.0)
                   : 0.0;
               Widget buildSlot(MediaItem? item) {
                 return SizedBox(

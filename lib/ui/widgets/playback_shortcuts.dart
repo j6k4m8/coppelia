@@ -19,15 +19,13 @@ class PlaybackShortcuts extends StatelessWidget {
     final shortcuts = <ShortcutActivator, Intent>{
       LogicalKeySet(LogicalKeyboardKey.mediaPlayPause):
           const TogglePlaybackIntent(),
-      LogicalKeySet(LogicalKeyboardKey.mediaTrackNext):
-          const NextTrackIntent(),
+      LogicalKeySet(LogicalKeyboardKey.mediaTrackNext): const NextTrackIntent(),
       LogicalKeySet(LogicalKeyboardKey.mediaTrackPrevious):
           const PreviousTrackIntent(),
       const _SpacebarActivator(): const TogglePlaybackWithSpaceIntent(),
     };
     if (state.settingsShortcutEnabled) {
-      shortcuts[state.settingsShortcut.toKeySet()] =
-          const OpenSettingsIntent();
+      shortcuts[state.settingsShortcut.toKeySet()] = const OpenSettingsIntent();
     }
     if (state.searchShortcutEnabled) {
       shortcuts[state.searchShortcut.toKeySet()] = const FocusSearchIntent();
@@ -52,7 +50,7 @@ class PlaybackShortcuts extends StatelessWidget {
           OpenSettingsIntent: CallbackAction<OpenSettingsIntent>(
             onInvoke: (_) {
               if (state.session == null) {
-                return null;
+                return;
               }
               return state.selectLibraryView(LibraryView.settings);
             },
@@ -68,7 +66,6 @@ class PlaybackShortcuts extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _SpacebarActivator extends ShortcutActivator {

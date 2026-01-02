@@ -39,6 +39,11 @@ import 'now_playing_layout.dart';
 import 'sidebar_item.dart';
 import 'theme_palette_source.dart';
 
+const Set<ConnectivityResult> _networkConnectivityWhitelist = {
+  ConnectivityResult.wifi,
+  ConnectivityResult.ethernet,
+};
+
 /// Central application state and Jellyfin coordination.
 class AppState extends ChangeNotifier {
   /// Creates the shared application state.
@@ -2804,8 +2809,7 @@ class AppState extends ChangeNotifier {
       case TargetPlatform.iOS:
         try {
           final result = await Connectivity().checkConnectivity();
-          return result == ConnectivityResult.wifi ||
-              result == ConnectivityResult.ethernet;
+          return _networkConnectivityWhitelist.contains(result);
         } catch (_) {
           return false;
         }

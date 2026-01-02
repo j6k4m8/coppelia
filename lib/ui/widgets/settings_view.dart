@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:async';
 import 'dart:io' show Platform;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -32,10 +30,8 @@ class SettingsView extends StatelessWidget {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
-    final leftGutter =
-        (32 * densityScale).clamp(16.0, 40.0).toDouble();
-    final rightGutter =
-        (24 * densityScale).clamp(12.0, 32.0).toDouble();
+    final leftGutter = (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
     return Padding(
       padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
       child: DefaultTabController(
@@ -88,8 +84,7 @@ class SettingsView extends StatelessWidget {
 class _SettingsTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     return Container(
       padding: EdgeInsets.all(space(4).clamp(2.0, 6.0)),
@@ -129,8 +124,7 @@ class _SettingsTabLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     return Tab(
       child: Padding(
@@ -151,8 +145,7 @@ class _SettingsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     final padding = EdgeInsets.all((20 * densityScale).clamp(12.0, 28.0));
     final pagePadding =
         EdgeInsets.symmetric(horizontal: (10 * densityScale).clamp(6.0, 14.0));
@@ -227,10 +220,10 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
       (choice) => choice.family == state.fontFamily,
       orElse: () => _fontChoices.first,
     );
-    final fontScale = _fontScaleChoices
-            .any((choice) => choice.scale == state.fontScale)
-        ? state.fontScale
-        : 1.0;
+    final fontScale =
+        _fontScaleChoices.any((choice) => choice.scale == state.fontScale)
+            ? state.fontScale
+            : 1.0;
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final accentSource = state.accentColorSource;
@@ -374,8 +367,7 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
         SizedBox(height: space(16)),
         _SettingRow(
           title: 'Theme palette',
-          subtitle:
-              'Tint gradients and hero cards using Now Playing artwork.',
+          subtitle: 'Tint gradients and hero cards using Now Playing artwork.',
           trailing: SegmentedButton<ThemePaletteSource>(
             style: segmentedStyle,
             segments: ThemePaletteSource.values
@@ -532,8 +524,7 @@ class _LayoutSettings extends StatelessWidget {
               section: section,
               index: index,
               enabled: state.isHomeSectionVisible(section),
-              onToggle: (value) =>
-                  state.setHomeSectionVisible(section, value),
+              onToggle: (value) => state.setHomeSectionVisible(section, value),
             );
           },
         ),
@@ -865,8 +856,7 @@ class _HomeSectionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     return Padding(
       padding: EdgeInsets.only(bottom: space(12)),
@@ -1355,8 +1345,7 @@ class _AutoDownloadOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     return Opacity(
       opacity: enabled ? 1 : 0.45,
@@ -1386,8 +1375,7 @@ class _DownloadQueueList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     if (tasks.isEmpty) {
       return Padding(
@@ -1460,8 +1448,7 @@ class _DownloadQueueList extends StatelessWidget {
           SizedBox(
             height: listHeight,
             child: ClipRRect(
-              borderRadius:
-                  BorderRadius.circular(space(12).clamp(10.0, 16.0)),
+              borderRadius: BorderRadius.circular(space(12).clamp(10.0, 16.0)),
               child: ReorderableListView.builder(
                 buildDefaultDragHandles: false,
                 itemCount: tasks.length,
@@ -1507,8 +1494,7 @@ class _DownloadQueueRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final progressPrefix = () {
       if (task.status == DownloadStatus.downloading && task.progress != null) {
@@ -1688,8 +1674,7 @@ class _ShortcutRecorderState extends State<_ShortcutRecorder> {
 
   @override
   Widget build(BuildContext context) {
-    final label =
-        _isRecording ? 'Press shortcut...' : widget.shortcut.label();
+    final label = _isRecording ? 'Press shortcut...' : widget.shortcut.label();
     return RawKeyboardListener(
       focusNode: _focusNode,
       onKey: _handleKey,
@@ -1853,8 +1838,7 @@ class _SettingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1988,8 +1972,7 @@ class _AccentSwatch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final ringColor =
         selected ? Theme.of(context).colorScheme.primary : Colors.transparent;
@@ -2059,7 +2042,6 @@ const List<_AccentPreset> _accentPresets = [
   _AccentPreset('Teal', Color(0xFF35B7C3)),
   _AccentPreset('Rose', Color(0xFFF06292)),
 ];
-
 
 class _FontChoice {
   const _FontChoice(this.label, this.family);
