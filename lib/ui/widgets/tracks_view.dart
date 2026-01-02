@@ -395,21 +395,21 @@ class _AlphabetLetter extends StatelessWidget {
     return TextButton(
       onPressed: onTap,
       style: ButtonStyle(
-        padding: MaterialStateProperty.all(EdgeInsets.zero),
-        minimumSize: MaterialStateProperty.all(Size(space(20), space(20))),
+        padding: WidgetStateProperty.all(EdgeInsets.zero),
+        minimumSize: WidgetStateProperty.all(Size(space(20), space(20))),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        foregroundColor: MaterialStateProperty.resolveWith((states) {
+        foregroundColor: WidgetStateProperty.resolveWith((states) {
           if (selected) {
             return Theme.of(context).colorScheme.primary;
           }
-          if (states.contains(MaterialState.hovered)) {
+          if (states.contains(WidgetState.hovered)) {
             return ColorTokens.textPrimary(context);
           }
           return ColorTokens.textSecondary(context, 0.7);
         }),
-        textStyle: MaterialStateProperty.all(baseStyle),
-        overlayColor: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.hovered)) {
+        textStyle: WidgetStateProperty.all(baseStyle),
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.hovered)) {
             return ColorTokens.cardFill(context, 0.08);
           }
           return Colors.transparent;
