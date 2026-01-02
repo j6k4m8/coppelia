@@ -117,7 +117,7 @@ All shortcuts are configurable in the Settings screen. `^` indicates the Cmd key
 ## Smart Lists
 
 Smart Lists are self-updating, local playlists powered by rules.
-See [`docs/Smart-Lists.md`](docs/Smart-Lists.md) for the full guide and query language.
+See [`docs/Smart-Lists.md`](docs/Smart-Lists.md) for the full guide and query language, and [`docs/Pages.md`](docs/Pages.md) for a quick tour of every page in the app.
 
 ---
 

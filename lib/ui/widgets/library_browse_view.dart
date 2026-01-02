@@ -8,6 +8,8 @@ import '../../state/browse_layout.dart';
 import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
 import '../../core/color_tokens.dart';
+import 'header_controls.dart';
+import 'page_header.dart';
 
 extension BrowseLayoutLabel on BrowseLayout {
   /// Display label for the layout picker.
@@ -150,53 +152,17 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
       children: [
         Padding(
           padding: contentPadding,
-          child: Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.title,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    SizedBox(
-                      height: (density == LayoutDensity.sardine
-                              ? space(2)
-                              : space(4))
-                          .clamp(2.0, 8.0),
-                    ),
-                    Text(
-                      '$itemCount items',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: ColorTokens.textSecondary(context),
-                          ),
-                    ),
-                  ],
-                ),
+              PageHeader(
+                title: widget.title,
+                subtitle: '$itemCount items',
               ),
-              SegmentedButton<BrowseLayout>(
-                segments: BrowseLayout.values
-                    .map(
-                      (mode) => ButtonSegment(
-                        value: mode,
-                        label: Text(mode.label),
-                        icon: Icon(mode.icon, size: 16),
-                      ),
-                    )
-                    .toList(),
-                selected: {layout},
-                onSelectionChanged: (selection) {
-                  context
-                      .read<AppState>()
-                      .setBrowseLayout(widget.view, selection.first);
-                },
-              ),
+              SizedBox(height: space(12)),
             ],
           ),
         ),
-        SizedBox(height: space(16)),
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -206,40 +172,87 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                 itemMinWidth: space(190).clamp(150.0, 240.0),
                 spacing: space(16),
               );
+              final gap = space(6).clamp(4.0, 10.0);
               return Stack(
                 children: [
-                  layout == BrowseLayout.grid
-                      ? GridView.builder(
-                          controller: _controller,
-                          padding: listPadding,
-                          itemCount: widget.items.length,
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: gridMetrics.columns,
-                            crossAxisSpacing: gridMetrics.spacing,
-                            mainAxisSpacing: gridMetrics.spacing,
-                            childAspectRatio: gridMetrics.aspectRatio,
-                          ),
-                          itemBuilder: (context, index) {
-                            final item = widget.items[index];
-                            return widget.gridItemBuilder(context, item);
-                          },
-                        )
-                      : ListView.separated(
-                          controller: _controller,
-                          padding: listPadding,
-                          itemCount: widget.items.length,
-                          separatorBuilder: (_, __) =>
-                              SizedBox(height: space(6).clamp(4.0, 10.0)),
-                          itemBuilder: (context, index) {
-                            final item = widget.items[index];
-                            // Allow the tile to size itself. This prevents
-                            // sub-pixel overflows at very tight densities
-                            // ("sardine" mode) caused by rounding differences
-                            // between computed extents and actual render size.
-                            return widget.listItemBuilder(context, item);
+                  CustomScrollView(
+                    controller: _controller,
+                    slivers: [
+                      SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          leftGutter,
+                          0,
+                          rightGutter,
+                          space(12),
+                        ),
+                        child: SegmentedButton<BrowseLayout>(
+                          segments: BrowseLayout.values
+                              .map(
+                                (mode) => ButtonSegment(
+                                  value: mode,
+                                  label: Text(mode.label),
+                                  icon: Icon(mode.icon, size: 16),
+                                ),
+                              )
+                              .toList(),
+                          selected: {layout},
+                          onSelectionChanged: (selection) {
+                            context
+                                .read<AppState>()
+                                .setBrowseLayout(
+                                  widget.view,
+                                  selection.first,
+                                );
                           },
                         ),
+                      ),
+                      ),
+                      layout == BrowseLayout.grid
+                          ? SliverPadding(
+                              padding: listPadding,
+                              sliver: SliverGrid(
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) => widget.gridItemBuilder(
+                                    context,
+                                    widget.items[index],
+                                  ),
+                                  childCount: widget.items.length,
+                                ),
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: gridMetrics.columns,
+                                  crossAxisSpacing: gridMetrics.spacing,
+                                  mainAxisSpacing: gridMetrics.spacing,
+                                  childAspectRatio: gridMetrics.aspectRatio,
+                                ),
+                              ),
+                            )
+                          : SliverPadding(
+                              padding: listPadding,
+                              sliver: SliverList(
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) {
+                                    final item = widget.items[index];
+                                    final child =
+                                        widget.listItemBuilder(context, item);
+                                    return Column(
+                                      children: [
+                                        child,
+                                        if (index + 1 < widget.items.length)
+                                          SizedBox(height: gap),
+                                      ],
+                                    );
+                                  },
+                                  childCount: widget.items.length,
+                                ),
+                              ),
+                            ),
+                      SliverToBoxAdapter(
+                        child: SizedBox(height: space(16)),
+                      ),
+                    ],
+                  ),
                   if (letters.isNotEmpty)
                     Positioned(
                       right: 0,

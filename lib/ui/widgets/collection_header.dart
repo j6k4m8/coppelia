@@ -5,6 +5,7 @@ import '../../core/color_tokens.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'artwork_image.dart';
+import 'header_controls.dart';
 
 /// Shared hero header for playlist-like detail views.
 class CollectionHeader extends StatelessWidget {
@@ -17,6 +18,8 @@ class CollectionHeader extends StatelessWidget {
     required this.fallbackIcon,
     this.actions = const [],
     this.actionSpecs = const [],
+    this.onBack,
+    this.onSearch,
   });
 
   /// Title text.
@@ -41,6 +44,12 @@ class CollectionHeader extends StatelessWidget {
   /// like the ellipsis fallback).
   final List<HeaderActionSpec> actionSpecs;
 
+  /// Optional callback used for the overlay back button.
+  final VoidCallback? onBack;
+
+  /// Optional callback used for the overlay search button.
+  final VoidCallback? onSearch;
+
   @override
   Widget build(BuildContext context) {
     final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
@@ -56,107 +65,139 @@ class CollectionHeader extends StatelessWidget {
             size: clamped(36, min: 26, max: 42),
           ),
         );
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(space(24).clamp(14.0, 32.0)),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: ColorTokens.heroGradient(context),
-        ),
-        borderRadius: BorderRadius.circular(
-          clamped(26, min: 16, max: 30),
-        ),
-        border: Border.all(color: ColorTokens.border(context)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 720;
-          final iconOnlyActions = constraints.maxWidth < 420;
+    final cardRadius = clamped(26, min: 16, max: 30);
+    final cardPadding = EdgeInsets.fromLTRB(
+      space(24),
+      space(32),
+      space(24),
+      space(24),
+    );
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(cardRadius),
+      child: Stack(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: cardPadding,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: ColorTokens.heroGradient(context),
+              ),
+              borderRadius: BorderRadius.circular(cardRadius),
+              border: Border.all(color: ColorTokens.border(context)),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 720;
+                final iconOnlyActions = constraints.maxWidth < 420;
 
-          List<Widget> effectiveActions(List<Widget> raw) {
-            if (!iconOnlyActions) {
-              return raw;
-            }
+                List<Widget> effectiveActions(List<Widget> raw) {
+                  if (!iconOnlyActions) {
+                    return raw;
+                  }
 
-            // Important: don't attempt to "guess" icons from arbitrary widgets.
-            // If we can't confidently extract an icon, keep the widget as-is.
-            return raw.map(
-              (widget) {
-                final converted = _iconOnlyFromButtonOrNull(widget);
-                if (converted == null) {
-                  return widget;
+                  return raw.map(
+                    (widget) {
+                      final converted = _iconOnlyFromButtonOrNull(widget);
+                      if (converted == null) {
+                        return widget;
+                      }
+                      return Tooltip(
+                        message: _tooltipForAction(widget),
+                        child: converted,
+                      );
+                    },
+                  ).toList(growable: false);
                 }
-                return Tooltip(
-                  message: _tooltipForAction(widget),
-                  child: converted,
+
+                final resolvedActions = actionSpecs.isNotEmpty
+                    ? buildActionsFromSpecs(
+                        context,
+                        actionSpecs,
+                        iconOnly: iconOnlyActions,
+                        densityScale: densityScale,
+                      )
+                    : effectiveActions(actions);
+
+                final artworkSize =
+                    clamped(isNarrow ? 160 : 140, min: 110, max: 190);
+                final artwork = ClipRRect(
+                  borderRadius: BorderRadius.circular(
+                    clamped(20, min: 12, max: 24),
+                  ),
+                  child: ArtworkImage(
+                    imageUrl: imageUrl,
+                    width: artworkSize,
+                    height: artworkSize,
+                    fit: BoxFit.cover,
+                    placeholder: buildArtworkFallback(isNarrow),
+                  ),
+                );
+                final details = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    SizedBox(height: space(8)),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(color: ColorTokens.textSecondary(context)),
+                    ),
+                    SizedBox(height: space(16)),
+                    Wrap(
+                      spacing: space(12),
+                      runSpacing: space(8),
+                      children: resolvedActions,
+                    ),
+                  ],
+                );
+                if (isNarrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      artwork,
+                      SizedBox(height: space(20)),
+                      details,
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    artwork,
+                    SizedBox(width: space(24)),
+                    Expanded(child: details),
+                  ],
                 );
               },
-            ).toList(growable: false);
-          }
-
-          final resolvedActions = actionSpecs.isNotEmpty
-              ? buildActionsFromSpecs(
-                  context,
-                  actionSpecs,
-                  iconOnly: iconOnlyActions,
-                  densityScale: densityScale,
-                )
-              : effectiveActions(actions);
-
-          final artworkSize = clamped(isNarrow ? 160 : 140, min: 110, max: 190);
-          final artwork = ClipRRect(
-            borderRadius: BorderRadius.circular(
-              clamped(20, min: 12, max: 24),
             ),
-            child: ArtworkImage(
-              imageUrl: imageUrl,
-              width: artworkSize,
-              height: artworkSize,
-              fit: BoxFit.cover,
-              placeholder: buildArtworkFallback(isNarrow),
-            ),
-          );
-          final details = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              SizedBox(height: space(8)),
-              Text(
-                subtitle,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: ColorTokens.textSecondary(context)),
-              ),
-              SizedBox(height: space(16)),
-              Wrap(
-                spacing: space(12),
-                runSpacing: space(8),
-                children: resolvedActions,
-              ),
-            ],
-          );
-          if (isNarrow) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+          Positioned(
+            top: space(12).clamp(6.0, 18.0),
+            left: space(12).clamp(6.0, 18.0),
+            right: space(12).clamp(6.0, 18.0),
+            child: Row(
               children: [
-                artwork,
-                SizedBox(height: space(20)),
-                details,
+                HeaderControlButton(
+                  icon: Icons.arrow_back_ios_new,
+                  onTap: onBack ??
+                      (context.read<AppState>().canGoBack
+                          ? context.read<AppState>().goBack
+                          : null),
+                ),
+                const Spacer(),
+                SearchCircleButton(
+                  onTap: onSearch ??
+                      context.read<AppState>().requestSearchFocus,
+                ),
               ],
-            );
-          }
-          return Row(
-            children: [
-              artwork,
-              SizedBox(width: space(24)),
-              Expanded(child: details),
-            ],
-          );
-        },
+            ),
+          ),
+        ],
       ),
     );
   }

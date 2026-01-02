@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../core/color_tokens.dart';
-import 'section_header.dart';
+import 'page_header.dart';
 import 'track_row.dart';
 
 /// Displays favorite tracks list.
@@ -26,15 +26,9 @@ class FavoriteTracksView extends StatelessWidget {
       children: [
         Padding(
           padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
-          child: SectionHeader(
-            title: 'Favorite Tracks',
-            action: Text(
-              '${state.favoriteTracks.length} tracks',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: ColorTokens.textSecondary(context)),
-            ),
+          child: PageHeader(
+            title: 'Favorites / Tracks',
+            subtitle: '${state.favoriteTracks.length} tracks',
           ),
         ),
         SizedBox(height: space(16)),

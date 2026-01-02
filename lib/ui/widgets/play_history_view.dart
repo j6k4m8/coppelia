@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../core/color_tokens.dart';
-import 'section_header.dart';
+import 'page_header.dart';
 import 'track_row.dart';
 
 /// Displays recent playback history.
@@ -38,15 +38,9 @@ class PlayHistoryView extends StatelessWidget {
       children: [
         Padding(
           padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
-          child: SectionHeader(
-            title: 'Play History',
-            action: Text(
-              '${history.length} tracks',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: ColorTokens.textSecondary(context)),
-            ),
+          child: PageHeader(
+            title: 'Playback / History',
+            subtitle: '${history.length} tracks',
           ),
         ),
         SizedBox(height: space(16)),

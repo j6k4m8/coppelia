@@ -106,6 +106,8 @@ class SmartListDetailView extends StatelessWidget {
             imageUrl: null,
             fallbackIcon: Icons.auto_awesome,
             actions: actions,
+            onBack: state.goBack,
+            onSearch: state.requestSearchFocus,
           );
         }
         if (showEmpty && index == 1) {

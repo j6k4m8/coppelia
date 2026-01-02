@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../core/color_tokens.dart';
-import 'section_header.dart';
+import 'page_header.dart';
 import 'track_row.dart';
 
 /// Displays the current playback queue.
@@ -38,9 +38,9 @@ class QueueView extends StatelessWidget {
       children: [
         Padding(
           padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
-          child: SectionHeader(
+          child: PageHeader(
             title: 'Queue',
-            action: Row(
+            trailing: Row(
               children: [
                 Text(
                   '${queue.length} tracks',

@@ -30,6 +30,7 @@ import '../widgets/playlist_detail_view.dart';
 import '../widgets/smart_list_detail_view.dart';
 import '../widgets/playlist_card.dart';
 import '../widgets/track_row.dart';
+import '../widgets/artwork_image.dart';
 import '../widgets/search_results_view.dart';
 import '../widgets/settings_view.dart';
 import '../widgets/sidebar_navigation.dart';
@@ -38,6 +39,9 @@ import '../widgets/genre_detail_view.dart';
 import '../widgets/play_history_view.dart';
 import '../widgets/queue_view.dart';
 import '../widgets/tracks_view.dart';
+import '../widgets/header_controls.dart';
+import '../widgets/page_header.dart';
+import '../widgets/library_browse_view.dart';
 
 /// Main shell for authenticated users.
 class HomeScreen extends StatelessWidget {
@@ -507,7 +511,18 @@ class _SearchViewState extends State<_SearchView> {
       children: [
         Padding(
           padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
-          child: SizedBox(width: double.infinity, child: searchField),
+          child: Row(
+            children: [
+              HeaderControlButton(
+                icon: Icons.arrow_back_ios_new,
+                onTap: state.goBack,
+              ),
+              SizedBox(width: space(10)),
+              Expanded(
+                child: SizedBox(width: double.infinity, child: searchField),
+              ),
+            ],
+          ),
         ),
         SizedBox(height: space(16)),
         Expanded(
@@ -633,32 +648,113 @@ class _HomePlaylistsView extends StatelessWidget {
     if (playlists.isEmpty) {
       return const LibraryPlaceholderView(view: LibraryView.homePlaylists);
     }
-    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
-    final leftGutter = (32 * densityScale).clamp(16.0, 40.0).toDouble();
-    final rightGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final crossAxisCount = (constraints.maxWidth / 220).floor();
-        final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
-        return GridView.builder(
-          padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 24),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.1,
-          ),
-          itemCount: playlists.length,
-          itemBuilder: (context, index) {
-            final playlist = playlists[index];
-            return PlaylistCard(
-              playlist: playlist,
-              onTap: () => context.read<AppState>().selectPlaylist(playlist),
-              onPlay: () => context.read<AppState>().playPlaylist(playlist),
-            );
-          },
+    return LibraryBrowseView<Playlist>(
+      view: LibraryView.homePlaylists,
+      title: 'Playlists',
+      items: playlists,
+      titleBuilder: (playlist) => playlist.name,
+      subtitleBuilder: (playlist) => '${playlist.trackCount} tracks',
+      gridItemBuilder: (context, playlist) {
+        final state = context.read<AppState>();
+        return PlaylistCard(
+          playlist: playlist,
+          onTap: () => state.selectPlaylist(playlist),
+          onPlay: () => state.playPlaylist(playlist),
         );
       },
+      listItemBuilder: (context, playlist) {
+        final state = context.read<AppState>();
+        return PlaylistListRow(
+          playlist: playlist,
+          onTap: () => state.selectPlaylist(playlist),
+          onPlay: () => state.playPlaylist(playlist),
+        );
+      },
+    );
+  }
+}
+
+class PlaylistListRow extends StatelessWidget {
+  const PlaylistListRow({
+    super.key,
+    required this.playlist,
+    required this.onTap,
+    required this.onPlay,
+  });
+
+  final Playlist playlist;
+  final VoidCallback onTap;
+  final VoidCallback onPlay;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale =
+        context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    final artSize = (52 * densityScale).clamp(28.0, 64.0);
+    final titleStyle = Theme.of(context).textTheme.titleMedium;
+    final subtitleStyle = Theme.of(context)
+        .textTheme
+        .bodySmall
+        ?.copyWith(color: ColorTokens.textSecondary(context));
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          vertical: space(12).clamp(6.0, 14.0),
+          horizontal: space(12).clamp(8.0, 16.0),
+        ),
+        decoration: BoxDecoration(
+          color: ColorTokens.cardFill(context, 0.04),
+          borderRadius: BorderRadius.circular(space(16)),
+          border: Border.all(color: ColorTokens.border(context)),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(space(12)),
+              child: ArtworkImage(
+                imageUrl: playlist.imageUrl,
+                width: artSize,
+                height: artSize,
+                fit: BoxFit.cover,
+                placeholder: Container(
+                  width: artSize,
+                  height: artSize,
+                  color: ColorTokens.cardFillStrong(context),
+                  child: Icon(
+                    Icons.queue_music,
+                    size: space(20),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: space(14)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    playlist.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: titleStyle,
+                  ),
+                  SizedBox(height: space(4)),
+                  Text(
+                    '${playlist.trackCount} tracks',
+                    style: subtitleStyle,
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: onPlay,
+              icon: const Icon(Icons.play_arrow),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

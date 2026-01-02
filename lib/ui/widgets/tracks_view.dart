@@ -8,7 +8,7 @@ import '../../core/color_tokens.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
-import 'section_header.dart';
+import 'page_header.dart';
 import 'track_row.dart';
 
 /// Displays the full library track list with pagination.
@@ -206,33 +206,29 @@ class _TracksViewState extends State<TracksView> {
       children: [
         Padding(
           padding: headerPadding,
-          child: SectionHeader(
+          child: PageHeader(
             title: 'Tracks',
-            action: Row(
-              children: [
-                Text(
-                  label,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: ColorTokens.textSecondary(context)),
-                ),
-                if (activeLetter != null) ...[
-                  SizedBox(width: space(12)),
-                  Text(
-                    'Jump: $activeLetter',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: ColorTokens.textSecondary(context),
-                        ),
-                  ),
-                  SizedBox(width: space(10)),
-                  _HeaderAction(
-                    label: 'Clear',
-                    onTap: () => state.setTrackBrowseLetter(null),
-                  ),
-                ]
-              ],
-            ),
+            subtitle: label,
+            trailing: activeLetter != null
+                ? Row(
+                    children: [
+                      Text(
+                        'Jump: $activeLetter',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(
+                              color: ColorTokens.textSecondary(context),
+                            ),
+                      ),
+                      SizedBox(width: space(10)),
+                      _HeaderAction(
+                        label: 'Clear',
+                        onTap: () => state.setTrackBrowseLetter(null),
+                      ),
+                    ],
+                  )
+                : null,
           ),
         ),
         SizedBox(height: space(16)),

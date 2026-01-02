@@ -12,6 +12,7 @@ import 'media_card.dart';
 import 'playlist_card.dart';
 import 'section_header.dart';
 import 'smart_list_card.dart';
+import 'header_controls.dart';
 
 /// Displays featured content and playlists.
 class LibraryOverview extends StatelessWidget {
@@ -89,22 +90,33 @@ class LibraryOverview extends StatelessWidget {
     children.addAll([
       Padding(
         padding: sectionPadding(),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '$greeting, $userName',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            SizedBox(height: space(4)),
-            Text(
-              '${state.libraryTracks.length} tracks • '
-              '${state.albums.length} albums • '
-              '${state.artists.length} artists • '
-              '${state.playlists.length} playlists',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: ColorTokens.textSecondary(context, 0.7),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$greeting, $userName',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
+                  SizedBox(height: space(4)),
+                  Text(
+                    '${state.libraryTracks.length} tracks • '
+                    '${state.albums.length} albums • '
+                    '${state.artists.length} artists • '
+                    '${state.playlists.length} playlists',
+                    style:
+                        Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: ColorTokens.textSecondary(context, 0.7),
+                            ),
+                  ),
+                ],
+              ),
+            ),
+            SearchCircleButton(
+              onTap: state.requestSearchFocus,
             ),
           ],
         ),

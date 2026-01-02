@@ -373,6 +373,8 @@ class _PlaylistHeader extends StatelessWidget {
       fallbackIcon: Icons.queue_music,
       actionSpecs: actionSpecs,
       actions: const [],
+      onBack: state.goBack,
+      onSearch: state.requestSearchFocus,
     );
   }
 }

@@ -8,6 +8,7 @@ import '../../state/layout_density.dart';
 import 'artwork_image.dart';
 import 'collection_header.dart';
 import 'track_row.dart';
+import 'header_controls.dart';
 
 /// Generic detail view for albums, artists, or genres.
 class CollectionDetailView extends StatelessWidget {
@@ -284,7 +285,7 @@ class _Header extends StatelessWidget {
           );
         }
 
-        return Container(
+        final card = Container(
           width: double.infinity,
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -358,6 +359,34 @@ class _Header extends StatelessWidget {
                     ],
                   ),
                 ),
+        );
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(cardRadius),
+          child: Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              card,
+              Positioned(
+                top: space(12).clamp(6.0, 18.0),
+                left: space(12).clamp(6.0, 18.0),
+                right: space(12).clamp(6.0, 18.0),
+                child: Row(
+                  children: [
+                    HeaderControlButton(
+                      icon: Icons.arrow_back_ios_new,
+                      onTap: context.read<AppState>().canGoBack
+                          ? context.read<AppState>().goBack
+                          : null,
+                    ),
+                    const Spacer(),
+                    SearchCircleButton(
+                      onTap: context.read<AppState>().requestSearchFocus,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
