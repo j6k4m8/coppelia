@@ -2808,8 +2808,8 @@ class AppState extends ChangeNotifier {
       case TargetPlatform.android:
       case TargetPlatform.iOS:
         try {
-          final result = await Connectivity().checkConnectivity();
-          return _networkConnectivityWhitelist.contains(result);
+          final statuses = await Connectivity().checkConnectivity();
+          return statuses.any(_networkConnectivityWhitelist.contains);
         } catch (_) {
           return false;
         }
