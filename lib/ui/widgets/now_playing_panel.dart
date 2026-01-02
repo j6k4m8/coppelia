@@ -860,10 +860,9 @@ class _SwipeTrackSwitcherState extends State<_SwipeTrackSwitcher>
 }
 
 class _Artwork extends StatelessWidget {
-  const _Artwork({this.track, this.onTap});
+  const _Artwork({this.track});
 
   final MediaItem? track;
-  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -891,25 +890,14 @@ class _Artwork extends StatelessWidget {
         ),
       ),
     );
-    if (onTap == null) {
-      return artwork;
-    }
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: artwork,
-      ),
-    );
+    return artwork;
   }
 }
 
 class _MiniArtwork extends StatelessWidget {
-  const _MiniArtwork({this.track, this.onTap});
+  const _MiniArtwork({this.track});
 
   final MediaItem? track;
-  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -941,17 +929,7 @@ class _MiniArtwork extends StatelessWidget {
         ),
       ),
     );
-    if (onTap == null) {
-      return artwork;
-    }
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: artwork,
-      ),
-    );
+    return artwork;
   }
 }
 

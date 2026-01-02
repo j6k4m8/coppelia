@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
@@ -1035,11 +1034,11 @@ class _CacheSettingsState extends State<_CacheSettings> {
   @override
   void initState() {
     super.initState();
-    unawaited(widget.state.refreshMediaCacheBytes());
+    widget.state.refreshMediaCacheBytes();
   }
 
   void _refreshCacheUsage() {
-    unawaited(widget.state.refreshMediaCacheBytes());
+    widget.state.refreshMediaCacheBytes();
   }
 
   Future<bool> _confirmCacheTrim({
@@ -1633,8 +1632,8 @@ class _ShortcutRecorderState extends State<_ShortcutRecorder> {
     _focusNode.unfocus();
   }
 
-  void _handleKey(RawKeyEvent event) {
-    if (!_isRecording || event is! RawKeyDownEvent) {
+  void _handleKey(KeyEvent event) {
+    if (!_isRecording || event is! KeyDownEvent) {
       return;
     }
     if (event.logicalKey == LogicalKeyboardKey.escape) {
@@ -1644,12 +1643,13 @@ class _ShortcutRecorderState extends State<_ShortcutRecorder> {
     if (_isModifierKey(event.logicalKey)) {
       return;
     }
+    final keyboard = HardwareKeyboard.instance;
     final shortcut = KeyboardShortcut(
       key: event.logicalKey,
-      meta: event.isMetaPressed,
-      control: event.isControlPressed,
-      alt: event.isAltPressed,
-      shift: event.isShiftPressed,
+      meta: keyboard.isMetaPressed,
+      control: keyboard.isControlPressed,
+      alt: keyboard.isAltPressed,
+      shift: keyboard.isShiftPressed,
     );
     if (!shortcut.hasPrimaryModifier) {
       return;
@@ -1676,9 +1676,9 @@ class _ShortcutRecorderState extends State<_ShortcutRecorder> {
   @override
   Widget build(BuildContext context) {
     final label = _isRecording ? 'Press shortcut...' : widget.shortcut.label();
-    return RawKeyboardListener(
+    return KeyboardListener(
       focusNode: _focusNode,
-      onKey: _handleKey,
+      onKeyEvent: _handleKey,
       child: OutlinedButton(
         onPressed: widget.enabled
             ? (_isRecording ? _stopRecording : _startRecording)

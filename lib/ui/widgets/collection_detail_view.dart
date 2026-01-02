@@ -200,7 +200,7 @@ class _Header extends StatelessWidget {
                   )
                 : null;
 
-        Widget _iconOnlyButton({
+        Widget iconOnlyButton({
           required String tooltip,
           required VoidCallback? onPressed,
           required Widget icon,
@@ -254,7 +254,7 @@ class _Header extends StatelessWidget {
                 runSpacing: space(8),
                 children: [
                   iconOnlyActions
-                      ? _iconOnlyButton(
+                      ? iconOnlyButton(
                           tooltip: 'Play',
                           onPressed: onPlayAll,
                           icon: const Icon(Icons.play_arrow),
@@ -266,7 +266,7 @@ class _Header extends StatelessWidget {
                         ),
                   if (onShuffle != null)
                     iconOnlyActions
-                        ? _iconOnlyButton(
+                        ? iconOnlyButton(
                             tooltip: 'Shuffle',
                             onPressed: onShuffle,
                             icon: const Icon(Icons.shuffle),
