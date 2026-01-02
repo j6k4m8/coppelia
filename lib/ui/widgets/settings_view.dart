@@ -296,7 +296,8 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
                   (preset) => _AccentSwatch(
                     label: preset.label,
                     color: preset.color,
-                    selected: state.accentColorValue == preset.color.value &&
+                    selected: state.accentColorValue ==
+                            preset.color.toARGB32() &&
                         accentSource == AccentColorSource.preset,
                     onTap: () {
                       state.setAccentColor(preset.color);
