@@ -1,7 +1,7 @@
 name: coppelia
-description: A refined Jellyfin-focused music player for macOS and beyond.
+description: A refined, cross-platform Jellyfin-focused music player
 publish_to: "none"
-version: 0.1.0
+version: 0.0.3-alpha
 
 environment:
     sdk: ">=3.3.0 <4.0.0"

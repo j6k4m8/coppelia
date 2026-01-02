@@ -10,6 +10,7 @@ import '../models/library_stats.dart';
 import '../models/media_item.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
+
 /// Client wrapper for Jellyfin REST APIs.
 class JellyfinClient {
   /// Default identifier used for Jellyfin device tracking.
@@ -22,7 +23,7 @@ class JellyfinClient {
   static const String clientName = 'Coppelia';
 
   /// Client version for Jellyfin analytics.
-  static const String clientVersion = '0.1.0';
+  static const String clientVersion = '0.0.3-alpha';
 
   /// Creates a client with an optional HTTP override.
   JellyfinClient({
@@ -235,9 +236,8 @@ class JellyfinClient {
       '${session.serverUrl}/Playlists/$playlistId/Items',
     ).replace(
       queryParameters: {
-        'Fields':
-            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
-                'DateCreated,UserData,Genres',
+        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+            'DateCreated,UserData,Genres',
         'api_key': session.accessToken,
       },
     );
@@ -289,9 +289,8 @@ class JellyfinClient {
       if (payload.containsKey('Name')) {
         return Playlist.fromJellyfin(payload, serverUrl: session.serverUrl);
       }
-      final id = payload['Id']?.toString() ??
-          payload['PlaylistId']?.toString() ??
-          '';
+      final id =
+          payload['Id']?.toString() ?? payload['PlaylistId']?.toString() ?? '';
       return Playlist(
         id: id,
         name: name,
@@ -407,8 +406,7 @@ class JellyfinClient {
       return;
     }
     final fallbackResponse = await _httpClient.post(
-      Uri.parse('${session.serverUrl}/Playlists/$playlistId/Items')
-          .replace(
+      Uri.parse('${session.serverUrl}/Playlists/$playlistId/Items').replace(
         queryParameters: {
           'UserId': session.userId,
           'api_key': session.accessToken,
@@ -526,8 +524,7 @@ class JellyfinClient {
         headers: headers,
         body: jsonEncode({'Ids': entryIds}),
       );
-      if (bodyResponse.statusCode < 200 ||
-          bodyResponse.statusCode >= 300) {
+      if (bodyResponse.statusCode < 200 || bodyResponse.statusCode >= 300) {
         throw JellyfinRequestException(
           _errorMessage(
             bodyResponse,
@@ -556,8 +553,7 @@ class JellyfinClient {
           return decoded.trim();
         }
       } catch (_) {
-        final snippet =
-            body.length > 140 ? '${body.substring(0, 140)}…' : body;
+        final snippet = body.length > 140 ? '${body.substring(0, 140)}…' : body;
         if (snippet.isNotEmpty) {
           return snippet;
         }
@@ -732,8 +728,7 @@ class JellyfinClient {
         throw Exception('Unable to load favorite artists.');
       }
       hadSuccess = true;
-      final payload =
-          jsonDecode(response.body) as Map<String, dynamic>;
+      final payload = jsonDecode(response.body) as Map<String, dynamic>;
       final items = payload['Items'] as List<dynamic>? ?? [];
       for (final entry in items) {
         if (entry is! Map<String, dynamic>) {
@@ -778,9 +773,8 @@ class JellyfinClient {
         'Recursive': 'true',
         'Filters': 'IsFavorite',
         'SortBy': 'SortName',
-        'Fields':
-            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
-                'DateCreated,UserData,Genres',
+        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+            'DateCreated,UserData,Genres',
         'api_key': session.accessToken,
       },
     );
@@ -944,10 +938,9 @@ class JellyfinClient {
             'Audio,MusicAlbum,MusicArtist,Artist,Genre,Playlist',
         'Recursive': 'true',
         'Limit': '80',
-        'Fields':
-            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
-                'DateCreated,UserData,Genres,'
-                'ChildCount,AlbumArtist,AlbumArtists,SongCount,AlbumCount',
+        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+            'DateCreated,UserData,Genres,'
+            'ChildCount,AlbumArtist,AlbumArtists,SongCount,AlbumCount',
         'api_key': session.accessToken,
       },
     );
@@ -1012,8 +1005,7 @@ class JellyfinClient {
         if (artistResponse.statusCode == 200) {
           final artistPayload =
               jsonDecode(artistResponse.body) as Map<String, dynamic>;
-          final artistItems =
-              artistPayload['Items'] as List<dynamic>? ?? [];
+          final artistItems = artistPayload['Items'] as List<dynamic>? ?? [];
           artists.addAll(
             artistItems.map(
               (item) => Artist.fromJellyfin(
@@ -1046,9 +1038,8 @@ class JellyfinClient {
         'SortOrder': 'Descending',
         'Limit': '12',
         'Recursive': 'true',
-        'Fields':
-            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
-                'DateCreated,UserData,Genres',
+        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+            'DateCreated,UserData,Genres',
         'api_key': session.accessToken,
       },
     );
@@ -1081,9 +1072,8 @@ class JellyfinClient {
         'SortOrder': 'Descending',
         'Limit': '12',
         'Recursive': 'true',
-        'Fields':
-            'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
-                'DateCreated,UserData,Genres',
+        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+            'DateCreated,UserData,Genres',
         'api_key': session.accessToken,
       },
     );

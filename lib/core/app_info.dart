@@ -4,7 +4,7 @@ class AppInfo {
   static const String name = 'Coppelia';
 
   /// Human-friendly version string.
-  static const String version = '0.1.0';
+  static const String version = '0.0.3-alpha';
 
   /// Platform target label.
   static const String platformLabel = 'macOS';
