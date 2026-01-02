@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
-import '../../core/color_tokens.dart';
 import 'page_header.dart';
 import 'track_row.dart';
 

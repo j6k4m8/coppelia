@@ -8,7 +8,6 @@ import '../../state/browse_layout.dart';
 import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
 import '../../core/color_tokens.dart';
-import 'header_controls.dart';
 import 'page_header.dart';
 
 extension BrowseLayoutLabel on BrowseLayout {

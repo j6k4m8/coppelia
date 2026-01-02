@@ -61,7 +61,7 @@ class SearchResultsView extends StatelessWidget {
           ),
           SizedBox(height: space(16)),
           if (results.tracks.isNotEmpty) ...[
-            SectionHeader(title: 'Tracks'),
+            const SectionHeader(title: 'Tracks'),
             SizedBox(height: space(12)),
             ListView.separated(
               shrinkWrap: true,
@@ -102,7 +102,7 @@ class SearchResultsView extends StatelessWidget {
             SizedBox(height: space(24)),
           ],
           if (results.albums.isNotEmpty) ...[
-            SectionHeader(title: 'Albums'),
+            const SectionHeader(title: 'Albums'),
             SizedBox(height: space(12)),
             _CardGrid(
               itemCount: results.albums.length,
@@ -129,7 +129,7 @@ class SearchResultsView extends StatelessWidget {
             SizedBox(height: space(24)),
           ],
           if (results.artists.isNotEmpty) ...[
-            SectionHeader(title: 'Artists'),
+            const SectionHeader(title: 'Artists'),
             SizedBox(height: space(12)),
             _CardGrid(
               itemCount: results.artists.length,
@@ -153,7 +153,7 @@ class SearchResultsView extends StatelessWidget {
             SizedBox(height: space(24)),
           ],
           if (results.genres.isNotEmpty) ...[
-            SectionHeader(title: 'Genres'),
+            const SectionHeader(title: 'Genres'),
             SizedBox(height: space(12)),
             _CardGrid(
               itemCount: results.genres.length,
@@ -171,7 +171,7 @@ class SearchResultsView extends StatelessWidget {
             SizedBox(height: space(24)),
           ],
           if (results.playlists.isNotEmpty) ...[
-            SectionHeader(title: 'Playlists'),
+            const SectionHeader(title: 'Playlists'),
             SizedBox(height: space(12)),
             _CardGrid(
               itemCount: results.playlists.length,

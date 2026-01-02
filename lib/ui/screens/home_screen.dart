@@ -40,7 +40,6 @@ import '../widgets/play_history_view.dart';
 import '../widgets/queue_view.dart';
 import '../widgets/tracks_view.dart';
 import '../widgets/header_controls.dart';
-import '../widgets/page_header.dart';
 import '../widgets/library_browse_view.dart';
 
 /// Main shell for authenticated users.

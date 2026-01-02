@@ -18,17 +18,19 @@ class PlaybackShortcuts extends StatelessWidget {
     final state = context.watch<AppState>();
     final shortcuts = <ShortcutActivator, Intent>{
       LogicalKeySet(LogicalKeyboardKey.mediaPlayPause):
-          TogglePlaybackIntent(),
-      LogicalKeySet(LogicalKeyboardKey.mediaTrackNext): NextTrackIntent(),
+          const TogglePlaybackIntent(),
+      LogicalKeySet(LogicalKeyboardKey.mediaTrackNext):
+          const NextTrackIntent(),
       LogicalKeySet(LogicalKeyboardKey.mediaTrackPrevious):
-          PreviousTrackIntent(),
-      const _SpacebarActivator(): TogglePlaybackWithSpaceIntent(),
+          const PreviousTrackIntent(),
+      const _SpacebarActivator(): const TogglePlaybackWithSpaceIntent(),
     };
     if (state.settingsShortcutEnabled) {
-      shortcuts[state.settingsShortcut.toKeySet()] = OpenSettingsIntent();
+      shortcuts[state.settingsShortcut.toKeySet()] =
+          const OpenSettingsIntent();
     }
     if (state.searchShortcutEnabled) {
-      shortcuts[state.searchShortcut.toKeySet()] = FocusSearchIntent();
+      shortcuts[state.searchShortcut.toKeySet()] = const FocusSearchIntent();
     }
     return Shortcuts(
       shortcuts: shortcuts,
