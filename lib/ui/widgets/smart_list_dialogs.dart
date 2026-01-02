@@ -81,7 +81,8 @@ class _SmartListEditorDialogState extends State<_SmartListEditorDialog> {
               Text('Scope', style: Theme.of(context).textTheme.bodyLarge),
               SizedBox(height: space(8)),
               DropdownButtonFormField<SmartListScope>(
-                value: _draft.scope,
+                key: ValueKey(_draft.scope),
+                initialValue: _draft.scope,
                 decoration: const InputDecoration(isDense: true),
                 onChanged: null,
                 items: SmartListScope.values
@@ -224,8 +225,8 @@ class _SmartListGroupEditor extends StatelessWidget {
             children: [
               Text('Match', style: Theme.of(context).textTheme.bodySmall),
               SizedBox(width: space(8)),
-              DropdownButton<SmartListGroupMode>(
-                value: group.mode,
+                  DropdownButton<SmartListGroupMode>(
+                    value: group.mode,
                 onChanged: (value) {
                   if (value == null) {
                     return;
@@ -390,8 +391,9 @@ class _SmartListRuleEditorState extends State<_SmartListRuleEditor> {
         final isNarrow = constraints.maxWidth < 520;
         final fieldDropdown = ConstrainedBox(
           constraints: const BoxConstraints(minWidth: 140),
-          child: DropdownButtonFormField<SmartListField>(
-            value: rule.field,
+            child: DropdownButtonFormField<SmartListField>(
+              key: ValueKey(rule.field),
+              initialValue: rule.field,
             isExpanded: true,
             style: dropdownStyle,
             decoration: const InputDecoration(isDense: true),
@@ -419,8 +421,9 @@ class _SmartListRuleEditorState extends State<_SmartListRuleEditor> {
         );
         final operatorDropdown = ConstrainedBox(
           constraints: const BoxConstraints(minWidth: 140),
-          child: DropdownButtonFormField<SmartListOperator>(
-            value: rule.operatorType,
+            child: DropdownButtonFormField<SmartListOperator>(
+              key: ValueKey(rule.operatorType),
+              initialValue: rule.operatorType,
             isExpanded: true,
             style: dropdownStyle,
             decoration: const InputDecoration(isDense: true),
@@ -572,7 +575,8 @@ class _SmartListSortEditor extends StatelessWidget {
                 Expanded(
                   flex: 2,
                   child: DropdownButtonFormField<SmartListField>(
-                    value: sort.field,
+                    key: ValueKey(sort.field),
+                    initialValue: sort.field,
                     decoration: const InputDecoration(isDense: true),
                     onChanged: (value) {
                       if (value == null) {
@@ -595,7 +599,8 @@ class _SmartListSortEditor extends StatelessWidget {
                 SizedBox(width: space(8)),
                 Expanded(
                   child: DropdownButtonFormField<SmartListSortDirection>(
-                    value: sort.direction,
+                    key: ValueKey(sort.direction),
+                    initialValue: sort.direction,
                     decoration: const InputDecoration(isDense: true),
                     onChanged: (value) {
                       if (value == null) {
