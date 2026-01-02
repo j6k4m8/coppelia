@@ -1224,31 +1224,6 @@ class _NowPlayingExpandedView extends StatelessWidget {
   }
 }
 
-class _ExpandedLink extends StatelessWidget {
-  const _ExpandedLink({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-      ),
-    );
-  }
-}
-
 class _ExpandedArtwork extends StatelessWidget {
   const _ExpandedArtwork({required this.track, required this.size});
 
