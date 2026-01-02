@@ -171,10 +171,8 @@ class _TracksViewState extends State<TracksView> {
     final density = state.layoutDensity;
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
-    final leftGutter =
-        (32 * densityScale).clamp(16.0, 40.0).toDouble();
-    final rightGutter =
-        (24 * densityScale).clamp(12.0, 32.0).toDouble();
+    final leftGutter = (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
     final gap = (6 * densityScale).clamp(4.0, 10.0);
     final rowExtent = _rowExtent(
       density: density,
@@ -188,8 +186,7 @@ class _TracksViewState extends State<TracksView> {
     final baseLabel = total > 0 ? '$count of $total tracks' : '$count tracks';
     final label = baseLabel;
     final contentRightPadding = space(48).clamp(32.0, 64.0);
-    final headerPadding =
-        EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0);
+    final headerPadding = EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0);
     final listPadding = EdgeInsets.fromLTRB(
       leftGutter,
       0,
@@ -214,10 +211,7 @@ class _TracksViewState extends State<TracksView> {
                     children: [
                       Text(
                         'Jump: $activeLetter',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: ColorTokens.textSecondary(context),
                             ),
                       ),
@@ -267,13 +261,11 @@ class _TracksViewState extends State<TracksView> {
                     track: track,
                     index: index,
                     isActive: state.nowPlaying?.id == track.id,
-                    onTap: () =>
-                        state.playFromList(state.libraryTracks, track),
+                    onTap: () => state.playFromList(state.libraryTracks, track),
                     onPlayNext: () => state.playNext(track),
                     onAddToQueue: () => state.enqueueTrack(track),
                     isFavorite: state.isFavoriteTrack(track.id),
-                    isFavoriteUpdating:
-                        state.isFavoriteTrackUpdating(track.id),
+                    isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
                     onToggleFavorite: () => state.setTrackFavorite(
                       track,
                       !state.isFavoriteTrack(track.id),
@@ -350,8 +342,7 @@ class _AlphabetScroller extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final slotHeight = space(18).clamp(14.0, 22.0);
     return Container(
@@ -398,16 +389,14 @@ class _AlphabetLetter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final baseStyle = Theme.of(context).textTheme.labelSmall;
     return TextButton(
       onPressed: onTap,
       style: ButtonStyle(
         padding: MaterialStateProperty.all(EdgeInsets.zero),
-        minimumSize:
-            MaterialStateProperty.all(Size(space(20), space(20))),
+        minimumSize: MaterialStateProperty.all(Size(space(20), space(20))),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         foregroundColor: MaterialStateProperty.resolveWith((states) {
           if (selected) {

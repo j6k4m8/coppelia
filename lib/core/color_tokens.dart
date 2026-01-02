@@ -38,23 +38,26 @@ class ColorTokens {
 
   /// Divider/border tone.
   static Color border(BuildContext context, [double opacity = 0.08]) {
-    return Theme.of(context).colorScheme.onSurface.withOpacity(opacity);
+    return Theme.of(context)
+        .colorScheme
+        .onSurface
+        .withValues(alpha: opacity);
   }
 
   /// Card fill for tiles.
   static Color cardFill(BuildContext context, [double opacity = 0.05]) {
     final brightness = Theme.of(context).brightness;
     return brightness == Brightness.dark
-        ? Colors.white.withOpacity(opacity)
-        : Colors.black.withOpacity(opacity * 0.9);
+        ? Colors.white.withValues(alpha: opacity)
+        : Colors.black.withValues(alpha: opacity * 0.9);
   }
 
   /// Stronger card fill for artwork placeholders.
   static Color cardFillStrong(BuildContext context, [double opacity = 0.08]) {
     final brightness = Theme.of(context).brightness;
     return brightness == Brightness.dark
-        ? Colors.white.withOpacity(opacity)
-        : Colors.black.withOpacity(opacity * 0.9);
+        ? Colors.white.withValues(alpha: opacity)
+        : Colors.black.withValues(alpha: opacity * 0.9);
   }
 
   /// Primary text tone.
@@ -64,23 +67,26 @@ class ColorTokens {
 
   /// Secondary text tone.
   static Color textSecondary(BuildContext context, [double opacity = 0.6]) {
-    return Theme.of(context).colorScheme.onSurface.withOpacity(opacity);
+    return Theme.of(context)
+        .colorScheme
+        .onSurface
+        .withValues(alpha: opacity);
   }
 
   /// Active row highlight.
   static Color activeRow(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     return brightness == Brightness.dark
-        ? Colors.white.withOpacity(0.12)
-        : Colors.black.withOpacity(0.08);
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.black.withValues(alpha: 0.08);
   }
 
   /// Hover row highlight.
   static Color hoverRow(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     return brightness == Brightness.dark
-        ? Colors.white.withOpacity(0.06)
-        : Colors.black.withOpacity(0.04);
+        ? Colors.white.withValues(alpha: 0.06)
+        : Colors.black.withValues(alpha: 0.04);
   }
 
   /// Section header background gradient.
@@ -93,7 +99,7 @@ class ColorTokens {
     if (brightness == Brightness.dark) {
       return [
         const Color(0xFF1F2433),
-        Colors.white.withOpacity(0.03),
+        Colors.white.withValues(alpha: 0.03),
       ];
     }
     return const [

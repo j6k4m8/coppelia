@@ -43,8 +43,8 @@ class CoppeliaTheme {
 
   static Color _tint(Color color, Brightness brightness, double amount) {
     final overlay = brightness == Brightness.dark
-        ? Colors.black.withOpacity(amount)
-        : Colors.white.withOpacity(amount);
+        ? Colors.black.withValues(alpha: amount)
+        : Colors.white.withValues(alpha: amount);
     return Color.alphaBlend(overlay, color);
   }
 
@@ -90,7 +90,7 @@ class CoppeliaTheme {
     final heroGradient = brightness == Brightness.dark
         ? [
             _tint(primary, brightness, 0.35),
-            Colors.white.withOpacity(0.04),
+            Colors.white.withValues(alpha: 0.04),
           ]
         : [
             Colors.white,
@@ -126,7 +126,7 @@ class CoppeliaTheme {
       fontFamily: fontFamily,
       useMaterial3: true,
       cardTheme: CardThemeData(
-        color: const Color(0xFF161920).withOpacity(0.7),
+        color: const Color(0xFF161920).withValues(alpha: 0.7),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
@@ -164,7 +164,7 @@ class CoppeliaTheme {
       fontFamily: fontFamily,
       useMaterial3: true,
       cardTheme: CardThemeData(
-        color: Colors.white.withOpacity(0.9),
+        color: Colors.white.withValues(alpha: 0.9),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),

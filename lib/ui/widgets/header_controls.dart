@@ -21,7 +21,10 @@ class HeaderControlButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = onTap == null
-        ? theme.colorScheme.onSurface.withOpacity(0.38)
+        ? theme
+            .colorScheme
+            .onSurface
+            .withValues(alpha: 0.38)
         : theme.colorScheme.onSurface;
     final background = theme.colorScheme.surfaceVariant;
     return Material(
@@ -84,7 +87,8 @@ class SearchCircleButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(size),
               boxShadow: [
                 BoxShadow(
-                  color: theme.colorScheme.primary.withOpacity(0.3),
+                  color:
+                      theme.colorScheme.primary.withValues(alpha: 0.3),
                   blurRadius: 6,
                   offset: const Offset(0, 1),
                 ),

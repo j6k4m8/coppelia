@@ -57,10 +57,11 @@ class _PlayOverlayButton extends StatelessWidget {
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
     final background = isDark
-        ? Colors.white.withOpacity(0.18)
-        : Colors.white.withOpacity(0.92);
-    final borderColor =
-        isDark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.08);
+        ? Colors.white.withValues(alpha: 0.18)
+        : Colors.white.withValues(alpha: 0.92);
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.2)
+        : Colors.black.withValues(alpha: 0.08);
     final iconColor = isDark ? Colors.white : Colors.black87;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -76,7 +77,9 @@ class _PlayOverlayButton extends StatelessWidget {
             border: Border.all(color: borderColor),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.4 : 0.18),
+                color: Colors.black.withValues(
+                  alpha: isDark ? 0.4 : 0.18,
+                ),
                 blurRadius: 14,
                 offset: const Offset(0, 6),
               ),

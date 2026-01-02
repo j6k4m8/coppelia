@@ -2639,8 +2639,8 @@ class AppState extends ChangeNotifier {
 
   /// Updates the accent color preference.
   Future<void> setAccentColor(Color color) async {
-    _accentColorValue = color.value;
-    await _settingsStore.saveAccentColorValue(color.value);
+    _accentColorValue = color.toARGB32();
+    await _settingsStore.saveAccentColorValue(color.toARGB32());
     notifyListeners();
   }
 

@@ -61,9 +61,18 @@ class _GlowingLoadingBarState extends State<GlowingLoadingBar>
                       end: Alignment(1 + shimmerPosition, 0),
                       colors: [
                         Colors.transparent,
-                        Theme.of(context).colorScheme.primary.withOpacity(0.4),
-                        Theme.of(context).colorScheme.primary.withOpacity(0.8),
-                        Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                        Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.4),
+                        Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.8),
+                        Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.4),
                         Colors.transparent,
                       ],
                     ),
@@ -72,7 +81,7 @@ class _GlowingLoadingBarState extends State<GlowingLoadingBar>
                         color: Theme.of(context)
                             .colorScheme
                             .primary
-                            .withOpacity(0.35),
+                            .withValues(alpha: 0.35),
                         blurRadius: 12,
                         spreadRadius: 2,
                       ),

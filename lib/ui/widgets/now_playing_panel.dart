@@ -607,9 +607,9 @@ class _ProgressScrubber extends StatelessWidget {
         data: SliderTheme.of(context).copyWith(
           trackHeight: trackHeight,
           activeTrackColor: primary,
-          inactiveTrackColor: primary.withOpacity(0.2),
+          inactiveTrackColor: primary.withValues(alpha: 0.2),
           thumbColor: primary,
-          overlayColor: primary.withOpacity(0.15),
+          overlayColor: primary.withValues(alpha: 0.15),
           thumbShape: RoundSliderThumbShape(enabledThumbRadius: thumbRadius),
           overlayShape: RoundSliderOverlayShape(overlayRadius: overlayRadius),
         ),
@@ -1046,7 +1046,7 @@ void _openExpandedNowPlaying(BuildContext context) {
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Dismiss',
-    barrierColor: Colors.black.withOpacity(0.55),
+    barrierColor: Colors.black.withValues(alpha: 0.55),
     transitionDuration: const Duration(milliseconds: 220),
     pageBuilder: (context, _, __) => const _NowPlayingExpandedView(),
     transitionBuilder: (context, animation, _, child) {
@@ -1281,7 +1281,7 @@ class _ExpandedArtwork extends StatelessWidget {
         border: Border.all(color: ColorTokens.border(context, 0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.18),
+            color: Colors.black.withValues(alpha: 0.18),
             blurRadius: 30,
             offset: const Offset(0, 18),
           ),
