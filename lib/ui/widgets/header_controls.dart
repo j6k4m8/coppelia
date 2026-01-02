@@ -26,7 +26,7 @@ class HeaderControlButton extends StatelessWidget {
             .onSurface
             .withValues(alpha: 0.38)
         : theme.colorScheme.onSurface;
-    final background = theme.colorScheme.surfaceVariant;
+    final background = theme.colorScheme.surfaceContainerHighest;
     return Material(
       type: MaterialType.transparency,
       child: Tooltip(
