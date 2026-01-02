@@ -116,6 +116,9 @@ class AlbumsView extends StatelessWidget {
           ),
       ],
     );
+    if (!context.mounted) {
+      return;
+    }
     if (selection == _AlbumAction.play) {
       await state.playAlbum(album);
     }
@@ -126,6 +129,9 @@ class AlbumsView extends StatelessWidget {
       await state.selectArtistByName(album.artistName);
     }
     if (selection == _AlbumAction.favorite) {
+      if (!context.mounted) {
+        return;
+      }
       await runWithSnack(
         context,
         () => state.setAlbumFavorite(album, !isFavorite),

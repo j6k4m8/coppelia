@@ -45,6 +45,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
     SmartList smartList,
   ) async {
     final controller = TextEditingController(text: smartList.name);
+    final appState = context.read<AppState>();
     String value = controller.text;
     final result = await showDialog<String>(
       context: context,
@@ -80,9 +81,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
     if (!mounted || trimmed == null || trimmed.isEmpty) {
       return;
     }
-    await context
-        .read<AppState>()
-        .updateSmartList(smartList.copyWith(name: trimmed));
+    await appState.updateSmartList(smartList.copyWith(name: trimmed));
   }
 
   Future<void> _duplicateSmartList(
@@ -94,9 +93,10 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
       id: 'smart-$now',
       name: '${smartList.name} Copy',
     );
-    final created = await context.read<AppState>().createSmartList(copy);
+    final appState = context.read<AppState>();
+    final created = await appState.createSmartList(copy);
     if (mounted) {
-      await context.read<AppState>().selectSmartList(created);
+      await appState.selectSmartList(created);
     }
   }
 
@@ -104,6 +104,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
     BuildContext context,
     SmartList smartList,
   ) async {
+    final appState = context.read<AppState>();
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -122,7 +123,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
       ),
     );
     if (result == true && mounted) {
-      await context.read<AppState>().deleteSmartList(smartList);
+      await appState.deleteSmartList(smartList);
     }
   }
 

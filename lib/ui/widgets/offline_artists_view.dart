@@ -128,6 +128,9 @@ class OfflineArtistsView extends StatelessWidget {
         ),
       ],
     );
+    if (!context.mounted) {
+      return;
+    }
     if (selection == _ArtistAction.play) {
       await state.playArtist(artist);
     }
@@ -135,6 +138,9 @@ class OfflineArtistsView extends StatelessWidget {
       await state.selectArtist(artist);
     }
     if (selection == _ArtistAction.favorite) {
+      if (!context.mounted) {
+        return;
+      }
       await runWithSnack(
         context,
         () => state.setArtistFavorite(artist, !isFavorite),

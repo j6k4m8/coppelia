@@ -247,6 +247,9 @@ class SearchResultsView extends StatelessWidget {
           ),
       ],
     );
+    if (!context.mounted) {
+      return;
+    }
     if (selection == _AlbumAction.play) {
       await state.playAlbum(album);
     }
@@ -257,6 +260,9 @@ class SearchResultsView extends StatelessWidget {
       await state.selectArtistByName(albumArtist);
     }
     if (selection == _AlbumAction.favorite) {
+      if (!context.mounted) {
+        return;
+      }
       await runWithSnack(
         context,
         () => state.setAlbumFavorite(album, !isFavorite),
@@ -321,6 +327,9 @@ class SearchResultsView extends StatelessWidget {
         ),
       ],
     );
+    if (!context.mounted) {
+      return;
+    }
     if (selection == _ArtistAction.play) {
       await state.playArtist(artist);
     }
@@ -328,6 +337,9 @@ class SearchResultsView extends StatelessWidget {
       await state.selectArtist(artist);
     }
     if (selection == _ArtistAction.favorite) {
+      if (!context.mounted) {
+        return;
+      }
       await runWithSnack(
         context,
         () => state.setArtistFavorite(artist, !isFavorite),

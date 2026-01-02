@@ -325,6 +325,9 @@ class TrackRow extends StatelessWidget {
       position,
       items,
     );
+    if (!context.mounted) {
+      return;
+    }
     if (action == _TrackMenuAction.play) {
       onTap();
     } else if (action == _TrackMenuAction.playNext) {
@@ -336,10 +339,16 @@ class TrackRow extends StatelessWidget {
         context,
         initialTracks: [track],
       );
+      if (!context.mounted) {
+        return;
+      }
       if (result == null) {
         return;
       }
       if (!result.isNew) {
+        if (!context.mounted) {
+          return;
+        }
         await runWithSnack(
           context,
           () => state.addTrackToPlaylist(track, result.playlist),
@@ -347,6 +356,9 @@ class TrackRow extends StatelessWidget {
       }
     } else if (action == _TrackMenuAction.favorite) {
       if (onToggleFavorite != null) {
+        if (!context.mounted) {
+          return;
+        }
         await runWithSnack(context, () => onToggleFavorite!.call());
       }
     } else if (action == _TrackMenuAction.makeAvailableOffline) {
@@ -355,6 +367,9 @@ class TrackRow extends StatelessWidget {
       await state.unpinTrackOffline(track);
     } else if (action == _TrackMenuAction.removeFromPlaylist) {
       if (onRemoveFromPlaylist != null) {
+        if (!context.mounted) {
+          return;
+        }
         await runWithSnack(context, () => onRemoveFromPlaylist!.call());
       }
     } else if (action == _TrackMenuAction.goToAlbum) {

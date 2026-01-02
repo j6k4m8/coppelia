@@ -265,10 +265,16 @@ Future<void> _showAlbumMenu(
     await state.selectArtistByName(album.artistName);
   }
   if (selection == _AlbumAction.favorite) {
+    if (!context.mounted) {
+      return;
+    }
     await runWithSnack(
       context,
       () => state.setAlbumFavorite(album, !isFavorite),
     );
+  if (!context.mounted) {
+    return;
+  }
   }
   if (selection == _AlbumAction.makeAvailableOffline) {
     await state.makeAlbumAvailableOffline(album);
