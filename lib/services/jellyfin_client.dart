@@ -10,6 +10,7 @@ import '../models/library_stats.dart';
 import '../models/media_item.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
+import '../core/app_info.dart';
 
 /// Client wrapper for Jellyfin REST APIs.
 class JellyfinClient {
@@ -23,7 +24,7 @@ class JellyfinClient {
   static const String clientName = 'Coppelia';
 
   /// Client version for Jellyfin analytics.
-  static const String clientVersion = '0.0.3-alpha';
+  String get clientVersion => AppInfo.version;
 
   /// Creates a client with an optional HTTP override.
   JellyfinClient({
