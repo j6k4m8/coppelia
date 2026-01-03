@@ -442,8 +442,11 @@ class _SearchViewState extends State<_SearchView> {
 
   void _handleAppStateChange() {
     final state = context.read<AppState>();
-    if (state.searchQuery != _controller.text) {
-      _controller.value = _controller.value.copyWith(text: state.searchQuery);
+    if (state.searchQuery.isEmpty && _controller.text.isNotEmpty) {
+      _controller.clear();
+    } else if (!_focusNode.hasFocus &&
+        state.searchQuery != _controller.text) {
+      _controller.text = state.searchQuery;
     }
     if (state.searchFocusRequest != _lastSearchFocusRequest) {
       _lastSearchFocusRequest = state.searchFocusRequest;
@@ -462,10 +465,15 @@ class _SearchViewState extends State<_SearchView> {
 
   void _onChanged(String value) {
     _debounce?.cancel();
+    final state = context.read<AppState>();
+    if (value.trim().isEmpty) {
+      state.clearSearch();
+      return;
+    }
+    state.setSearchQuery(value);
     _debounce = Timer(const Duration(milliseconds: 250), () {
-      context.read<AppState>().searchLibrary(value);
+      state.searchLibrary(value);
     });
-    setState(() {});
   }
 
   void _clear() {
