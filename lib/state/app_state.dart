@@ -1397,11 +1397,11 @@ class AppState extends ChangeNotifier {
   /// Performs a search across the library.
   Future<void> searchLibrary(String query) async {
     final trimmed = query.trim();
-    _searchQuery = trimmed;
     if (trimmed.isEmpty) {
       clearSearch();
       return;
     }
+    _searchQuery = query;
     if (_offlineMode) {
       _isSearching = true;
       notifyListeners();
@@ -1443,6 +1443,14 @@ class AppState extends ChangeNotifier {
       _searchResults = const SearchResults();
     } finally {
       _isSearching = false;
+      notifyListeners();
+    }
+  }
+
+  /// Updates the search query without triggering a network request.
+  void setSearchQuery(String query, {bool notify = true}) {
+    _searchQuery = query;
+    if (notify) {
       notifyListeners();
     }
   }
