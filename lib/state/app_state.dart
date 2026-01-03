@@ -11,6 +11,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 import '../core/app_palette.dart';
+import '../core/app_info.dart';
 import '../models/album.dart';
 import '../models/artist.dart';
 import '../models/auth_session.dart';
@@ -598,6 +599,7 @@ class AppState extends ChangeNotifier {
 
   /// Initializes cached state and refreshes library.
   Future<void> bootstrap() async {
+    await AppInfo.load();
     final deviceId = await _settingsStore.loadDeviceId();
     _client.updateDeviceInfo(
       deviceId: deviceId,

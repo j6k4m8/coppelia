@@ -60,21 +60,21 @@ class LibraryBrowseView<T> extends StatefulWidget {
 
 class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
   late final ScrollController _controller;
+  late final AppState _state;
   bool _showBackToTop = false;
 
   @override
   void initState() {
     super.initState();
-    final state = context.read<AppState>();
-    final offset = state.loadScrollOffset(_scrollKey);
+    _state = context.read<AppState>();
+    final offset = _state.loadScrollOffset(_scrollKey);
     _controller = ScrollController(initialScrollOffset: offset);
     _controller.addListener(_handleScroll);
   }
 
   @override
   void dispose() {
-    final state = context.read<AppState>();
-    state.saveScrollOffset(_scrollKey, _controller.offset);
+    _state.saveScrollOffset(_scrollKey, _controller.offset);
     _controller.removeListener(_handleScroll);
     _controller.dispose();
     super.dispose();

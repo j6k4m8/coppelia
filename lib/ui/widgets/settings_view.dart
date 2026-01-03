@@ -16,6 +16,7 @@ import '../../state/now_playing_layout.dart';
 import '../../state/sidebar_item.dart';
 import '../../state/theme_palette_source.dart';
 import '../../core/color_tokens.dart';
+import '../../core/app_info.dart';
 import 'compact_switch.dart';
 import 'glass_container.dart';
 
@@ -1778,6 +1779,13 @@ class _AccountSettings extends StatelessWidget {
               ],
             ),
           ),
+        SizedBox(height: space(24)),
+        Text('App', style: Theme.of(context).textTheme.titleMedium),
+        SizedBox(height: space(12)),
+        _AccountMetaRow(
+          label: 'Version',
+          value: AppInfo.displayVersion,
+        ),
         SizedBox(height: space(24)),
         Text('Telemetry', style: Theme.of(context).textTheme.titleMedium),
         SizedBox(height: space(12)),
