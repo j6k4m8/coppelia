@@ -3571,6 +3571,10 @@ class AppState extends ChangeNotifier {
     _nowPlaying = track;
     _position = Duration.zero;
     _positionNotifier.value = _position;
+    if (track.duration > Duration.zero) {
+      _duration = track.duration;
+      _durationNotifier.value = _duration;
+    }
     unawaited(_refreshNowPlayingCacheStatus(track));
     unawaited(_maybeUpdateNowPlayingPalette(track));
     if (recordHistory) {
