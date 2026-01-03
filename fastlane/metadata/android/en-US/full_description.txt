@@ -1,0 +1,14 @@
+<p>Coppelia is a native, cross-platform music player for Jellyfin libraries.
+Built for speed and aesthetics, with offline playback and deep library control.</p>
+
+<p><strong>Highlights</strong></p>
+<ul>
+  <li>Beautiful, themeable UI with dynamic color accents</li>
+  <li>Fast browsing for albums, artists, genres, playlists, and tracks</li>
+  <li>Full playback controls with queue management and repeat</li>
+  <li>Favorites and offline pinning for tracks, albums, and artists</li>
+  <li>Download manager and offline mode</li>
+  <li>Smart Lists that update automatically</li>
+</ul>
+
+<p>Platforms: macOS, iOS, Android, Linux (Windows soon)</p>
