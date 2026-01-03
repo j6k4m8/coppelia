@@ -235,19 +235,14 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
           ),
         ),
       ),
-      child: RawScrollbar(
-        thickness: 10,
-        radius: const Radius.circular(12),
-        interactive: true,
-        thumbVisibility: true,
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            0,
-            0,
-            effectiveHorizontalPadding,
-            0,
-          ),
-          children: [
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(
+          0,
+          0,
+          effectiveHorizontalPadding,
+          0,
+        ),
+        children: [
             Row(
               children: [
                 Expanded(
@@ -696,7 +691,6 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             SizedBox(height: space(16)),
           ],
         ),
-      ),
     );
   }
 }
