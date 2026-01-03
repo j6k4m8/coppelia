@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Coppelia - a native Jellyfin music app</title>
+    <meta
+      name="description"
+      content="Coppelia is a fast, low-resource, open source music client for Jellyfin. Built with Flutter for macOS, iOS, Android, and Linux."
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --bg0: #0a0c0f;
+        --bg1: #0d1318;
+        --card: rgba(255, 255, 255, 0.06);
+        --border: rgba(255, 255, 255, 0.12);
+        --text0: rgba(255, 255, 255, 0.92);
+        --text1: rgba(255, 255, 255, 0.72);
+        --text2: rgba(255, 255, 255, 0.56);
+        --mint: #34d399;
+        --sun: #f59e0b;
+        --sea: #38bdf8;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Space Grotesk", system-ui, -apple-system, Segoe UI, sans-serif;
+        background: radial-gradient(1200px 700px at 15% 10%, rgba(52, 211, 153, 0.25), transparent 60%),
+          radial-gradient(900px 600px at 85% 10%, rgba(56, 189, 248, 0.22), transparent 55%),
+          linear-gradient(180deg, var(--bg0), var(--bg1));
+        color: var(--text0);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(380px 260px at 70% 20%, rgba(245, 158, 11, 0.18), transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(420px 280px at 20% 85%, rgba(56, 189, 248, 0.15), transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      img {
+        max-width: 100%;
+        display: block;
+      }
+
+      .container {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 0 24px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 28px 0 8px;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+
+      .logo img {
+        width: 36px;
+        height: 36px;
+      }
+
+      .nav-links {
+        display: none;
+        gap: 16px;
+        font-size: 14px;
+        color: var(--text1);
+      }
+
+      .nav-links a:hover {
+        color: #fff;
+      }
+
+      .pill {
+        border-radius: 999px;
+        padding: 6px 12px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.04);
+        font-size: 12px;
+        color: var(--text1);
+      }
+
+      .hero {
+        display: grid;
+        gap: 40px;
+        padding: 60px 0 28px;
+      }
+
+      .hero h1 {
+        font-size: clamp(32px, 5vw, 54px);
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+        margin: 0;
+      }
+
+      .hero p {
+        color: var(--text1);
+        font-size: 18px;
+        line-height: 1.6;
+      }
+
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .cta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .btn {
+        border-radius: 16px;
+        padding: 12px 18px;
+        border: 1px solid transparent;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        transition: transform 0.2s ease, background 0.2s ease;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, var(--mint), var(--sun));
+        color: #0b0f14;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+      }
+
+      .btn-ghost {
+        border-color: var(--border);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text0);
+      }
+
+      .btn-ghost:hover {
+        transform: translateY(-2px);
+      }
+
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        padding: 22px;
+        backdrop-filter: blur(12px);
+      }
+
+      .preview {
+        display: grid;
+        gap: 14px;
+      }
+
+      .preview img {
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      }
+
+      .stats {
+        margin-top: 26px;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      }
+
+      .stat {
+        padding: 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        font-size: 14px;
+        color: var(--text1);
+      }
+
+      .stat strong {
+        display: block;
+        color: #fff;
+        font-size: 16px;
+        margin-bottom: 4px;
+      }
+
+      section {
+        padding: 30px 0;
+      }
+
+      h2 {
+        margin: 0 0 10px;
+        font-size: 28px;
+      }
+
+      .section-lead {
+        color: var(--text1);
+        max-width: 640px;
+      }
+
+      .screens {
+        margin-top: 18px;
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      }
+
+      .screen-card {
+        padding: 14px;
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .screen-card img {
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      .screen-card p {
+        margin: 10px 0 0;
+        color: var(--text2);
+        font-size: 12px;
+      }
+
+      .feature-grid {
+        margin-top: 20px;
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
+
+      .feature {
+        padding: 18px;
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .feature h3 {
+        margin: 0 0 8px;
+      }
+
+      .feature p {
+        margin: 0;
+        color: var(--text1);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .mono {
+        font-family: "Spline Sans Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--text2);
+      }
+
+      .download-grid {
+        margin-top: 18px;
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
+
+      .download-card {
+        padding: 18px;
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.04);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .download-card a {
+        color: #fff;
+        font-weight: 600;
+      }
+
+      .download-card p {
+        margin: 0;
+        color: var(--text1);
+        font-size: 14px;
+      }
+
+      .footer {
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 26px 0 50px;
+        color: var(--text2);
+        font-size: 14px;
+      }
+
+      .float-in {
+        animation: rise 0.7s ease both;
+      }
+
+      .float-delay-1 {
+        animation-delay: 0.1s;
+      }
+
+      .float-delay-2 {
+        animation-delay: 0.2s;
+      }
+
+      .float-delay-3 {
+        animation-delay: 0.3s;
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(18px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (min-width: 880px) {
+        .hero {
+          grid-template-columns: 1.1fr 0.9fr;
+          align-items: start;
+        }
+
+        .nav-links {
+          display: flex;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .nav {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 14px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .float-in {
+          animation: none;
+        }
+
+        .btn {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="container">
+      <nav class="nav">
+        <a class="logo" href="#top">
+          <img src="assets/logo.svg" alt="Coppelia logo" />
+          <span>Coppelia</span>
+        </a>
+        <div class="nav-links">
+          <a href="#screens">Screens</a>
+          <a href="#features">Features</a>
+          <a href="#download">Download</a>
+          <a href="https://github.com/j6k4m8/coppelia" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="top" class="container">
+      <section class="hero">
+        <div>
+          <div class="hero-badges float-in">
+            <span class="pill">macOS</span>
+            <span class="pill">iOS</span>
+            <span class="pill">Android</span>
+            <span class="pill">Linux</span>
+            <span class="pill">Flutter</span>
+          </div>
+          <h1 class="float-in float-delay-1">
+            A Jellyfin music client that feels native, not like a browser tab.
+          </h1>
+          <p class="float-in float-delay-2">
+            Coppelia is a fast, low-resource app for your Jellyfin library. Built with Flutter for
+            desktop and mobile, with offline pinning, smart lists, and a clean library view.
+          </p>
+          <div class="cta-row float-in float-delay-3">
+            <a class="btn btn-primary" href="https://github.com/j6k4m8/coppelia/releases" target="_blank" rel="noreferrer">
+              Download builds
+            </a>
+            <a class="btn btn-ghost" href="#screens">See screenshots</a>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <strong>Offline ready</strong>
+              Pin albums, artists, and tracks for flights or bad wifi.
+            </div>
+            <div class="stat">
+              <strong>Low resource</strong>
+              No Electron, no web views, just a native Flutter UI.
+            </div>
+            <div class="stat">
+              <strong>Open source</strong>
+              Apache 2.0 licensed and maintained on GitHub.
+            </div>
+          </div>
+        </div>
+        <div class="panel preview float-in float-delay-2">
+          <div class="mono">Desktop preview</div>
+          <img src="images/Screenshot-Homepage.jpg" alt="Coppelia desktop home" loading="lazy" />
+          <div class="mono">Theme variations included</div>
+          <img src="images/Screenshot-Settings.jpg" alt="Coppelia settings and themes" loading="lazy" />
+        </div>
+      </section>
+
+      <section id="screens">
+        <div class="mono">Screens</div>
+        <h2>Screenshots</h2>
+        <p class="section-lead">
+          A mix of desktop and mobile captures from the app today. Scroll the repository docs for
+          more theme variations.
+        </p>
+        <div class="screens">
+          <div class="screen-card">
+            <img src="images/Screenshot-Artist.jpg" alt="Artist view" loading="lazy" />
+            <p>Artist view</p>
+          </div>
+          <div class="screen-card">
+            <img src="images/Screenshot-Queue.jpg" alt="Queue and playback" loading="lazy" />
+            <p>Queue and playback controls</p>
+          </div>
+          <div class="screen-card">
+            <img src="images/iPhone-Tracks.png" alt="iPhone tracks" loading="lazy" />
+            <p>iPhone tracks</p>
+          </div>
+          <div class="screen-card">
+            <img src="images/Android-Tracks.png" alt="Android tracks" loading="lazy" />
+            <p>Android tracks</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="features">
+        <div class="mono">Features</div>
+        <h2>What it does</h2>
+        <p class="section-lead">
+          Built for browsing large libraries without a heavy UI. It stays quick, responsive, and
+          offline when you need it.
+        </p>
+        <div class="feature-grid">
+          <div class="feature">
+            <h3>Library browsing</h3>
+            <p>Albums, artists, genres, playlists, and smart shelves with search and filters.</p>
+          </div>
+          <div class="feature">
+            <h3>Smart lists</h3>
+            <p>Self-updating playlists built from your listening rules and Jellyfin metadata.</p>
+          </div>
+          <div class="feature">
+            <h3>Offline pinning</h3>
+            <p>Keep favorites on device with download management and cache controls.</p>
+          </div>
+          <div class="feature">
+            <h3>Playback controls</h3>
+            <p>Queue management, repeat, shuffle, and per-device playback settings.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="download">
+        <div class="mono">Download</div>
+        <h2>Get the app</h2>
+        <p class="section-lead">
+          Builds live on GitHub Releases. macOS, iOS, Android, and Linux are supported now.
+        </p>
+        <div class="download-grid">
+          <div class="download-card">
+            <a href="https://github.com/j6k4m8/coppelia/releases" target="_blank" rel="noreferrer">GitHub Releases</a>
+            <p>Download the latest builds for desktop and mobile.</p>
+          </div>
+          <div class="download-card">
+            <strong>macOS note</strong>
+            <p>App is not notarized yet. You may need to allow it in Privacy and Security.</p>
+            <p class="mono">xattr -d com.apple.quarantine /path/to/Coppelia.app</p>
+          </div>
+          <div class="download-card">
+            <strong>iOS note</strong>
+            <p>Use Xcode or AltStore for sideloading until the store build is ready.</p>
+          </div>
+          <div class="download-card">
+            <strong>Android note</strong>
+            <p>Enable install unknown apps. F-Droid listing is planned.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <div class="logo">
+          <img src="assets/logo.svg" alt="Coppelia logo" />
+          <div>
+            <strong>Coppelia</strong>
+            <div>Native Jellyfin music app for macOS, iOS, Android, and Linux.</div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
