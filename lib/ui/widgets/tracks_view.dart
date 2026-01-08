@@ -8,6 +8,7 @@ import '../../core/color_tokens.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
+import 'alphabet_scroller.dart';
 import 'header_action.dart';
 import 'page_header.dart';
 import 'track_row.dart';
@@ -290,108 +291,21 @@ class _TracksViewState extends State<TracksView> {
                 right: 0,
                 top: space(12),
                 bottom: space(12),
-                child: _AlphabetScroller(
+                child: AlphabetScroller(
                   letters: _alphabet,
                   selected: activeLetter,
                   onSelected: (letter) =>
                       _jumpToLetter(state, letter, rowStride),
+                  scrollable: true,
+                  baseWidth: 28,
+                  minWidth: 22,
+                  maxWidth: 36,
                 ),
               ),
             ],
           ),
         ),
       ],
-    );
-  }
-}
-
-class _AlphabetScroller extends StatelessWidget {
-  const _AlphabetScroller({
-    required this.letters,
-    required this.onSelected,
-    required this.selected,
-  });
-
-  final List<String> letters;
-  final ValueChanged<String> onSelected;
-  final String? selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
-    double space(double value) => value * densityScale;
-    final slotHeight = space(18).clamp(14.0, 22.0);
-    return Container(
-      width: space(28).clamp(22.0, 36.0),
-      padding: EdgeInsets.symmetric(vertical: space(8)),
-      decoration: BoxDecoration(
-        color: ColorTokens.cardFill(context, 0.04),
-        borderRadius: BorderRadius.circular(
-          space(20).clamp(14.0, 24.0),
-        ),
-        border: Border.all(color: ColorTokens.border(context)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: letters
-              .map(
-                (letter) => SizedBox(
-                  height: slotHeight,
-                  child: _AlphabetLetter(
-                    letter: letter,
-                    selected: selected == letter,
-                    onTap: () => onSelected(letter),
-                  ),
-                ),
-              )
-              .toList(),
-        ),
-      ),
-    );
-  }
-}
-
-class _AlphabetLetter extends StatelessWidget {
-  const _AlphabetLetter({
-    required this.letter,
-    required this.onTap,
-    required this.selected,
-  });
-
-  final String letter;
-  final VoidCallback onTap;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
-    double space(double value) => value * densityScale;
-    final baseStyle = Theme.of(context).textTheme.labelSmall;
-    return TextButton(
-      onPressed: onTap,
-      style: ButtonStyle(
-        padding: WidgetStateProperty.all(EdgeInsets.zero),
-        minimumSize: WidgetStateProperty.all(Size(space(20), space(20))),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        foregroundColor: WidgetStateProperty.resolveWith((states) {
-          if (selected) {
-            return Theme.of(context).colorScheme.primary;
-          }
-          if (states.contains(WidgetState.hovered)) {
-            return ColorTokens.textPrimary(context);
-          }
-          return ColorTokens.textSecondary(context, 0.7);
-        }),
-        textStyle: WidgetStateProperty.all(baseStyle),
-        overlayColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.hovered)) {
-            return ColorTokens.cardFill(context, 0.08);
-          }
-          return Colors.transparent;
-        }),
-      ),
-      child: Text(letter),
     );
   }
 }
