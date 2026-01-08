@@ -10,6 +10,7 @@ import '../../models/download_task.dart';
 import '../../state/app_state.dart';
 import '../../state/accent_color_source.dart';
 import '../../state/home_section.dart';
+import '../../state/home_shelf_layout.dart';
 import '../../state/keyboard_shortcut.dart';
 import '../../state/layout_density.dart';
 import '../../state/now_playing_layout.dart';
@@ -511,6 +512,47 @@ class _LayoutSettings extends StatelessWidget {
         Divider(height: space(32), color: ColorTokens.border(context, 0.12)),
         Text('Home', style: Theme.of(context).textTheme.titleLarge),
         SizedBox(height: space(12)),
+        _SettingRow(
+          title: 'Featured & recent layout',
+          subtitle: 'Switch between the scroller and a compact grid.',
+          forceInline: true,
+          trailing: SegmentedButton<HomeShelfLayout>(
+            style: segmentedStyle,
+            segments: HomeShelfLayout.values
+                .map(
+                  (layout) => ButtonSegment(
+                    value: layout,
+                    label: Text(layout.label),
+                  ),
+                )
+                .toList(),
+            selected: {state.homeShelfLayout},
+            onSelectionChanged: (selection) {
+              state.setHomeShelfLayout(selection.first);
+            },
+          ),
+        ),
+        if (state.homeShelfLayout == HomeShelfLayout.grid) ...[
+          SizedBox(height: space(12)),
+          _SettingRow(
+            title: 'Grid rows',
+            subtitle: 'Limit how many rows appear on the home shelves.',
+            forceInline: true,
+            trailing: SegmentedButton<int>(
+              style: segmentedStyle,
+              segments: const [
+                ButtonSegment(value: 1, label: Text('1')),
+                ButtonSegment(value: 2, label: Text('2')),
+                ButtonSegment(value: 3, label: Text('3')),
+              ],
+              selected: {state.homeShelfGridRows},
+              onSelectionChanged: (selection) {
+                state.setHomeShelfGridRows(selection.first);
+              },
+            ),
+          ),
+        ],
+        SizedBox(height: space(20)),
         ReorderableListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -1905,6 +1947,7 @@ class _SettingsSubheader extends StatelessWidget {
     );
   }
 }
+
 
 class _AccountMetaRow extends StatelessWidget {
   const _AccountMetaRow({required this.label, required this.value});

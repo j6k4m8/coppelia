@@ -33,6 +33,7 @@ import '../services/session_store.dart';
 import 'browse_layout.dart';
 import 'accent_color_source.dart';
 import 'home_section.dart';
+import 'home_shelf_layout.dart';
 import 'keyboard_shortcut.dart';
 import 'layout_density.dart';
 import 'library_view.dart';
@@ -163,6 +164,8 @@ class AppState extends ChangeNotifier {
   KeyboardShortcut _searchShortcut = KeyboardShortcut.searchForPlatform();
   LayoutDensity _layoutDensity = LayoutDensity.comfortable;
   NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.bottom;
+  HomeShelfLayout _homeShelfLayout = HomeShelfLayout.whooshy;
+  int _homeShelfGridRows = 2;
   Map<HomeSection, bool> _homeSectionVisibility = {
     for (final section in HomeSection.values) section: true,
   };
@@ -484,6 +487,12 @@ class AppState extends ChangeNotifier {
   /// Preferred layout for now playing.
   NowPlayingLayout get nowPlayingLayout => _nowPlayingLayout;
 
+  /// Preferred layout for home shelves.
+  HomeShelfLayout get homeShelfLayout => _homeShelfLayout;
+
+  /// Preferred row count for home shelf grids.
+  int get homeShelfGridRows => _homeShelfGridRows;
+
   /// Home section visibility settings.
   Map<HomeSection, bool> get homeSectionVisibility =>
       Map.unmodifiable(_homeSectionVisibility);
@@ -639,6 +648,8 @@ class AppState extends ChangeNotifier {
     _searchShortcut = await _settingsStore.loadSearchShortcut();
     _layoutDensity = await _settingsStore.loadLayoutDensity();
     _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
+    _homeShelfLayout = await _settingsStore.loadHomeShelfLayout();
+    _homeShelfGridRows = await _settingsStore.loadHomeShelfGridRows();
     _offlineMode = await _settingsStore.loadOfflineMode();
     _cacheMaxBytes = await _cacheStore.loadCacheMaxBytes();
     _homeSectionVisibility = await _settingsStore.loadHomeSectionVisibility();
@@ -2720,6 +2731,20 @@ class AppState extends ChangeNotifier {
   Future<void> setNowPlayingLayout(NowPlayingLayout layout) async {
     _nowPlayingLayout = layout;
     await _settingsStore.saveNowPlayingLayout(layout);
+    notifyListeners();
+  }
+
+  /// Updates the home shelf layout preference.
+  Future<void> setHomeShelfLayout(HomeShelfLayout layout) async {
+    _homeShelfLayout = layout;
+    await _settingsStore.saveHomeShelfLayout(layout);
+    notifyListeners();
+  }
+
+  /// Updates the home shelf grid row count.
+  Future<void> setHomeShelfGridRows(int rows) async {
+    _homeShelfGridRows = rows;
+    await _settingsStore.saveHomeShelfGridRows(rows);
     notifyListeners();
   }
 
