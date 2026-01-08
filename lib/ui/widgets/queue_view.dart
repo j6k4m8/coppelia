@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../core/color_tokens.dart';
+import 'header_action.dart';
 import 'page_header.dart';
 import 'track_row.dart';
 
@@ -50,7 +51,7 @@ class QueueView extends StatelessWidget {
                       ?.copyWith(color: ColorTokens.textSecondary(context)),
                 ),
                 const SizedBox(width: 8),
-                _HeaderAction(
+                HeaderAction(
                   label: 'Clear',
                   onTap: state.clearQueue,
                 ),
@@ -97,31 +98,6 @@ class QueueView extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _HeaderAction extends StatelessWidget {
-  const _HeaderAction({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-      ),
     );
   }
 }

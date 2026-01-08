@@ -13,6 +13,7 @@ import 'playlist_card.dart';
 import 'section_header.dart';
 import 'smart_list_card.dart';
 import 'header_controls.dart';
+import 'header_action.dart';
 
 /// Displays featured content and playlists.
 class LibraryOverview extends StatelessWidget {
@@ -151,7 +152,7 @@ class LibraryOverview extends StatelessWidget {
                         ?.copyWith(color: ColorTokens.textSecondary(context)),
                   ),
                   SizedBox(width: space(8)),
-                  _HeaderAction(
+                  HeaderAction(
                     label: 'View all',
                     onTap: () =>
                         state.selectLibraryView(LibraryView.homeFeatured),
@@ -201,7 +202,7 @@ class LibraryOverview extends StatelessWidget {
                         ?.copyWith(color: ColorTokens.textSecondary(context)),
                   ),
                   SizedBox(width: space(8)),
-                  _HeaderAction(
+                  HeaderAction(
                     label: 'View all',
                     onTap: () =>
                         state.selectLibraryView(LibraryView.homeRecent),
@@ -320,7 +321,7 @@ class LibraryOverview extends StatelessWidget {
                           ?.copyWith(color: ColorTokens.textSecondary(context)),
                     ),
                   SizedBox(width: space(12)),
-                  _HeaderAction(
+                  HeaderAction(
                     label: 'Refresh',
                     onTap: () => state.loadJumpIn(force: true),
                   ),
@@ -439,7 +440,7 @@ class LibraryOverview extends StatelessWidget {
             padding: sectionPadding(),
             child: SectionHeader(
               title: 'Playlists',
-              action: _HeaderAction(
+              action: HeaderAction(
                 label: 'View all',
                 onTap: () => state.selectLibraryView(LibraryView.homePlaylists),
               ),
@@ -498,31 +499,6 @@ class LibraryOverview extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: children,
-      ),
-    );
-  }
-}
-
-class _HeaderAction extends StatelessWidget {
-  const _HeaderAction({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-        ),
       ),
     );
   }
