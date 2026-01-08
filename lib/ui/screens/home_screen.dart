@@ -28,7 +28,7 @@ import '../widgets/offline_playlists_view.dart';
 import '../widgets/offline_tracks_view.dart';
 import '../widgets/playlist_detail_view.dart';
 import '../widgets/smart_list_detail_view.dart';
-import '../widgets/playlist_card.dart';
+import '../widgets/playlist_tile.dart';
 import '../widgets/track_row.dart';
 import '../widgets/artwork_image.dart';
 import '../widgets/search_results_view.dart';
@@ -663,7 +663,7 @@ class _HomePlaylistsView extends StatelessWidget {
       subtitleBuilder: (playlist) => '${playlist.trackCount} tracks',
       gridItemBuilder: (context, playlist) {
         final state = context.read<AppState>();
-        return PlaylistCard(
+        return PlaylistTile(
           playlist: playlist,
           onTap: () => state.selectPlaylist(playlist),
           onPlay: () => state.playPlaylist(playlist),

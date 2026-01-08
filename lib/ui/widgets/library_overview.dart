@@ -9,7 +9,7 @@ import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
 import 'featured_track_card.dart';
 import 'media_card.dart';
-import 'playlist_card.dart';
+import 'playlist_tile.dart';
 import 'section_header.dart';
 import 'smart_list_card.dart';
 import 'header_controls.dart';
@@ -475,7 +475,7 @@ class LibraryOverview extends StatelessWidget {
                   itemCount: state.playlists.length,
                   itemBuilder: (context, index) {
                     final playlist = state.playlists[index];
-                    return PlaylistCard(
+                    return PlaylistTile(
                       playlist: playlist,
                       onTap: () => state.selectPlaylist(playlist),
                       onPlay: () => state.playPlaylist(playlist),
