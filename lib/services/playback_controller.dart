@@ -14,8 +14,14 @@ class PlaybackController {
   /// Stream of playback position updates.
   Stream<Duration> get positionStream => _player.positionStream;
 
+  /// Latest known playback position.
+  Duration get position => _player.position;
+
   /// Stream of playback duration updates.
   Stream<Duration?> get durationStream => _player.durationStream;
+
+  /// Latest known duration from the player, if available.
+  Duration? get duration => _player.duration;
 
   /// Stream of play/pause state updates.
   Stream<PlayerState> get playerStateStream => _player.playerStateStream;

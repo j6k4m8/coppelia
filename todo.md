@@ -9,4 +9,3 @@
 ## Backlog
 
 -   [ ] [BUG] Favorites → Artists view sometimes empty
--   [ ] Crossfade controls (requires dual-player mixing probably?)
