@@ -59,11 +59,3 @@ class FavoriteArtistsView extends StatelessWidget {
     );
   }
 }
-
-enum _ArtistAction {
-  play,
-  open,
-  favorite,
-  makeAvailableOffline,
-  unpinOffline
-}

@@ -7,7 +7,6 @@ import '../../state/app_state.dart';
 import '../../state/browse_layout.dart';
 import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
-import '../../core/color_tokens.dart';
 import 'alphabet_scroller.dart';
 import 'grid_metrics.dart';
 import 'page_header.dart';
@@ -182,34 +181,32 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                     controller: _controller,
                     slivers: [
                       SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          leftGutter,
-                          0,
-                          rightGutter,
-                          space(12),
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            leftGutter,
+                            0,
+                            rightGutter,
+                            space(12),
+                          ),
+                          child: SegmentedButton<BrowseLayout>(
+                            segments: BrowseLayout.values
+                                .map(
+                                  (mode) => ButtonSegment(
+                                    value: mode,
+                                    label: Text(mode.label),
+                                    icon: Icon(mode.icon, size: 16),
+                                  ),
+                                )
+                                .toList(),
+                            selected: {layout},
+                            onSelectionChanged: (selection) {
+                              context.read<AppState>().setBrowseLayout(
+                                    widget.view,
+                                    selection.first,
+                                  );
+                            },
+                          ),
                         ),
-                        child: SegmentedButton<BrowseLayout>(
-                          segments: BrowseLayout.values
-                              .map(
-                                (mode) => ButtonSegment(
-                                  value: mode,
-                                  label: Text(mode.label),
-                                  icon: Icon(mode.icon, size: 16),
-                                ),
-                              )
-                              .toList(),
-                          selected: {layout},
-                          onSelectionChanged: (selection) {
-                            context
-                                .read<AppState>()
-                                .setBrowseLayout(
-                                  widget.view,
-                                  selection.first,
-                                );
-                          },
-                        ),
-                      ),
                       ),
                       layout == BrowseLayout.grid
                           ? SliverPadding(

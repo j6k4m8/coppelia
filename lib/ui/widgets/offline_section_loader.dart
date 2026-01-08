@@ -22,7 +22,7 @@ class OfflineSectionLoader<T> extends StatelessWidget {
     return FutureBuilder<List<T>>(
       future: future,
       builder: (context, snapshot) {
-        final items = snapshot.data ?? const <T>[];
+        final items = snapshot.data ?? <T>[];
         if (snapshot.connectionState == ConnectionState.waiting &&
             items.isEmpty) {
           return const Center(child: CircularProgressIndicator());
