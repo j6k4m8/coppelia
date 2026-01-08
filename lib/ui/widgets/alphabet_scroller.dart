@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/color_tokens.dart';
 import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 
 class AlphabetScroller extends StatelessWidget {
   const AlphabetScroller({

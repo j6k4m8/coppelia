@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/color_tokens.dart';
 import '../../state/app_state.dart';
+import '../../state/layout_density.dart';
 import 'glass_container.dart';
 
 /// Shared empty state content for glass panels.

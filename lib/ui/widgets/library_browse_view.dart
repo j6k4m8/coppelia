@@ -75,7 +75,9 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
 
   @override
   void dispose() {
-    _state.saveScrollOffset(_scrollKey, _controller.offset);
+    if (_controller.hasClients) {
+      _state.saveScrollOffset(_scrollKey, _controller.offset);
+    }
     _controller.removeListener(_handleScroll);
     _controller.dispose();
     super.dispose();
