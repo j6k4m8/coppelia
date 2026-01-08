@@ -871,24 +871,12 @@ class _Artwork extends StatelessWidget {
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
     final imageUrl = track?.imageUrl;
-    Widget buildArtworkFallback() => ArtworkFallback(
-          icon: Icons.music_note,
-          iconSize: clamped(48, min: 34, max: 60),
-        );
-    final artwork = ClipRRect(
-      borderRadius: BorderRadius.circular(
-        clamped(24, min: 14, max: 30),
-      ),
-      child: AspectRatio(
-        aspectRatio: 1,
-        child: ArtworkImage(
-          imageUrl: imageUrl,
-          fit: BoxFit.cover,
-          placeholder: buildArtworkFallback(),
-        ),
-      ),
+    return _NowPlayingArtworkImage(
+      imageUrl: imageUrl,
+      borderRadius: clamped(24, min: 14, max: 30),
+      iconSize: clamped(48, min: 34, max: 60),
+      useAspectRatio: true,
     );
-    return artwork;
   }
 }
 
@@ -904,27 +892,12 @@ class _MiniArtwork extends StatelessWidget {
         (value * densityScale).clamp(min, max);
     final imageUrl = track?.imageUrl;
     final artSize = clamped(56, min: 40, max: 68);
-    Widget buildArtworkFallback() => ArtworkFallback(
-          width: artSize,
-          height: artSize,
-          icon: Icons.music_note,
-          iconSize: clamped(24, min: 16, max: 28),
-        );
-    final artwork = ClipRRect(
-      borderRadius: BorderRadius.circular(
-        clamped(14, min: 10, max: 18),
-      ),
-      child: SizedBox(
-        width: artSize,
-        height: artSize,
-        child: ArtworkImage(
-          imageUrl: imageUrl,
-          fit: BoxFit.cover,
-          placeholder: buildArtworkFallback(),
-        ),
-      ),
+    return _NowPlayingArtworkImage(
+      imageUrl: imageUrl,
+      size: artSize,
+      borderRadius: clamped(14, min: 10, max: 18),
+      iconSize: clamped(24, min: 16, max: 28),
     );
-    return artwork;
   }
 }
 
@@ -1209,17 +1182,14 @@ class _ExpandedArtwork extends StatelessWidget {
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
     final imageUrl = track?.imageUrl;
-    Widget buildArtworkFallback() => ArtworkFallback(
-          icon: Icons.music_note,
-          iconSize: clamped(60, min: 40, max: 84),
-        );
-    return Container(
-      width: size,
-      height: size,
+    final radius = clamped(28, min: 18, max: 34);
+    return _NowPlayingArtworkImage(
+      imageUrl: imageUrl,
+      size: size,
+      borderRadius: radius,
+      iconSize: clamped(60, min: 40, max: 84),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(
-          clamped(28, min: 18, max: 34),
-        ),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: ColorTokens.border(context, 0.2)),
         boxShadow: [
           BoxShadow(
@@ -1229,16 +1199,62 @@ class _ExpandedArtwork extends StatelessWidget {
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(
-          clamped(28, min: 18, max: 34),
-        ),
-        child: ArtworkImage(
-          imageUrl: imageUrl,
-          fit: BoxFit.cover,
-          placeholder: buildArtworkFallback(),
-        ),
-      ),
+    );
+  }
+}
+
+class _NowPlayingArtworkImage extends StatelessWidget {
+  const _NowPlayingArtworkImage({
+    required this.imageUrl,
+    required this.borderRadius,
+    required this.iconSize,
+    this.size,
+    this.decoration,
+    this.useAspectRatio = false,
+  });
+
+  final String? imageUrl;
+  final double borderRadius;
+  final double iconSize;
+  final double? size;
+  final BoxDecoration? decoration;
+  final bool useAspectRatio;
+
+  @override
+  Widget build(BuildContext context) {
+    assert(
+      decoration == null || size != null,
+      'Decoration requires a fixed size.',
+    );
+    final fallback = ArtworkFallback(
+      width: size,
+      height: size,
+      icon: Icons.music_note,
+      iconSize: iconSize,
+    );
+    final image = ArtworkImage(
+      imageUrl: imageUrl,
+      fit: BoxFit.cover,
+      placeholder: fallback,
+    );
+    Widget child = image;
+    if (useAspectRatio) {
+      child = AspectRatio(aspectRatio: 1, child: image);
+    } else if (size != null) {
+      child = SizedBox(width: size, height: size, child: image);
+    }
+    final clipped = ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: child,
+    );
+    if (decoration == null) {
+      return clipped;
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: decoration,
+      child: clipped,
     );
   }
 }
