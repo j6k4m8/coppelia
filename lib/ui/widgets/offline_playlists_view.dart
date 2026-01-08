@@ -5,9 +5,9 @@ import '../../models/playlist.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
 import 'library_browse_view.dart';
-import 'library_card.dart';
 import 'library_list_tile.dart';
 import 'offline_section_loader.dart';
+import 'playlist_tile.dart';
 
 /// Displays offline-ready playlists.
 class OfflinePlaylistsView extends StatelessWidget {
@@ -28,13 +28,9 @@ class OfflinePlaylistsView extends StatelessWidget {
           items: playlists,
           titleBuilder: (playlist) => playlist.name,
           subtitleBuilder: (playlist) => '${playlist.trackCount} tracks',
-          gridItemBuilder: (context, playlist) => LibraryCard(
-            title: playlist.name,
-            subtitle: '${playlist.trackCount} tracks',
-            imageUrl: playlist.imageUrl,
-            icon: Icons.playlist_play,
-            onTap: () =>
-                state.selectPlaylist(playlist, offlineOnly: true),
+          gridItemBuilder: (context, playlist) => PlaylistTile(
+            playlist: playlist,
+            onTap: () => state.selectPlaylist(playlist, offlineOnly: true),
           ),
           listItemBuilder: (context, playlist) => LibraryListTile(
             title: playlist.name,

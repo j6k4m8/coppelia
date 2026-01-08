@@ -11,6 +11,7 @@ import 'artist_context_menu.dart';
 import 'grid_metrics.dart';
 import 'library_card.dart';
 import 'media_card.dart';
+import 'playlist_tile.dart';
 import 'section_header.dart';
 import 'track_row.dart';
 
@@ -175,7 +176,7 @@ class SearchResultsView extends StatelessWidget {
               itemCount: results.playlists.length,
               itemBuilder: (context, index) {
                 final playlist = results.playlists[index];
-                return _PlaylistResultCard(
+                return PlaylistTile(
                   playlist: playlist,
                   onTap: () => state.selectPlaylist(playlist),
                 );
@@ -184,28 +185,6 @@ class SearchResultsView extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
-}
-
-class _PlaylistResultCard extends StatelessWidget {
-  const _PlaylistResultCard({
-    required this.playlist,
-    required this.onTap,
-  });
-
-  final Playlist playlist;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return MediaCard(
-      layout: MediaCardLayout.vertical,
-      title: playlist.name,
-      subtitle: '${playlist.trackCount} tracks',
-      imageUrl: playlist.imageUrl,
-      fallbackIcon: Icons.queue_music,
-      onTap: onTap,
     );
   }
 }
