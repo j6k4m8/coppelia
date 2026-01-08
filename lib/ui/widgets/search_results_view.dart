@@ -7,7 +7,7 @@ import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'album_context_menu.dart';
 import 'artist_context_menu.dart';
-import 'grid_metrics.dart';
+import 'adaptive_grid.dart';
 import 'library_card.dart';
 import 'playlist_tile.dart';
 import 'section_header.dart';
@@ -101,8 +101,11 @@ class SearchResultsView extends StatelessWidget {
           if (results.albums.isNotEmpty) ...[
             const SectionHeader(title: 'Albums'),
             SizedBox(height: space(12)),
-            _CardGrid(
+            AdaptiveGrid(
               itemCount: results.albums.length,
+              aspectRatio: 1.05,
+              spacing: space(16),
+              targetMinWidth: space(190).clamp(150.0, 240.0),
               itemBuilder: (context, index) {
                 final album = results.albums[index];
                 return LibraryCard(
@@ -128,8 +131,11 @@ class SearchResultsView extends StatelessWidget {
           if (results.artists.isNotEmpty) ...[
             const SectionHeader(title: 'Artists'),
             SizedBox(height: space(12)),
-            _CardGrid(
+            AdaptiveGrid(
               itemCount: results.artists.length,
+              aspectRatio: 1.05,
+              spacing: space(16),
+              targetMinWidth: space(190).clamp(150.0, 240.0),
               itemBuilder: (context, index) {
                 final artist = results.artists[index];
                 return LibraryCard(
@@ -152,8 +158,11 @@ class SearchResultsView extends StatelessWidget {
           if (results.genres.isNotEmpty) ...[
             const SectionHeader(title: 'Genres'),
             SizedBox(height: space(12)),
-            _CardGrid(
+            AdaptiveGrid(
               itemCount: results.genres.length,
+              aspectRatio: 1.05,
+              spacing: space(16),
+              targetMinWidth: space(190).clamp(150.0, 240.0),
               itemBuilder: (context, index) {
                 final genre = results.genres[index];
                 return LibraryCard(
@@ -170,8 +179,11 @@ class SearchResultsView extends StatelessWidget {
           if (results.playlists.isNotEmpty) ...[
             const SectionHeader(title: 'Playlists'),
             SizedBox(height: space(12)),
-            _CardGrid(
+            AdaptiveGrid(
               itemCount: results.playlists.length,
+              aspectRatio: 1.05,
+              spacing: space(16),
+              targetMinWidth: space(190).clamp(150.0, 240.0),
               itemBuilder: (context, index) {
                 final playlist = results.playlists[index];
                 return PlaylistTile(
@@ -183,41 +195,6 @@ class SearchResultsView extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
-}
-
-class _CardGrid extends StatelessWidget {
-  const _CardGrid({required this.itemCount, required this.itemBuilder});
-
-  final int itemCount;
-  final IndexedWidgetBuilder itemBuilder;
-
-  @override
-  Widget build(BuildContext context) {
-    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
-    double space(double value) => value * densityScale;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final gridMetrics = GridMetrics.fromWidth(
-          width: constraints.maxWidth,
-          itemAspectRatio: 1.05,
-          itemMinWidth: space(190).clamp(150.0, 240.0),
-          spacing: space(16),
-        );
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: itemCount,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: gridMetrics.columns,
-            crossAxisSpacing: gridMetrics.spacing,
-            mainAxisSpacing: gridMetrics.spacing,
-            childAspectRatio: gridMetrics.aspectRatio,
-          ),
-          itemBuilder: itemBuilder,
-        );
-      },
     );
   }
 }

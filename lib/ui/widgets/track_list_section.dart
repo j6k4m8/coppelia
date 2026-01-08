@@ -12,27 +12,33 @@ class TrackListSection extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.trailing,
-    required this.itemCount,
-    required this.itemBuilder,
+    this.itemCount,
+    this.itemBuilder,
     this.controller,
     this.headerPadding,
     this.listPadding,
     this.listBottomPadding,
     this.headerBottomSpacing,
     this.gap,
+    this.bodyBuilder,
   });
 
   final String title;
   final String? subtitle;
   final Widget? trailing;
-  final int itemCount;
-  final IndexedWidgetBuilder itemBuilder;
+  final int? itemCount;
+  final IndexedWidgetBuilder? itemBuilder;
   final ScrollController? controller;
   final EdgeInsets? headerPadding;
   final EdgeInsets? listPadding;
   final double? listBottomPadding;
   final double? headerBottomSpacing;
   final double? gap;
+  final Widget Function(
+    BuildContext context,
+    EdgeInsets listPadding,
+    double gap,
+  )? bodyBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +58,11 @@ class TrackListSection extends StatelessWidget {
     final resolvedGap = gap ?? space(6).clamp(4.0, 10.0);
     final resolvedHeaderBottomSpacing = headerBottomSpacing ?? space(16);
 
+    assert(
+      bodyBuilder != null || (itemCount != null && itemBuilder != null),
+      'Provide either bodyBuilder or itemCount/itemBuilder.',
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -65,13 +76,15 @@ class TrackListSection extends StatelessWidget {
         ),
         SizedBox(height: resolvedHeaderBottomSpacing),
         Expanded(
-          child: ListView.separated(
-            controller: controller,
-            padding: resolvedListPadding,
-            itemCount: itemCount,
-            separatorBuilder: (_, __) => SizedBox(height: resolvedGap),
-            itemBuilder: itemBuilder,
-          ),
+          child: bodyBuilder != null
+              ? bodyBuilder!(context, resolvedListPadding, resolvedGap)
+              : ListView.separated(
+                  controller: controller,
+                  padding: resolvedListPadding,
+                  itemCount: itemCount!,
+                  separatorBuilder: (_, __) => SizedBox(height: resolvedGap),
+                  itemBuilder: itemBuilder!,
+                ),
         ),
       ],
     );

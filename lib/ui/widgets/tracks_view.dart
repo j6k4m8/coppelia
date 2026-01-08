@@ -10,7 +10,7 @@ import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'alphabet_scroller.dart';
 import 'header_action.dart';
-import 'page_header.dart';
+import 'track_list_section.dart';
 import 'track_row.dart';
 
 /// Displays the full library track list with pagination.
@@ -200,112 +200,106 @@ class _TracksViewState extends State<TracksView> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: headerPadding,
-          child: PageHeader(
-            title: 'Tracks',
-            subtitle: label,
-            trailing: activeLetter != null
-                ? Row(
-                    children: [
-                      Text(
-                        'Jump: $activeLetter',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: ColorTokens.textSecondary(context),
-                            ),
+    return TrackListSection(
+      title: 'Tracks',
+      subtitle: label,
+      trailing: activeLetter != null
+          ? Row(
+              children: [
+                Text(
+                  'Jump: $activeLetter',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: ColorTokens.textSecondary(context),
                       ),
-                      SizedBox(width: space(10)),
-                      HeaderAction(
-                        label: 'Clear',
-                        onTap: () => state.setTrackBrowseLetter(null),
-                      ),
-                    ],
-                  )
-                : null,
-          ),
-        ),
-        SizedBox(height: space(16)),
-        Expanded(
-          child: Stack(
-            children: [
-              ListView.separated(
-                controller: _controller,
-                padding: listPadding,
-                itemCount: count + (state.hasMoreTracks ? 1 : 0),
-                separatorBuilder: (_, __) => SizedBox(height: gap),
-                itemBuilder: (context, index) {
-                  if (index >= count) {
-                    return Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: space(12).clamp(8.0, 16.0),
-                      ),
-                      child: Center(
-                        child: state.isLoadingTracks
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : TextButton.icon(
-                                onPressed: () => state.loadLibraryTracks(),
-                                icon: const Icon(Icons.expand_more),
-                                label: const Text('Load more'),
-                              ),
-                      ),
-                    );
-                  }
-                  final track = state.libraryTracks[index];
-                  return TrackRow(
-                    track: track,
-                    index: index,
-                    isActive: state.nowPlaying?.id == track.id,
-                    onTap: () => state.playFromList(state.libraryTracks, track),
-                    onPlayNext: () => state.playNext(track),
-                    onAddToQueue: () => state.enqueueTrack(track),
-                    isFavorite: state.isFavoriteTrack(track.id),
-                    isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
-                    onToggleFavorite: () => state.setTrackFavorite(
-                      track,
-                      !state.isFavoriteTrack(track.id),
-                    ),
-                    onAlbumTap: track.albumId == null
-                        ? null
-                        : () => state.selectAlbumById(track.albumId!),
-                    onArtistTap: track.artistIds.isEmpty
-                        ? null
-                        : () => state.selectArtistById(track.artistIds.first),
-                    onGoToAlbum: track.albumId == null
-                        ? null
-                        : () => state.selectAlbumById(track.albumId!),
-                    onGoToArtist: track.artistIds.isEmpty
-                        ? null
-                        : () => state.selectArtistById(track.artistIds.first),
-                  );
-                },
-              ),
-              Positioned(
-                right: 0,
-                top: space(12),
-                bottom: space(12),
-                child: AlphabetScroller(
-                  letters: _alphabet,
-                  selected: activeLetter,
-                  onSelected: (letter) =>
-                      _jumpToLetter(state, letter, rowStride),
-                  scrollable: true,
-                  baseWidth: 28,
-                  minWidth: 22,
-                  maxWidth: 36,
                 ),
+                SizedBox(width: space(10)),
+                HeaderAction(
+                  label: 'Clear',
+                  onTap: () => state.setTrackBrowseLetter(null),
+                ),
+              ],
+            )
+          : null,
+      headerPadding: headerPadding,
+      listPadding: listPadding,
+      gap: gap,
+      bodyBuilder: (context, resolvedListPadding, resolvedGap) {
+        return Stack(
+          children: [
+            ListView.separated(
+              controller: _controller,
+              padding: resolvedListPadding,
+              itemCount: count + (state.hasMoreTracks ? 1 : 0),
+              separatorBuilder: (_, __) => SizedBox(height: resolvedGap),
+              itemBuilder: (context, index) {
+                if (index >= count) {
+                  return Padding(
+                    padding: EdgeInsets.symmetric(
+                      vertical: space(12).clamp(8.0, 16.0),
+                    ),
+                    child: Center(
+                      child: state.isLoadingTracks
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : TextButton.icon(
+                              onPressed: () => state.loadLibraryTracks(),
+                              icon: const Icon(Icons.expand_more),
+                              label: const Text('Load more'),
+                            ),
+                    ),
+                  );
+                }
+                final track = state.libraryTracks[index];
+                return TrackRow(
+                  track: track,
+                  index: index,
+                  isActive: state.nowPlaying?.id == track.id,
+                  onTap: () =>
+                      state.playFromList(state.libraryTracks, track),
+                  onPlayNext: () => state.playNext(track),
+                  onAddToQueue: () => state.enqueueTrack(track),
+                  isFavorite: state.isFavoriteTrack(track.id),
+                  isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
+                  onToggleFavorite: () => state.setTrackFavorite(
+                    track,
+                    !state.isFavoriteTrack(track.id),
+                  ),
+                  onAlbumTap: track.albumId == null
+                      ? null
+                      : () => state.selectAlbumById(track.albumId!),
+                  onArtistTap: track.artistIds.isEmpty
+                      ? null
+                      : () => state.selectArtistById(track.artistIds.first),
+                  onGoToAlbum: track.albumId == null
+                      ? null
+                      : () => state.selectAlbumById(track.albumId!),
+                  onGoToArtist: track.artistIds.isEmpty
+                      ? null
+                      : () => state.selectArtistById(track.artistIds.first),
+                );
+              },
+            ),
+            Positioned(
+              right: 0,
+              top: space(12),
+              bottom: space(12),
+              child: AlphabetScroller(
+                letters: _alphabet,
+                selected: activeLetter,
+                onSelected: (letter) =>
+                    _jumpToLetter(state, letter, rowStride),
+                scrollable: true,
+                baseWidth: 28,
+                minWidth: 22,
+                maxWidth: 36,
               ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -2,13 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/artist.dart';
-import '../../core/formatters.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
 import 'artist_context_menu.dart';
-import 'library_browse_view.dart';
-import 'library_card.dart';
-import 'library_list_tile.dart';
+import 'artist_browse_view.dart';
 
 /// Displays artist browsing grid.
 class ArtistsView extends StatelessWidget {
@@ -18,44 +15,13 @@ class ArtistsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    return LibraryBrowseView<Artist>(
+    return ArtistBrowseView(
       view: LibraryView.artists,
       title: 'Artists',
-      items: state.artists,
-      titleBuilder: (artist) => artist.name,
-      subtitleBuilder: (artist) => formatArtistSubtitle(artist),
-      gridItemBuilder: (context, artist) {
-        final subtitle = formatArtistSubtitle(artist);
-        return LibraryCard(
-          title: artist.name,
-          subtitle: subtitle,
-          imageUrl: artist.imageUrl,
-          icon: Icons.people_alt,
-          onTap: () => state.selectArtist(artist),
-          onContextMenu: (position) => showArtistContextMenu(
-            context,
-            position,
-            artist,
-            state,
-          ),
-        );
-      },
-      listItemBuilder: (context, artist) {
-        final subtitle = formatArtistSubtitle(artist);
-        return LibraryListTile(
-          title: artist.name,
-          subtitle: subtitle,
-          imageUrl: artist.imageUrl,
-          icon: Icons.people_alt,
-          onTap: () => state.selectArtist(artist),
-          onContextMenu: (position) => showArtistContextMenu(
-            context,
-            position,
-            artist,
-            state,
-          ),
-        );
-      },
+      artists: state.artists,
+      onSelect: state.selectArtist,
+      onContextMenu: (context, position, artist) =>
+          showArtistContextMenu(context, position, artist, state),
     );
   }
 }

@@ -5,9 +5,7 @@ import '../../models/album.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
 import 'album_context_menu.dart';
-import 'library_browse_view.dart';
-import 'library_card.dart';
-import 'library_list_tile.dart';
+import 'album_browse_view.dart';
 
 /// Displays album browsing grid.
 class AlbumsView extends StatelessWidget {
@@ -17,44 +15,15 @@ class AlbumsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    return LibraryBrowseView<Album>(
+    return AlbumBrowseView(
       view: LibraryView.albums,
       title: 'Albums',
-      items: state.albums,
-      titleBuilder: (album) => album.name,
-      subtitleBuilder: (album) => album.artistName,
-      gridItemBuilder: (context, album) => LibraryCard(
-        title: album.name,
-        subtitle: album.artistName,
-        imageUrl: album.imageUrl,
-        icon: Icons.album,
-        onTap: () => state.selectAlbum(album),
-        onSubtitleTap: canLinkArtist(album)
-            ? () => state.selectArtistByName(album.artistName)
-            : null,
-        onContextMenu: (position) => showAlbumContextMenu(
-          context,
-          position,
-          album,
-          state,
-        ),
-      ),
-      listItemBuilder: (context, album) => LibraryListTile(
-        title: album.name,
-        subtitle: album.artistName,
-        imageUrl: album.imageUrl,
-        icon: Icons.album,
-        onTap: () => state.selectAlbum(album),
-        onSubtitleTap: canLinkArtist(album)
-            ? () => state.selectArtistByName(album.artistName)
-            : null,
-        onContextMenu: (position) => showAlbumContextMenu(
-          context,
-          position,
-          album,
-          state,
-        ),
-      ),
+      albums: state.albums,
+      onSelect: state.selectAlbum,
+      onSelectArtist: (album) =>
+          state.selectArtistByName(album.artistName),
+      onContextMenu: (context, position, album) =>
+          showAlbumContextMenu(context, position, album, state),
     );
   }
 }

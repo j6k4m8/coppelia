@@ -1,26 +1,37 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
-import '../../models/artist.dart';
 import '../../core/formatters.dart';
-import '../../state/app_state.dart';
+import '../../models/artist.dart';
 import '../../state/library_view.dart';
 import 'artist_context_menu.dart';
+import 'library_browse_view.dart';
 import 'library_card.dart';
 import 'library_list_tile.dart';
-import 'offline_browse_view.dart';
 
-/// Displays offline-ready artists.
-class OfflineArtistsView extends StatelessWidget {
-  /// Creates the offline artists view.
-  const OfflineArtistsView({super.key});
+/// Shared browse view for artist collections.
+class ArtistBrowseView extends StatelessWidget {
+  const ArtistBrowseView({
+    super.key,
+    required this.view,
+    required this.title,
+    required this.artists,
+    required this.onSelect,
+    required this.onContextMenu,
+  });
+
+  final LibraryView view;
+  final String title;
+  final List<Artist> artists;
+  final ValueChanged<Artist> onSelect;
+  final void Function(BuildContext context, Offset position, Artist artist)
+      onContextMenu;
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    return OfflineBrowseView<Artist>(
-      view: LibraryView.offlineArtists,
-      future: state.loadOfflineArtists(),
+    return LibraryBrowseView<Artist>(
+      view: view,
+      title: title,
+      items: artists,
       titleBuilder: (artist) => artist.name,
       subtitleBuilder: (artist) => formatArtistSubtitle(artist),
       gridItemBuilder: (context, artist) {
@@ -30,13 +41,9 @@ class OfflineArtistsView extends StatelessWidget {
           subtitle: subtitle,
           imageUrl: artist.imageUrl,
           icon: Icons.people_alt,
-          onTap: () => state.selectArtist(artist, offlineOnly: true),
-          onContextMenu: (position) => showArtistContextMenu(
-            context,
-            position,
-            artist,
-            state,
-          ),
+          onTap: () => onSelect(artist),
+          onContextMenu: (position) =>
+              onContextMenu(context, position, artist),
         );
       },
       listItemBuilder: (context, artist) {
@@ -46,13 +53,9 @@ class OfflineArtistsView extends StatelessWidget {
           subtitle: subtitle,
           imageUrl: artist.imageUrl,
           icon: Icons.people_alt,
-          onTap: () => state.selectArtist(artist, offlineOnly: true),
-          onContextMenu: (position) => showArtistContextMenu(
-            context,
-            position,
-            artist,
-            state,
-          ),
+          onTap: () => onSelect(artist),
+          onContextMenu: (position) =>
+              onContextMenu(context, position, artist),
         );
       },
     );
