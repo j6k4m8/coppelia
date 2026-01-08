@@ -9,6 +9,7 @@ import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
 import '../../core/color_tokens.dart';
 import 'alphabet_scroller.dart';
+import 'grid_metrics.dart';
 import 'page_header.dart';
 
 extension BrowseLayoutLabel on BrowseLayout {
@@ -168,7 +169,7 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final gridMetrics = _GridMetrics.fromWidth(
+              final gridMetrics = GridMetrics.fromWidth(
                 width: constraints.maxWidth,
                 itemAspectRatio: 1.05,
                 itemMinWidth: space(190).clamp(150.0, 240.0),
@@ -322,46 +323,5 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
       index.putIfAbsent(letter, () => i);
     }
     return index;
-  }
-}
-
-class _GridMetrics {
-  const _GridMetrics({
-    required this.columns,
-    required this.itemWidth,
-    required this.itemHeight,
-    required this.aspectRatio,
-    required this.spacing,
-  });
-
-  final int columns;
-  final double itemWidth;
-  final double itemHeight;
-  final double aspectRatio;
-  final double spacing;
-
-  static _GridMetrics fromWidth({
-    required double width,
-    required double itemAspectRatio,
-    required double itemMinWidth,
-    required double spacing,
-  }) {
-    final crossAxisCount = (width / itemMinWidth).floor();
-    final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
-    final totalSpacing = spacing * (columns - 1);
-    final itemWidth = (width - totalSpacing) / columns;
-    final itemHeight = itemWidth / itemAspectRatio;
-    return _GridMetrics(
-      columns: columns,
-      itemWidth: itemWidth,
-      itemHeight: itemHeight,
-      aspectRatio: itemAspectRatio,
-      spacing: spacing,
-    );
-  }
-
-  double offsetForIndex(int index) {
-    final row = (index / columns).floor();
-    return row * (itemHeight + spacing);
   }
 }

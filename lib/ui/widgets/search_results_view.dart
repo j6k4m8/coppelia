@@ -10,6 +10,7 @@ import '../../state/layout_density.dart';
 import '../../models/playlist.dart';
 import 'album_context_menu.dart';
 import 'artist_context_menu.dart';
+import 'grid_metrics.dart';
 import 'library_card.dart';
 import 'media_card.dart';
 import 'section_header.dart';
@@ -224,18 +225,21 @@ class _CardGrid extends StatelessWidget {
     double space(double value) => value * densityScale;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final targetWidth = space(190).clamp(150.0, 240.0);
-        final crossAxisCount = (constraints.maxWidth / targetWidth).floor();
-        final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
+        final gridMetrics = GridMetrics.fromWidth(
+          width: constraints.maxWidth,
+          itemAspectRatio: 1.05,
+          itemMinWidth: space(190).clamp(150.0, 240.0),
+          spacing: space(16),
+        );
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: itemCount,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            crossAxisSpacing: space(16),
-            mainAxisSpacing: space(16),
-            childAspectRatio: 1.05,
+            crossAxisCount: gridMetrics.columns,
+            crossAxisSpacing: gridMetrics.spacing,
+            mainAxisSpacing: gridMetrics.spacing,
+            childAspectRatio: gridMetrics.aspectRatio,
           ),
           itemBuilder: itemBuilder,
         );
