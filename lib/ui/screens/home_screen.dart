@@ -422,15 +422,16 @@ class _SearchViewState extends State<_SearchView> {
   final FocusNode _focusNode = FocusNode();
   Timer? _debounce;
   late int _lastSearchFocusRequest;
+  late final AppState _state;
 
   @override
   void initState() {
     super.initState();
-    final state = context.read<AppState>();
-    _controller = TextEditingController(text: state.searchQuery);
-    _lastSearchFocusRequest = state.searchFocusRequest;
+    _state = context.read<AppState>();
+    _controller = TextEditingController(text: _state.searchQuery);
+    _lastSearchFocusRequest = _state.searchFocusRequest;
 
-    state.addListener(_handleAppStateChange);
+    _state.addListener(_handleAppStateChange);
 
     // When entering the search page, focus inside the field.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -441,15 +442,14 @@ class _SearchViewState extends State<_SearchView> {
   }
 
   void _handleAppStateChange() {
-    final state = context.read<AppState>();
-    if (state.searchQuery.isEmpty && _controller.text.isNotEmpty) {
+    if (_state.searchQuery.isEmpty && _controller.text.isNotEmpty) {
       _controller.clear();
     } else if (!_focusNode.hasFocus &&
-        state.searchQuery != _controller.text) {
-      _controller.text = state.searchQuery;
+        _state.searchQuery != _controller.text) {
+      _controller.text = _state.searchQuery;
     }
-    if (state.searchFocusRequest != _lastSearchFocusRequest) {
-      _lastSearchFocusRequest = state.searchFocusRequest;
+    if (_state.searchFocusRequest != _lastSearchFocusRequest) {
+      _lastSearchFocusRequest = _state.searchFocusRequest;
       _focusNode.requestFocus();
     }
   }
@@ -457,7 +457,7 @@ class _SearchViewState extends State<_SearchView> {
   @override
   void dispose() {
     _debounce?.cancel();
-    context.read<AppState>().removeListener(_handleAppStateChange);
+    _state.removeListener(_handleAppStateChange);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
