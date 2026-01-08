@@ -8,6 +8,7 @@ import '../../models/artist.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../models/playlist.dart';
+import 'album_context_menu.dart';
 import 'app_snack.dart';
 import 'context_menu.dart';
 import 'library_card.dart';
@@ -113,10 +114,10 @@ class SearchResultsView extends StatelessWidget {
                   imageUrl: album.imageUrl,
                   icon: Icons.album,
                   onTap: () => state.selectAlbum(album),
-                  onSubtitleTap: _canLinkArtist(album)
+                  onSubtitleTap: canLinkArtist(album)
                       ? () => state.selectArtistByName(album.artistName)
                       : null,
-                  onContextMenu: (position) => _showAlbumMenu(
+                  onContextMenu: (position) => showAlbumContextMenu(
                     context,
                     position,
                     album,
@@ -186,93 +187,6 @@ class SearchResultsView extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Future<void> _showAlbumMenu(
-    BuildContext context,
-    Offset position,
-    Album album,
-    AppState state,
-  ) async {
-    final albumArtist = album.artistName;
-    final canGoToArtist = _canLinkArtist(album);
-    final isFavorite = state.isFavoriteAlbum(album.id);
-    final isPinned = await state.isAlbumPinned(album);
-    if (!context.mounted) {
-      return;
-    }
-    final selection = await showContextMenu<_AlbumAction>(
-      context,
-      position,
-      [
-        const PopupMenuItem(
-          value: _AlbumAction.play,
-          child: Text('Play'),
-        ),
-        const PopupMenuItem(
-          value: _AlbumAction.open,
-          child: Text('Open'),
-        ),
-        PopupMenuItem(
-          value: _AlbumAction.favorite,
-          child: isFavorite
-              ? const Row(
-                  children: [
-                    Icon(Icons.favorite, size: 16),
-                    SizedBox(width: 8),
-                    Text('Unfavorite'),
-                  ],
-                )
-              : const Text('Favorite'),
-        ),
-        PopupMenuItem(
-          value: isPinned
-              ? _AlbumAction.unpinOffline
-              : _AlbumAction.makeAvailableOffline,
-          child: isPinned
-              ? const Row(
-                  children: [
-                    Icon(Icons.download_done_rounded, size: 16),
-                    SizedBox(width: 8),
-                    Text('Unpin from Offline'),
-                  ],
-                )
-              : const Text('Make Available Offline'),
-        ),
-        if (canGoToArtist)
-          const PopupMenuItem(
-            value: _AlbumAction.goToArtist,
-            child: Text('Go to Artist'),
-          ),
-      ],
-    );
-    if (!context.mounted) {
-      return;
-    }
-    if (selection == _AlbumAction.play) {
-      await state.playAlbum(album);
-    }
-    if (selection == _AlbumAction.open) {
-      await state.selectAlbum(album);
-    }
-    if (selection == _AlbumAction.goToArtist) {
-      await state.selectArtistByName(albumArtist);
-    }
-    if (selection == _AlbumAction.favorite) {
-      if (!context.mounted) {
-        return;
-      }
-      await runWithSnack(
-        context,
-        () => state.setAlbumFavorite(album, !isFavorite),
-      );
-    }
-    if (selection == _AlbumAction.makeAvailableOffline) {
-      await state.makeAlbumAvailableOffline(album);
-    }
-    if (selection == _AlbumAction.unpinOffline) {
-      await state.unpinAlbumOffline(album);
-    }
   }
 
   Future<void> _showArtistMenu(
@@ -375,21 +289,7 @@ class _PlaylistResultCard extends StatelessWidget {
   }
 }
 
-enum _AlbumAction {
-  play,
-  open,
-  favorite,
-  makeAvailableOffline,
-  unpinOffline,
-  goToArtist
-}
-
 enum _ArtistAction { play, open, favorite, makeAvailableOffline, unpinOffline }
-
-bool _canLinkArtist(Album album) {
-  final artist = album.artistName;
-  return artist.isNotEmpty && artist != 'Unknown Artist';
-}
 
 class _CardGrid extends StatelessWidget {
   const _CardGrid({required this.itemCount, required this.itemBuilder});
