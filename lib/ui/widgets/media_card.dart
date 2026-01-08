@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/color_tokens.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
+import 'artwork_fallback.dart';
 import 'artwork_image.dart';
 
 /// Layout style for a media card.
@@ -92,14 +93,9 @@ class MediaCard extends StatelessWidget {
     final iconSize = clamped(32, min: 18, max: 36);
     final overlayPadding = artOverlayPadding ??
         EdgeInsets.all(space(10).clamp(4.0, 12.0));
-    Widget buildArtworkFallback({double? iconOverride}) => Container(
-          color: ColorTokens.cardFillStrong(context),
-          child: Center(
-            child: Icon(
-              fallbackIcon,
-              size: iconOverride ?? iconSize,
-            ),
-          ),
+    Widget buildArtworkFallback({double? iconOverride}) => ArtworkFallback(
+          icon: fallbackIcon,
+          iconSize: iconOverride ?? iconSize,
         );
     final baseDecoration = BoxDecoration(
       color: backgroundColor ?? ColorTokens.cardFill(context),

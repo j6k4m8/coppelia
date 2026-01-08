@@ -5,6 +5,7 @@ import '../../core/color_tokens.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
+import 'artwork_fallback.dart';
 import 'artwork_image.dart';
 import 'collection_header.dart';
 import 'track_row.dart';
@@ -222,14 +223,9 @@ class _Header extends StatelessWidget {
           return Tooltip(message: tooltip, child: button);
         }
 
-        Widget buildArtworkFallback() => Container(
-              color: ColorTokens.cardFillStrong(context),
-              child: Center(
-                child: Icon(
-                  Icons.library_music,
-                  size: clamped(42, min: 30, max: 48),
-                ),
-              ),
+        Widget buildArtworkFallback() => ArtworkFallback(
+              icon: Icons.library_music,
+              iconSize: clamped(42, min: 30, max: 48),
             );
         final artworkExtent = clamped(isNarrow ? 240 : 200, min: 160, max: 260);
         Widget details() {

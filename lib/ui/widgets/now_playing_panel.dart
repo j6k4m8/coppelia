@@ -13,6 +13,7 @@ import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
 import '../../state/now_playing_layout.dart';
 import 'app_snack.dart';
+import 'artwork_fallback.dart';
 import 'artwork_image.dart';
 
 /// Right-side panel for playback and queue control.
@@ -870,12 +871,9 @@ class _Artwork extends StatelessWidget {
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
     final imageUrl = track?.imageUrl;
-    Widget buildArtworkFallback() => Container(
-          color: ColorTokens.cardFillStrong(context),
-          child: Icon(
-            Icons.music_note,
-            size: clamped(48, min: 34, max: 60),
-          ),
+    Widget buildArtworkFallback() => ArtworkFallback(
+          icon: Icons.music_note,
+          iconSize: clamped(48, min: 34, max: 60),
         );
     final artwork = ClipRRect(
       borderRadius: BorderRadius.circular(
@@ -906,14 +904,11 @@ class _MiniArtwork extends StatelessWidget {
         (value * densityScale).clamp(min, max);
     final imageUrl = track?.imageUrl;
     final artSize = clamped(56, min: 40, max: 68);
-    Widget buildArtworkFallback() => Container(
+    Widget buildArtworkFallback() => ArtworkFallback(
           width: artSize,
           height: artSize,
-          color: ColorTokens.cardFillStrong(context),
-          child: Icon(
-            Icons.music_note,
-            size: clamped(24, min: 16, max: 28),
-          ),
+          icon: Icons.music_note,
+          iconSize: clamped(24, min: 16, max: 28),
         );
     final artwork = ClipRRect(
       borderRadius: BorderRadius.circular(
@@ -1214,12 +1209,9 @@ class _ExpandedArtwork extends StatelessWidget {
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
     final imageUrl = track?.imageUrl;
-    Widget buildArtworkFallback() => Container(
-          color: ColorTokens.cardFillStrong(context),
-          child: Icon(
-            Icons.music_note,
-            size: clamped(60, min: 40, max: 84),
-          ),
+    Widget buildArtworkFallback() => ArtworkFallback(
+          icon: Icons.music_note,
+          iconSize: clamped(60, min: 40, max: 84),
         );
     return Container(
       width: size,
