@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../core/formatters.dart';
 import '../../models/artist.dart';
 import '../../state/library_view.dart';
-import 'artist_context_menu.dart';
 import 'library_browse_view.dart';
 import 'library_card.dart';
 import 'library_list_tile.dart';

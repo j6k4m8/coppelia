@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../models/artist.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
 import 'artist_context_menu.dart';

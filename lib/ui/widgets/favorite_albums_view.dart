@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../models/album.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
 import 'album_context_menu.dart';
