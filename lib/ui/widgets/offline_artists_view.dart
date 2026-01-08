@@ -9,7 +9,7 @@ import 'artist_context_menu.dart';
 import 'library_browse_view.dart';
 import 'library_card.dart';
 import 'library_list_tile.dart';
-import 'offline_empty_view.dart';
+import 'offline_section_loader.dart';
 
 /// Displays offline-ready artists.
 class OfflineArtistsView extends StatelessWidget {
@@ -19,20 +19,11 @@ class OfflineArtistsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    return FutureBuilder<List<Artist>>(
+    return OfflineSectionLoader<Artist>(
       future: state.loadOfflineArtists(),
-      builder: (context, snapshot) {
-        final artists = snapshot.data ?? const <Artist>[];
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            artists.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (artists.isEmpty) {
-          return OfflineEmptyView(
-            title: LibraryView.offlineArtists.title,
-            subtitle: LibraryView.offlineArtists.subtitle,
-          );
-        }
+      emptyTitle: LibraryView.offlineArtists.title,
+      emptySubtitle: LibraryView.offlineArtists.subtitle,
+      builder: (context, artists) {
         return LibraryBrowseView<Artist>(
           view: LibraryView.offlineArtists,
           title: LibraryView.offlineArtists.title,

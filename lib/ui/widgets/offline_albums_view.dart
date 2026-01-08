@@ -8,7 +8,7 @@ import 'album_context_menu.dart';
 import 'library_browse_view.dart';
 import 'library_card.dart';
 import 'library_list_tile.dart';
-import 'offline_empty_view.dart';
+import 'offline_section_loader.dart';
 
 /// Displays offline-ready albums.
 class OfflineAlbumsView extends StatelessWidget {
@@ -18,20 +18,11 @@ class OfflineAlbumsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    return FutureBuilder<List<Album>>(
+    return OfflineSectionLoader<Album>(
       future: state.loadOfflineAlbums(),
-      builder: (context, snapshot) {
-        final albums = snapshot.data ?? const <Album>[];
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            albums.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (albums.isEmpty) {
-          return OfflineEmptyView(
-            title: LibraryView.offlineAlbums.title,
-            subtitle: LibraryView.offlineAlbums.subtitle,
-          );
-        }
+      emptyTitle: LibraryView.offlineAlbums.title,
+      emptySubtitle: LibraryView.offlineAlbums.subtitle,
+      builder: (context, albums) {
         return LibraryBrowseView<Album>(
           view: LibraryView.offlineAlbums,
           title: LibraryView.offlineAlbums.title,

@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
-import 'offline_empty_view.dart';
+import 'offline_section_loader.dart';
 import 'track_list_section.dart';
 import 'track_row.dart';
 
@@ -16,20 +16,11 @@ class OfflineTracksView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    return FutureBuilder<List<MediaItem>>(
+    return OfflineSectionLoader<MediaItem>(
       future: state.loadOfflineTracks(),
-      builder: (context, snapshot) {
-        final tracks = snapshot.data ?? const <MediaItem>[];
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            tracks.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (tracks.isEmpty) {
-          return OfflineEmptyView(
-            title: LibraryView.offlineTracks.title,
-            subtitle: LibraryView.offlineTracks.subtitle,
-          );
-        }
+      emptyTitle: LibraryView.offlineTracks.title,
+      emptySubtitle: LibraryView.offlineTracks.subtitle,
+      builder: (context, tracks) {
         return TrackListSection(
           title: 'Offline / Tracks',
           subtitle: '${tracks.length} cached tracks',

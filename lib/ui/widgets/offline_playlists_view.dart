@@ -7,7 +7,7 @@ import '../../state/library_view.dart';
 import 'library_browse_view.dart';
 import 'library_card.dart';
 import 'library_list_tile.dart';
-import 'offline_empty_view.dart';
+import 'offline_section_loader.dart';
 
 /// Displays offline-ready playlists.
 class OfflinePlaylistsView extends StatelessWidget {
@@ -17,20 +17,11 @@ class OfflinePlaylistsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    return FutureBuilder<List<Playlist>>(
+    return OfflineSectionLoader<Playlist>(
       future: state.loadOfflinePlaylists(),
-      builder: (context, snapshot) {
-        final playlists = snapshot.data ?? const <Playlist>[];
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            playlists.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (playlists.isEmpty) {
-          return OfflineEmptyView(
-            title: LibraryView.offlinePlaylists.title,
-            subtitle: LibraryView.offlinePlaylists.subtitle,
-          );
-        }
+      emptyTitle: LibraryView.offlinePlaylists.title,
+      emptySubtitle: LibraryView.offlinePlaylists.subtitle,
+      builder: (context, playlists) {
         return LibraryBrowseView<Playlist>(
           view: LibraryView.offlinePlaylists,
           title: LibraryView.offlinePlaylists.title,

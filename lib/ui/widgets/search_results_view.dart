@@ -3,8 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
-import '../../models/album.dart';
-import '../../models/artist.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../models/playlist.dart';
@@ -188,7 +186,6 @@ class SearchResultsView extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _PlaylistResultCard extends StatelessWidget {
