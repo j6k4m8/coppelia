@@ -1,30 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../models/smart_list.dart';
+import '../../models/playlist.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'media_card.dart';
 import 'play_overlay_button.dart';
 
-/// Artwork tile for a Smart List.
-class SmartListCard extends StatelessWidget {
-  /// Creates a Smart List card.
-  const SmartListCard({
+/// Shared playlist card used across library and search views.
+class PlaylistTile extends StatelessWidget {
+  const PlaylistTile({
     super.key,
-    required this.smartList,
+    required this.playlist,
     required this.onTap,
     this.onPlay,
+    this.width,
   });
 
-  /// Smart List metadata.
-  final SmartList smartList;
-
-  /// Tap handler.
+  final Playlist playlist;
   final VoidCallback onTap;
-
-  /// Optional handler to play the list.
   final VoidCallback? onPlay;
+  final double? width;
 
   @override
   Widget build(BuildContext context) {
@@ -34,12 +30,12 @@ class SmartListCard extends StatelessWidget {
         (value * densityScale).clamp(min, max);
     return MediaCard(
       layout: MediaCardLayout.vertical,
-      title: smartList.name,
-      subtitle: 'Smart list',
-      imageUrl: null,
-      fallbackIcon: Icons.auto_awesome,
+      title: playlist.name,
+      subtitle: '${playlist.trackCount} tracks',
+      imageUrl: playlist.imageUrl,
+      fallbackIcon: Icons.queue_music,
       onTap: onTap,
-      width: clamped(200, min: 130, max: 240),
+      width: width ?? clamped(200, min: 130, max: 240),
       artOverlay: onPlay == null ? null : PlayOverlayButton(onTap: onPlay!),
     );
   }

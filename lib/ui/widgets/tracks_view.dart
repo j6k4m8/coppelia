@@ -8,7 +8,9 @@ import '../../core/color_tokens.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
-import 'page_header.dart';
+import 'alphabet_scroller.dart';
+import 'header_action.dart';
+import 'track_list_section.dart';
 import 'track_row.dart';
 
 /// Displays the full library track list with pagination.
@@ -198,224 +200,106 @@ class _TracksViewState extends State<TracksView> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: headerPadding,
-          child: PageHeader(
-            title: 'Tracks',
-            subtitle: label,
-            trailing: activeLetter != null
-                ? Row(
-                    children: [
-                      Text(
-                        'Jump: $activeLetter',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: ColorTokens.textSecondary(context),
-                            ),
+    return TrackListSection(
+      title: 'Tracks',
+      subtitle: label,
+      trailing: activeLetter != null
+          ? Row(
+              children: [
+                Text(
+                  'Jump: $activeLetter',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: ColorTokens.textSecondary(context),
                       ),
-                      SizedBox(width: space(10)),
-                      _HeaderAction(
-                        label: 'Clear',
-                        onTap: () => state.setTrackBrowseLetter(null),
-                      ),
-                    ],
-                  )
-                : null,
-          ),
-        ),
-        SizedBox(height: space(16)),
-        Expanded(
-          child: Stack(
-            children: [
-              ListView.separated(
-                controller: _controller,
-                padding: listPadding,
-                itemCount: count + (state.hasMoreTracks ? 1 : 0),
-                separatorBuilder: (_, __) => SizedBox(height: gap),
-                itemBuilder: (context, index) {
-                  if (index >= count) {
-                    return Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: space(12).clamp(8.0, 16.0),
-                      ),
-                      child: Center(
-                        child: state.isLoadingTracks
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : TextButton.icon(
-                                onPressed: () => state.loadLibraryTracks(),
-                                icon: const Icon(Icons.expand_more),
-                                label: const Text('Load more'),
-                              ),
-                      ),
-                    );
-                  }
-                  final track = state.libraryTracks[index];
-                  return TrackRow(
-                    track: track,
-                    index: index,
-                    isActive: state.nowPlaying?.id == track.id,
-                    onTap: () => state.playFromList(state.libraryTracks, track),
-                    onPlayNext: () => state.playNext(track),
-                    onAddToQueue: () => state.enqueueTrack(track),
-                    isFavorite: state.isFavoriteTrack(track.id),
-                    isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
-                    onToggleFavorite: () => state.setTrackFavorite(
-                      track,
-                      !state.isFavoriteTrack(track.id),
+                ),
+                SizedBox(width: space(10)),
+                HeaderAction(
+                  label: 'Clear',
+                  onTap: () => state.setTrackBrowseLetter(null),
+                ),
+              ],
+            )
+          : null,
+      headerPadding: headerPadding,
+      listPadding: listPadding,
+      gap: gap,
+      bodyBuilder: (context, resolvedListPadding, resolvedGap) {
+        return Stack(
+          children: [
+            ListView.separated(
+              controller: _controller,
+              padding: resolvedListPadding,
+              itemCount: count + (state.hasMoreTracks ? 1 : 0),
+              separatorBuilder: (_, __) => SizedBox(height: resolvedGap),
+              itemBuilder: (context, index) {
+                if (index >= count) {
+                  return Padding(
+                    padding: EdgeInsets.symmetric(
+                      vertical: space(12).clamp(8.0, 16.0),
                     ),
-                    onAlbumTap: track.albumId == null
-                        ? null
-                        : () => state.selectAlbumById(track.albumId!),
-                    onArtistTap: track.artistIds.isEmpty
-                        ? null
-                        : () => state.selectArtistById(track.artistIds.first),
-                    onGoToAlbum: track.albumId == null
-                        ? null
-                        : () => state.selectAlbumById(track.albumId!),
-                    onGoToArtist: track.artistIds.isEmpty
-                        ? null
-                        : () => state.selectArtistById(track.artistIds.first),
+                    child: Center(
+                      child: state.isLoadingTracks
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : TextButton.icon(
+                              onPressed: () => state.loadLibraryTracks(),
+                              icon: const Icon(Icons.expand_more),
+                              label: const Text('Load more'),
+                            ),
+                    ),
                   );
-                },
-              ),
-              Positioned(
-                right: 0,
-                top: space(12),
-                bottom: space(12),
-                child: _AlphabetScroller(
-                  letters: _alphabet,
-                  selected: activeLetter,
-                  onSelected: (letter) =>
-                      _jumpToLetter(state, letter, rowStride),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HeaderAction extends StatelessWidget {
-  const _HeaderAction({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AlphabetScroller extends StatelessWidget {
-  const _AlphabetScroller({
-    required this.letters,
-    required this.onSelected,
-    required this.selected,
-  });
-
-  final List<String> letters;
-  final ValueChanged<String> onSelected;
-  final String? selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
-    double space(double value) => value * densityScale;
-    final slotHeight = space(18).clamp(14.0, 22.0);
-    return Container(
-      width: space(28).clamp(22.0, 36.0),
-      padding: EdgeInsets.symmetric(vertical: space(8)),
-      decoration: BoxDecoration(
-        color: ColorTokens.cardFill(context, 0.04),
-        borderRadius: BorderRadius.circular(
-          space(20).clamp(14.0, 24.0),
-        ),
-        border: Border.all(color: ColorTokens.border(context)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: letters
-              .map(
-                (letter) => SizedBox(
-                  height: slotHeight,
-                  child: _AlphabetLetter(
-                    letter: letter,
-                    selected: selected == letter,
-                    onTap: () => onSelected(letter),
+                }
+                final track = state.libraryTracks[index];
+                return TrackRow(
+                  track: track,
+                  index: index,
+                  isActive: state.nowPlaying?.id == track.id,
+                  onTap: () =>
+                      state.playFromList(state.libraryTracks, track),
+                  onPlayNext: () => state.playNext(track),
+                  onAddToQueue: () => state.enqueueTrack(track),
+                  isFavorite: state.isFavoriteTrack(track.id),
+                  isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
+                  onToggleFavorite: () => state.setTrackFavorite(
+                    track,
+                    !state.isFavoriteTrack(track.id),
                   ),
-                ),
-              )
-              .toList(),
-        ),
-      ),
-    );
-  }
-}
-
-class _AlphabetLetter extends StatelessWidget {
-  const _AlphabetLetter({
-    required this.letter,
-    required this.onTap,
-    required this.selected,
-  });
-
-  final String letter;
-  final VoidCallback onTap;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
-    double space(double value) => value * densityScale;
-    final baseStyle = Theme.of(context).textTheme.labelSmall;
-    return TextButton(
-      onPressed: onTap,
-      style: ButtonStyle(
-        padding: WidgetStateProperty.all(EdgeInsets.zero),
-        minimumSize: WidgetStateProperty.all(Size(space(20), space(20))),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        foregroundColor: WidgetStateProperty.resolveWith((states) {
-          if (selected) {
-            return Theme.of(context).colorScheme.primary;
-          }
-          if (states.contains(WidgetState.hovered)) {
-            return ColorTokens.textPrimary(context);
-          }
-          return ColorTokens.textSecondary(context, 0.7);
-        }),
-        textStyle: WidgetStateProperty.all(baseStyle),
-        overlayColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.hovered)) {
-            return ColorTokens.cardFill(context, 0.08);
-          }
-          return Colors.transparent;
-        }),
-      ),
-      child: Text(letter),
+                  onAlbumTap: track.albumId == null
+                      ? null
+                      : () => state.selectAlbumById(track.albumId!),
+                  onArtistTap: track.artistIds.isEmpty
+                      ? null
+                      : () => state.selectArtistById(track.artistIds.first),
+                  onGoToAlbum: track.albumId == null
+                      ? null
+                      : () => state.selectAlbumById(track.albumId!),
+                  onGoToArtist: track.artistIds.isEmpty
+                      ? null
+                      : () => state.selectArtistById(track.artistIds.first),
+                );
+              },
+            ),
+            Positioned(
+              right: 0,
+              top: space(12),
+              bottom: space(12),
+              child: AlphabetScroller(
+                letters: _alphabet,
+                selected: activeLetter,
+                onSelected: (letter) =>
+                    _jumpToLetter(state, letter, rowStride),
+                scrollable: true,
+                baseWidth: 28,
+                minWidth: 22,
+                maxWidth: 36,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

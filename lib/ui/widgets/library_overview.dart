@@ -9,10 +9,12 @@ import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
 import 'featured_track_card.dart';
 import 'media_card.dart';
-import 'playlist_card.dart';
+import 'playlist_tile.dart';
 import 'section_header.dart';
 import 'smart_list_card.dart';
 import 'header_controls.dart';
+import 'header_action.dart';
+import 'adaptive_grid.dart';
 
 /// Displays featured content and playlists.
 class LibraryOverview extends StatelessWidget {
@@ -151,7 +153,7 @@ class LibraryOverview extends StatelessWidget {
                         ?.copyWith(color: ColorTokens.textSecondary(context)),
                   ),
                   SizedBox(width: space(8)),
-                  _HeaderAction(
+                  HeaderAction(
                     label: 'View all',
                     onTap: () =>
                         state.selectLibraryView(LibraryView.homeFeatured),
@@ -201,7 +203,7 @@ class LibraryOverview extends StatelessWidget {
                         ?.copyWith(color: ColorTokens.textSecondary(context)),
                   ),
                   SizedBox(width: space(8)),
-                  _HeaderAction(
+                  HeaderAction(
                     label: 'View all',
                     onTap: () =>
                         state.selectLibraryView(LibraryView.homeRecent),
@@ -320,7 +322,7 @@ class LibraryOverview extends StatelessWidget {
                           ?.copyWith(color: ColorTokens.textSecondary(context)),
                     ),
                   SizedBox(width: space(12)),
-                  _HeaderAction(
+                  HeaderAction(
                     label: 'Refresh',
                     onTap: () => state.loadJumpIn(force: true),
                   ),
@@ -398,32 +400,17 @@ class LibraryOverview extends StatelessWidget {
           SizedBox(height: space(16)),
           Padding(
             padding: sectionPadding(),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Slightly smaller target width so phones can hit 2 columns
-                // without making cards too tiny.
-                final targetWidth = space(170).clamp(140.0, 220.0);
-                final crossAxisCount =
-                    (constraints.maxWidth / targetWidth).floor();
-                final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: columns,
-                    crossAxisSpacing: space(16),
-                    mainAxisSpacing: space(16),
-                    childAspectRatio: 1.1,
-                  ),
-                  itemCount: smartLists.length,
-                  itemBuilder: (context, index) {
-                    final list = smartLists[index];
-                    return SmartListCard(
-                      smartList: list,
-                      onTap: () => state.selectSmartList(list),
-                      onPlay: () => state.playSmartList(list),
-                    );
-                  },
+            child: AdaptiveGrid(
+              itemCount: smartLists.length,
+              aspectRatio: 1.1,
+              spacing: space(16),
+              targetMinWidth: space(170).clamp(140.0, 220.0),
+              itemBuilder: (context, index) {
+                final list = smartLists[index];
+                return SmartListCard(
+                  smartList: list,
+                  onTap: () => state.selectSmartList(list),
+                  onPlay: () => state.playSmartList(list),
                 );
               },
             ),
@@ -439,7 +426,7 @@ class LibraryOverview extends StatelessWidget {
             padding: sectionPadding(),
             child: SectionHeader(
               title: 'Playlists',
-              action: _HeaderAction(
+              action: HeaderAction(
                 label: 'View all',
                 onTap: () => state.selectLibraryView(LibraryView.homePlaylists),
               ),
@@ -462,19 +449,15 @@ class LibraryOverview extends StatelessWidget {
                   minColumnsOnPhone: 2,
                   absoluteMinItemWidth: space(150).clamp(120.0, 180.0),
                 );
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: columns,
-                    crossAxisSpacing: space(16),
-                    mainAxisSpacing: space(16),
-                    childAspectRatio: 1.1,
-                  ),
+                return AdaptiveGrid(
                   itemCount: state.playlists.length,
+                  aspectRatio: 1.1,
+                  spacing: space(16),
+                  targetMinWidth: targetWidth,
+                  columns: columns,
                   itemBuilder: (context, index) {
                     final playlist = state.playlists[index];
-                    return PlaylistCard(
+                    return PlaylistTile(
                       playlist: playlist,
                       onTap: () => state.selectPlaylist(playlist),
                       onPlay: () => state.playPlaylist(playlist),
@@ -498,31 +481,6 @@ class LibraryOverview extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: children,
-      ),
-    );
-  }
-}
-
-class _HeaderAction extends StatelessWidget {
-  const _HeaderAction({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-        ),
       ),
     );
   }

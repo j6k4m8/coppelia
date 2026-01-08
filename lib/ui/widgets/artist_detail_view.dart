@@ -6,11 +6,11 @@ import '../../models/album.dart';
 import '../../core/formatters.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
+import 'album_context_menu.dart';
 import 'app_snack.dart';
-import 'context_menu.dart';
 import 'collection_detail_view.dart';
 import 'collection_header.dart';
-import 'library_cover_card.dart';
+import 'library_card.dart';
 import 'section_header.dart';
 
 /// Detail view for a single artist.
@@ -197,102 +197,6 @@ List<Album> _albumsForArtist(List<Album> albums, String artistName) {
   return filtered;
 }
 
-Future<void> _showAlbumMenu(
-  BuildContext context,
-  Offset position,
-  Album album,
-  AppState state,
-) async {
-  final canGoToArtist =
-      album.artistName.isNotEmpty && album.artistName != 'Unknown Artist';
-  final isFavorite = state.isFavoriteAlbum(album.id);
-  final isPinned = await state.isAlbumPinned(album);
-  if (!context.mounted) {
-    return;
-  }
-  final selection = await showContextMenu<_AlbumAction>(
-    context,
-    position,
-    [
-      const PopupMenuItem(
-        value: _AlbumAction.play,
-        child: Text('Play'),
-      ),
-      const PopupMenuItem(
-        value: _AlbumAction.open,
-        child: Text('Open'),
-      ),
-      PopupMenuItem(
-        value: _AlbumAction.favorite,
-        child: isFavorite
-            ? const Row(
-                children: [
-                  Icon(Icons.favorite, size: 16),
-                  SizedBox(width: 8),
-                  Text('Unfavorite'),
-                ],
-              )
-            : const Text('Favorite'),
-      ),
-      PopupMenuItem(
-        value: isPinned
-            ? _AlbumAction.unpinOffline
-            : _AlbumAction.makeAvailableOffline,
-        child: isPinned
-            ? const Row(
-                children: [
-                  Icon(Icons.download_done_rounded, size: 16),
-                  SizedBox(width: 8),
-                  Text('Unpin from Offline'),
-                ],
-              )
-            : const Text('Make Available Offline'),
-      ),
-      if (canGoToArtist)
-        const PopupMenuItem(
-          value: _AlbumAction.goToArtist,
-          child: Text('Go to Artist'),
-        ),
-    ],
-  );
-  if (selection == _AlbumAction.play) {
-    await state.playAlbum(album);
-  }
-  if (selection == _AlbumAction.open) {
-    await state.selectAlbum(album);
-  }
-  if (selection == _AlbumAction.goToArtist) {
-    await state.selectArtistByName(album.artistName);
-  }
-  if (selection == _AlbumAction.favorite) {
-    if (!context.mounted) {
-      return;
-    }
-    await runWithSnack(
-      context,
-      () => state.setAlbumFavorite(album, !isFavorite),
-    );
-  if (!context.mounted) {
-    return;
-  }
-  }
-  if (selection == _AlbumAction.makeAvailableOffline) {
-    await state.makeAlbumAvailableOffline(album);
-  }
-  if (selection == _AlbumAction.unpinOffline) {
-    await state.unpinAlbumOffline(album);
-  }
-}
-
-enum _AlbumAction {
-  play,
-  open,
-  favorite,
-  makeAvailableOffline,
-  unpinOffline,
-  goToArtist
-}
-
 class _ArtistAlbumsSection extends StatelessWidget {
   const _ArtistAlbumsSection({
     required this.albums,
@@ -339,13 +243,13 @@ class _ArtistAlbumsSection extends StatelessWidget {
               itemCount: albums.length,
               itemBuilder: (context, index) {
                 final album = albums[index];
-                return LibraryCoverCard(
+                return LibraryCard(
                   title: album.name,
                   subtitle: '${album.trackCount} tracks',
                   imageUrl: album.imageUrl,
                   icon: Icons.album,
                   onTap: () => onSelect(album),
-                  onContextMenu: (position) => _showAlbumMenu(
+                  onContextMenu: (position) => showAlbumContextMenu(
                     context,
                     position,
                     album,

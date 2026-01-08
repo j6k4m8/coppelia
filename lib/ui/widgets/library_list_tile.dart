@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/color_tokens.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
+import 'artwork_fallback.dart';
 import 'artwork_image.dart';
 
 /// Compact list tile for library items.
@@ -56,11 +57,11 @@ class LibraryListTile extends StatelessWidget {
         ? space(2).clamp(0.0, 3.0)
         : space(4).clamp(2.0, 6.0);
     final artSize = clamped(48, min: 24, max: 56);
-    Widget buildArtworkFallback() => Container(
+    Widget buildArtworkFallback() => ArtworkFallback(
           width: artSize,
           height: artSize,
-          color: ColorTokens.cardFillStrong(context),
-          child: Icon(icon, size: clamped(20, min: 14, max: 24)),
+          icon: icon,
+          iconSize: clamped(20, min: 14, max: 24),
         );
     final titleStyle = density == LayoutDensity.sardine
         ? Theme.of(context).textTheme.titleSmall

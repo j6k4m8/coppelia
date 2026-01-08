@@ -10,6 +10,7 @@ import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'app_snack.dart';
+import 'artwork_fallback.dart';
 import 'artwork_image.dart';
 import 'context_menu.dart';
 import 'playlist_dialogs.dart';
@@ -108,11 +109,11 @@ class TrackRow extends StatelessWidget {
     final artSize = clamped(44, min: 24, max: 56);
     final artRadius = clamped(10, min: 4, max: 12);
     final indexWidth = clamped(32, min: 16, max: 36);
-    Widget buildArtworkFallback() => Container(
+    Widget buildArtworkFallback() => ArtworkFallback(
           width: artSize,
           height: artSize,
-          color: ColorTokens.cardFillStrong(context),
-          child: Icon(Icons.music_note, size: clamped(18, min: 14, max: 20)),
+          icon: Icons.music_note,
+          iconSize: clamped(18, min: 14, max: 20),
         );
     return Material(
       color: baseColor,

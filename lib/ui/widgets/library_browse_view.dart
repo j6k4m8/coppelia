@@ -7,7 +7,8 @@ import '../../state/app_state.dart';
 import '../../state/browse_layout.dart';
 import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
-import '../../core/color_tokens.dart';
+import 'alphabet_scroller.dart';
+import 'grid_metrics.dart';
 import 'page_header.dart';
 
 extension BrowseLayoutLabel on BrowseLayout {
@@ -74,7 +75,9 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
 
   @override
   void dispose() {
-    _state.saveScrollOffset(_scrollKey, _controller.offset);
+    if (_controller.hasClients) {
+      _state.saveScrollOffset(_scrollKey, _controller.offset);
+    }
     _controller.removeListener(_handleScroll);
     _controller.dispose();
     super.dispose();
@@ -165,7 +168,7 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final gridMetrics = _GridMetrics.fromWidth(
+              final gridMetrics = GridMetrics.fromWidth(
                 width: constraints.maxWidth,
                 itemAspectRatio: 1.05,
                 itemMinWidth: space(190).clamp(150.0, 240.0),
@@ -178,34 +181,32 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                     controller: _controller,
                     slivers: [
                       SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          leftGutter,
-                          0,
-                          rightGutter,
-                          space(12),
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            leftGutter,
+                            0,
+                            rightGutter,
+                            space(12),
+                          ),
+                          child: SegmentedButton<BrowseLayout>(
+                            segments: BrowseLayout.values
+                                .map(
+                                  (mode) => ButtonSegment(
+                                    value: mode,
+                                    label: Text(mode.label),
+                                    icon: Icon(mode.icon, size: 16),
+                                  ),
+                                )
+                                .toList(),
+                            selected: {layout},
+                            onSelectionChanged: (selection) {
+                              context.read<AppState>().setBrowseLayout(
+                                    widget.view,
+                                    selection.first,
+                                  );
+                            },
+                          ),
                         ),
-                        child: SegmentedButton<BrowseLayout>(
-                          segments: BrowseLayout.values
-                              .map(
-                                (mode) => ButtonSegment(
-                                  value: mode,
-                                  label: Text(mode.label),
-                                  icon: Icon(mode.icon, size: 16),
-                                ),
-                              )
-                              .toList(),
-                          selected: {layout},
-                          onSelectionChanged: (selection) {
-                            context
-                                .read<AppState>()
-                                .setBrowseLayout(
-                                  widget.view,
-                                  selection.first,
-                                );
-                          },
-                        ),
-                      ),
                       ),
                       layout == BrowseLayout.grid
                           ? SliverPadding(
@@ -257,7 +258,7 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                       right: 0,
                       top: 12,
                       bottom: 12,
-                      child: _AlphabetScroller(
+                      child: AlphabetScroller(
                         letters: letters,
                         onSelected: (letter) {
                           final targetIndex = letterIndex[letter];
@@ -273,6 +274,10 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
                             curve: Curves.easeOut,
                           );
                         },
+                        useSubsampling: true,
+                        baseWidth: 26,
+                        minWidth: 20,
+                        maxWidth: 32,
                       ),
                     ),
                   Positioned(
@@ -315,152 +320,5 @@ class _LibraryBrowseViewState<T> extends State<LibraryBrowseView<T>> {
       index.putIfAbsent(letter, () => i);
     }
     return index;
-  }
-}
-
-class _AlphabetScroller extends StatelessWidget {
-  const _AlphabetScroller({
-    required this.letters,
-    required this.onSelected,
-  });
-
-  final List<String> letters;
-  final ValueChanged<String> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
-    double space(double value) => value * densityScale;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final slotHeight = space(18).clamp(14.0, 22.0);
-        final maxSlots = ((constraints.maxHeight - space(16)) / slotHeight)
-            .floor()
-            .clamp(1, letters.length);
-        final displayLetters = _subsampleLetters(letters, maxSlots);
-        return Container(
-          width: space(26).clamp(20.0, 32.0),
-          padding: EdgeInsets.symmetric(vertical: space(8)),
-          decoration: BoxDecoration(
-            color: ColorTokens.cardFill(context, 0.04),
-            borderRadius: BorderRadius.circular(
-              space(20).clamp(14.0, 24.0),
-            ),
-            border: Border.all(color: ColorTokens.border(context)),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: displayLetters.map((letter) {
-              return SizedBox(
-                height: slotHeight,
-                child: _AlphabetLetter(
-                  letter: letter,
-                  onTap: () => onSelected(letter),
-                ),
-              );
-            }).toList(),
-          ),
-        );
-      },
-    );
-  }
-
-  List<String> _subsampleLetters(List<String> items, int maxSlots) {
-    if (items.length <= maxSlots) {
-      return items;
-    }
-    if (maxSlots <= 1) {
-      return [items.first];
-    }
-    final sampled = <String>[];
-    final step = (items.length - 1) / (maxSlots - 1);
-    for (var i = 0; i < maxSlots; i++) {
-      final index = (i * step).round().clamp(0, items.length - 1);
-      final letter = items[index];
-      if (sampled.isEmpty || sampled.last != letter) {
-        sampled.add(letter);
-      }
-    }
-    return sampled;
-  }
-}
-
-class _AlphabetLetter extends StatelessWidget {
-  const _AlphabetLetter({
-    required this.letter,
-    required this.onTap,
-  });
-
-  final String letter;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
-    double space(double value) => value * densityScale;
-    final baseStyle = Theme.of(context).textTheme.labelSmall;
-    return TextButton(
-      onPressed: onTap,
-      style: ButtonStyle(
-        padding: WidgetStateProperty.all(EdgeInsets.zero),
-        minimumSize: WidgetStateProperty.all(Size(space(20), space(20))),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        foregroundColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.hovered)) {
-            return ColorTokens.textPrimary(context);
-          }
-          return ColorTokens.textSecondary(context, 0.7);
-        }),
-        textStyle: WidgetStateProperty.all(baseStyle),
-        overlayColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.hovered)) {
-            return ColorTokens.cardFill(context, 0.08);
-          }
-          return Colors.transparent;
-        }),
-      ),
-      child: Text(letter),
-    );
-  }
-}
-
-class _GridMetrics {
-  const _GridMetrics({
-    required this.columns,
-    required this.itemWidth,
-    required this.itemHeight,
-    required this.aspectRatio,
-    required this.spacing,
-  });
-
-  final int columns;
-  final double itemWidth;
-  final double itemHeight;
-  final double aspectRatio;
-  final double spacing;
-
-  static _GridMetrics fromWidth({
-    required double width,
-    required double itemAspectRatio,
-    required double itemMinWidth,
-    required double spacing,
-  }) {
-    final crossAxisCount = (width / itemMinWidth).floor();
-    final columns = crossAxisCount < 1 ? 1 : crossAxisCount;
-    final totalSpacing = spacing * (columns - 1);
-    final itemWidth = (width - totalSpacing) / columns;
-    final itemHeight = itemWidth / itemAspectRatio;
-    return _GridMetrics(
-      columns: columns,
-      itemWidth: itemWidth,
-      itemHeight: itemHeight,
-      aspectRatio: itemAspectRatio,
-      spacing: spacing,
-    );
-  }
-
-  double offsetForIndex(int index) {
-    final row = (index / columns).floor();
-    return row * (itemHeight + spacing);
   }
 }

@@ -191,6 +191,7 @@ class AppState extends ChangeNotifier {
   StreamSubscription<Duration?>? _durationSubscription;
   StreamSubscription<PlayerState>? _playerStateSubscription;
   StreamSubscription<int?>? _currentIndexSubscription;
+  Timer? _playbackPollTimer;
 
   static const int _tracksPageSize = 100;
 
@@ -2335,6 +2336,7 @@ class AppState extends ChangeNotifier {
         'pause',
       );
     } else {
+      _startPlaybackPolling();
       await _performPlaybackAction(
         () => _playback.play(),
         'play',
@@ -3338,6 +3340,7 @@ class AppState extends ChangeNotifier {
     _durationSubscription?.cancel();
     _playerStateSubscription?.cancel();
     _currentIndexSubscription?.cancel();
+    _playbackPollTimer?.cancel();
     _positionNotifier.dispose();
     _durationNotifier.dispose();
     _isPlayingNotifier.dispose();
@@ -3436,6 +3439,13 @@ class AppState extends ChangeNotifier {
     _positionSubscription = _playback.positionStream.listen((position) {
       _position = position;
       _positionNotifier.value = position;
+      if (_duration == Duration.zero) {
+        final liveDuration = _playback.duration;
+        if (liveDuration != null && liveDuration > Duration.zero) {
+          _duration = liveDuration;
+          _durationNotifier.value = liveDuration;
+        }
+      }
       _maybeReportProgress();
       _persistPlaybackResumeState();
       _updateNowPlayingInfo();
@@ -3471,6 +3481,13 @@ class AppState extends ChangeNotifier {
       if (playingChanged) {
         _maybeReportPlaybackState(isPaused: !_isPlaying);
       }
+      if (state.processingState == ProcessingState.ready ||
+          state.processingState == ProcessingState.buffering ||
+          state.processingState == ProcessingState.loading) {
+        _startPlaybackPolling();
+      } else {
+        _stopPlaybackPolling();
+      }
       if (state.processingState == ProcessingState.completed) {
         _maybeReportStopped(completed: true);
       }
@@ -3494,6 +3511,32 @@ class AppState extends ChangeNotifier {
       onPrevious: () => unawaited(previousTrack()),
       onSeek: (position) => unawaited(seek(position)),
     );
+  }
+
+  void _startPlaybackPolling() {
+    if (_playbackPollTimer != null) {
+      return;
+    }
+    _playbackPollTimer =
+        Timer.periodic(const Duration(milliseconds: 500), (_) {
+      final position = _playback.position;
+      if (position != _position) {
+        _position = position;
+        _positionNotifier.value = position;
+      }
+      final liveDuration = _playback.duration;
+      if (liveDuration != null &&
+          liveDuration > Duration.zero &&
+          liveDuration != _duration) {
+        _duration = liveDuration;
+        _durationNotifier.value = liveDuration;
+      }
+    });
+  }
+
+  void _stopPlaybackPolling() {
+    _playbackPollTimer?.cancel();
+    _playbackPollTimer = null;
   }
 
   void _recordPlayHistory(MediaItem track) {
@@ -3565,6 +3608,14 @@ class AppState extends ChangeNotifier {
     bool recordHistory = true,
   }) {
     if (_nowPlaying?.id == track.id) {
+      if (_duration == Duration.zero && track.duration > Duration.zero) {
+        _duration = track.duration;
+        _durationNotifier.value = _duration;
+        _updateNowPlayingInfo(force: true);
+        if (notify) {
+          notifyListeners();
+        }
+      }
       return;
     }
     final previousTrack = _nowPlaying;
@@ -4304,7 +4355,12 @@ class AppState extends ChangeNotifier {
     }
     if (_nowPlaying?.id != playbackTrack.id) {
       _setNowPlaying(playbackTrack);
+    } else if (playbackTrack.duration > Duration.zero &&
+        _duration == Duration.zero) {
+      _duration = playbackTrack.duration;
+      _durationNotifier.value = _duration;
     }
+    _startPlaybackPolling();
     await _performPlaybackAction(
       () => _playback.play(),
       'play',
