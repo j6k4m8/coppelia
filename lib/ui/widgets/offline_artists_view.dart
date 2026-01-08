@@ -8,7 +8,7 @@ import '../../state/library_view.dart';
 import 'app_snack.dart';
 import 'context_menu.dart';
 import 'library_browse_view.dart';
-import 'library_cover_card.dart';
+import 'library_card.dart';
 import 'library_list_tile.dart';
 import 'offline_empty_view.dart';
 
@@ -42,7 +42,7 @@ class OfflineArtistsView extends StatelessWidget {
           subtitleBuilder: (artist) => formatArtistSubtitle(artist),
           gridItemBuilder: (context, artist) {
             final subtitle = formatArtistSubtitle(artist);
-            return LibraryCoverCard(
+            return LibraryCard(
               title: artist.name,
               subtitle: subtitle,
               imageUrl: artist.imageUrl,

@@ -10,7 +10,7 @@ import 'app_snack.dart';
 import 'context_menu.dart';
 import 'collection_detail_view.dart';
 import 'collection_header.dart';
-import 'library_cover_card.dart';
+import 'library_card.dart';
 import 'section_header.dart';
 
 /// Detail view for a single artist.
@@ -339,7 +339,7 @@ class _ArtistAlbumsSection extends StatelessWidget {
               itemCount: albums.length,
               itemBuilder: (context, index) {
                 final album = albums[index];
-                return LibraryCoverCard(
+                return LibraryCard(
                   title: album.name,
                   subtitle: '${album.trackCount} tracks',
                   imageUrl: album.imageUrl,
