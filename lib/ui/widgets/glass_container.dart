@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../core/color_tokens.dart';
+import 'corner_radius.dart';
 
 /// Frosted glass container for elevated panels.
 class GlassContainer extends StatelessWidget {
@@ -25,15 +26,16 @@ class GlassContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final radius = context.scaledRadius(borderRadius);
     return ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
+      borderRadius: BorderRadius.circular(radius),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
           padding: padding,
           decoration: BoxDecoration(
             color: ColorTokens.cardFill(context, 0.08),
-            borderRadius: BorderRadius.circular(borderRadius),
+            borderRadius: BorderRadius.circular(radius),
             border: Border.all(
               color: ColorTokens.border(context),
               width: 1,

@@ -13,12 +13,14 @@ import '../../state/home_section.dart';
 import '../../state/home_shelf_layout.dart';
 import '../../state/keyboard_shortcut.dart';
 import '../../state/layout_density.dart';
+import '../../state/corner_radius_style.dart';
 import '../../state/now_playing_layout.dart';
 import '../../state/sidebar_item.dart';
 import '../../state/theme_palette_source.dart';
 import '../../core/color_tokens.dart';
 import '../../core/app_info.dart';
 import 'compact_switch.dart';
+import 'corner_radius.dart';
 import 'glass_container.dart';
 
 /// Settings view for Coppelia preferences.
@@ -91,7 +93,7 @@ class _SettingsTabBar extends StatelessWidget {
       padding: EdgeInsets.all(space(4).clamp(2.0, 6.0)),
       decoration: BoxDecoration(
         color: ColorTokens.cardFill(context, 0.08),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(context.scaledRadius(16)),
         border: Border.all(color: ColorTokens.border(context)),
       ),
       child: TabBar(
@@ -103,7 +105,7 @@ class _SettingsTabBar extends StatelessWidget {
         dividerColor: Colors.transparent,
         indicator: BoxDecoration(
           color: ColorTokens.cardFill(context, 0.18),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(context.scaledRadius(12)),
         ),
         tabs: const [
           _SettingsTabLabel(text: 'Appearance'),
@@ -396,7 +398,7 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
               child: DropdownButton<String>(
                 value: fontChoice.value,
                 isExpanded: true,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(context.scaledRadius(12)),
                 items: _fontChoices
                     .map(
                       (choice) => DropdownMenuItem<String>(
@@ -462,6 +464,34 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
             onSelectionChanged: (selection) {
               state.setLayoutDensity(selection.first);
             },
+          ),
+        ),
+        SizedBox(height: space(16)),
+        _SettingRow(
+          title: 'Corner radius',
+          subtitle: 'Dial in how rounded the UI feels.',
+          trailing: SizedBox(
+            width: 320,
+            child: Row(
+              children: [
+                for (final style in const [
+                  CornerRadiusStyle.pointy,
+                  CornerRadiusStyle.traditional,
+                  CornerRadiusStyle.babyProofed,
+                ])
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: space(4)),
+                      child: _CornerRadiusOption(
+                        label: style.label,
+                        radius: space(18).clamp(10.0, 20.0) * style.scale,
+                        selected: state.cornerRadiusStyle == style,
+                        onTap: () => state.setCornerRadiusStyle(style),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ],
@@ -1475,7 +1505,9 @@ class _DownloadQueueList extends StatelessWidget {
       padding: EdgeInsets.all(space(12).clamp(10.0, 16.0)),
       decoration: BoxDecoration(
         color: ColorTokens.cardFill(context, 0.04),
-        borderRadius: BorderRadius.circular(space(16).clamp(12.0, 20.0)),
+        borderRadius: BorderRadius.circular(
+          context.scaledRadius(space(16).clamp(12.0, 20.0)),
+        ),
         border: Border.all(color: ColorTokens.border(context, 0.08)),
       ),
       child: Column(
@@ -1491,7 +1523,9 @@ class _DownloadQueueList extends StatelessWidget {
           SizedBox(
             height: listHeight,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(space(12).clamp(10.0, 16.0)),
+              borderRadius: BorderRadius.circular(
+                context.scaledRadius(space(12).clamp(10.0, 16.0)),
+              ),
               child: ReorderableListView.builder(
                 buildDefaultDragHandles: false,
                 itemCount: tasks.length,
@@ -1564,7 +1598,7 @@ class _DownloadQueueRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: ColorTokens.cardFill(context, 0.06),
           borderRadius: BorderRadius.circular(
-            space(12).clamp(8.0, 16.0),
+            context.scaledRadius(space(12).clamp(8.0, 16.0)),
           ),
           border: Border.all(
             color: ColorTokens.border(context, 0.12),
@@ -1772,7 +1806,7 @@ class _AccountSettings extends StatelessWidget {
             decoration: BoxDecoration(
               color: ColorTokens.cardFill(context, 0.08),
               borderRadius: BorderRadius.circular(
-                clamped(18, min: 12, max: 22),
+                context.scaledRadius(clamped(18, min: 12, max: 22)),
               ),
               border: Border.all(color: ColorTokens.border(context, 0.12)),
             ),
@@ -1998,7 +2032,7 @@ class _AccountStatChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: ColorTokens.cardFill(context, 0.12),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(context.scaledRadius(999)),
         border: Border.all(color: ColorTokens.border(context, 0.12)),
       ),
       child: Text(
@@ -2074,6 +2108,61 @@ class _AccentPreview extends StatelessWidget {
         shape: BoxShape.circle,
         color: color,
         border: Border.all(color: ColorTokens.border(context, 0.2)),
+      ),
+    );
+  }
+}
+
+class _CornerRadiusOption extends StatelessWidget {
+  const _CornerRadiusOption({
+    required this.label,
+    required this.radius,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final double radius;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    final borderColor = selected
+        ? Theme.of(context).colorScheme.primary
+        : ColorTokens.border(context);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          height: space(52).clamp(42.0, 60.0),
+          decoration: BoxDecoration(
+            color: selected
+                ? Theme.of(context)
+                    .colorScheme
+                    .primary
+                    .withValues(alpha: 0.1)
+                : Colors.transparent,
+            border: Border.all(color: borderColor),
+            borderRadius: BorderRadius.circular(radius),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: selected
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                  fontWeight:
+                      selected ? FontWeight.w600 : FontWeight.normal,
+                ),
+          ),
+        ),
       ),
     );
   }

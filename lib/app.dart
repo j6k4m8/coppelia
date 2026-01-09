@@ -64,6 +64,8 @@ class _AppShell extends StatelessWidget {
     final fontFamily = context.select((AppState s) => s.fontFamily);
     final fontScale = context.select((AppState s) => s.fontScale);
     final accentColor = context.select((AppState s) => s.accentColor);
+    final cornerRadiusScale =
+        context.select((AppState s) => s.cornerRadiusScale);
     final useNowPlayingPalette =
         context.select((AppState s) => s.useNowPlayingPalette);
     final nowPlayingPalette =
@@ -77,6 +79,7 @@ class _AppShell extends StatelessWidget {
       theme: CoppeliaTheme.lightTheme(
         fontFamily: fontFamily,
         fontScale: fontScale,
+        cornerRadiusScale: cornerRadiusScale,
         accentColor: accentColor,
         nowPlayingPalette:
             useNowPlayingPalette ? nowPlayingPalette : null,
@@ -84,6 +87,7 @@ class _AppShell extends StatelessWidget {
       darkTheme: CoppeliaTheme.darkTheme(
         fontFamily: fontFamily,
         fontScale: fontScale,
+        cornerRadiusScale: cornerRadiusScale,
         accentColor: accentColor,
         nowPlayingPalette:
             useNowPlayingPalette ? nowPlayingPalette : null,

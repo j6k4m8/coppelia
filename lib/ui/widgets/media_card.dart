@@ -90,10 +90,13 @@ class MediaCard extends StatelessWidget {
     final theme = Theme.of(context);
     final densityScale =
         context.select((AppState state) => state.layoutDensity.scaleDouble);
+    final radiusScale =
+        context.select((AppState state) => state.cornerRadiusScale);
     double space(double value) => value * densityScale;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
-    final cardRadius = borderRadius ?? clamped(22, min: 12, max: 26);
+    final baseRadius = borderRadius ?? clamped(22, min: 12, max: 26);
+    final cardRadius = baseRadius * radiusScale;
     final iconSize = clamped(32, min: 18, max: 36);
     final overlayPadding = artOverlayPadding ??
         EdgeInsets.all(space(10).clamp(4.0, 12.0));
@@ -115,7 +118,7 @@ class MediaCard extends StatelessWidget {
           ? ColorTokens.textSecondary(context)
           : theme.colorScheme.primary,
       fontWeight: onSubtitleTap == null ? FontWeight.normal : FontWeight.w600,
-      height: isCompactVertical ? 1.1 : null,
+      height: isCompactVertical ? 1.0 : null,
     );
 
     Widget buildSubtitle() {
@@ -264,10 +267,10 @@ class MediaCard extends StatelessWidget {
           );
     final textPadding = isCompactVertical
         ? EdgeInsets.fromLTRB(
-            space(10).clamp(6.0, 14.0),
-            space(6).clamp(3.0, 8.0),
-            space(10).clamp(6.0, 14.0),
-            space(6).clamp(3.0, 8.0),
+            space(9).clamp(5.0, 12.0),
+            space(5).clamp(2.0, 6.0),
+            space(9).clamp(5.0, 12.0),
+            space(4).clamp(1.0, 5.0),
           )
         : EdgeInsets.fromLTRB(
             space(16).clamp(10.0, 20.0),
@@ -276,10 +279,10 @@ class MediaCard extends StatelessWidget {
             space(12).clamp(6.0, 16.0),
           );
     final titleStyle = isCompactVertical
-        ? theme.textTheme.titleSmall?.copyWith(height: 1.1)
+        ? theme.textTheme.titleSmall?.copyWith(height: 1.0)
         : theme.textTheme.titleMedium;
     final subtitleGap =
-        isCompactVertical ? space(2).clamp(1.0, 3.0) : space(3).clamp(1.0, 5.0);
+        isCompactVertical ? 0.0 : space(3).clamp(1.0, 5.0);
     final text = Padding(
       padding: textPadding,
       child: Column(

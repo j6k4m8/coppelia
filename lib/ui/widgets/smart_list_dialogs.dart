@@ -5,6 +5,7 @@ import '../../models/smart_list.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../core/color_tokens.dart';
+import 'corner_radius.dart';
 
 /// Shows the Smart List editor dialog.
 Future<SmartList?> showSmartListEditorDialog(
@@ -215,7 +216,7 @@ class _SmartListGroupEditor extends StatelessWidget {
       padding: EdgeInsets.all(space(12).clamp(8.0, 16.0)),
       decoration: BoxDecoration(
         color: ColorTokens.cardFill(context, 0.08),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.scaledRadius(12)),
         border: Border.all(color: borderColor),
       ),
       child: Column(

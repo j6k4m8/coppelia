@@ -9,6 +9,7 @@ import '../../state/layout_density.dart';
 import '../../state/sidebar_item.dart';
 import '../../core/color_tokens.dart';
 import 'compact_switch.dart';
+import 'corner_radius.dart';
 import 'playlist_dialogs.dart';
 import 'smart_list_dialogs.dart';
 
@@ -725,7 +726,7 @@ class _NavTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? ColorTokens.activeRow(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(
-            clamped(16, min: 10, max: 20),
+            context.scaledRadius(clamped(16, min: 10, max: 20)),
           ),
         ),
         child: Row(
@@ -770,7 +771,7 @@ class _ToggleTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: value ? ColorTokens.activeRow(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(
-            clamped(16, min: 10, max: 20),
+            context.scaledRadius(clamped(16, min: 10, max: 20)),
           ),
         ),
         child: Row(
@@ -850,7 +851,7 @@ class _PlaylistTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? ColorTokens.activeRow(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(
-            clamped(14, min: 10, max: 18),
+            context.scaledRadius(clamped(14, min: 10, max: 18)),
           ),
         ),
         child: Row(
@@ -961,7 +962,7 @@ class _SmartListTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? ColorTokens.activeRow(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(
-            clamped(14, min: 10, max: 18),
+            context.scaledRadius(clamped(14, min: 10, max: 18)),
           ),
         ),
         child: Row(
@@ -1025,7 +1026,7 @@ class _PlaylistActionTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(
-            clamped(12, min: 8, max: 16),
+            context.scaledRadius(clamped(12, min: 8, max: 16)),
           ),
         ),
         child: Row(

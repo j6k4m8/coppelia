@@ -6,6 +6,7 @@ import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../core/color_tokens.dart';
 import 'collection_header.dart';
+import 'corner_radius.dart';
 import 'smart_list_dialogs.dart';
 import 'track_row.dart';
 
@@ -259,7 +260,7 @@ class _EmptySmartListView extends StatelessWidget {
       padding: EdgeInsets.all(space(24).clamp(16.0, 32.0)),
       decoration: BoxDecoration(
         color: ColorTokens.cardFill(context, 0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(context.scaledRadius(16)),
         border: Border.all(color: ColorTokens.border(context)),
       ),
       child: Row(

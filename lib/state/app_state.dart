@@ -37,6 +37,7 @@ import 'home_shelf_layout.dart';
 import 'keyboard_shortcut.dart';
 import 'layout_density.dart';
 import 'library_view.dart';
+import 'corner_radius_style.dart';
 import 'now_playing_layout.dart';
 import 'sidebar_item.dart';
 import 'theme_palette_source.dart';
@@ -163,6 +164,7 @@ class AppState extends ChangeNotifier {
   bool _searchShortcutEnabled = true;
   KeyboardShortcut _searchShortcut = KeyboardShortcut.searchForPlatform();
   LayoutDensity _layoutDensity = LayoutDensity.comfortable;
+  CornerRadiusStyle _cornerRadiusStyle = CornerRadiusStyle.babyProofed;
   NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.bottom;
   HomeShelfLayout _homeShelfLayout = HomeShelfLayout.whooshy;
   int _homeShelfGridRows = 2;
@@ -451,6 +453,12 @@ class AppState extends ChangeNotifier {
   /// Preferred layout density.
   LayoutDensity get layoutDensity => _layoutDensity;
 
+  /// Preferred corner radius style.
+  CornerRadiusStyle get cornerRadiusStyle => _cornerRadiusStyle;
+
+  /// Scalar for corner radius sizing.
+  double get cornerRadiusScale => _cornerRadiusStyle.scale;
+
   /// True when playback telemetry is enabled.
   bool get telemetryPlaybackEnabled => _telemetryPlayback;
 
@@ -647,6 +655,7 @@ class AppState extends ChangeNotifier {
     _searchShortcutEnabled = await _settingsStore.loadSearchShortcutEnabled();
     _searchShortcut = await _settingsStore.loadSearchShortcut();
     _layoutDensity = await _settingsStore.loadLayoutDensity();
+    _cornerRadiusStyle = await _settingsStore.loadCornerRadiusStyle();
     _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
     _homeShelfLayout = await _settingsStore.loadHomeShelfLayout();
     _homeShelfGridRows = await _settingsStore.loadHomeShelfGridRows();
@@ -2724,6 +2733,13 @@ class AppState extends ChangeNotifier {
   Future<void> setLayoutDensity(LayoutDensity density) async {
     _layoutDensity = density;
     await _settingsStore.saveLayoutDensity(density);
+    notifyListeners();
+  }
+
+  /// Updates the corner radius style preference.
+  Future<void> setCornerRadiusStyle(CornerRadiusStyle style) async {
+    _cornerRadiusStyle = style;
+    await _settingsStore.saveCornerRadiusStyle(style);
     notifyListeners();
   }
 

@@ -10,6 +10,7 @@ import '../state/home_section.dart';
 import '../state/home_shelf_layout.dart';
 import '../state/keyboard_shortcut.dart';
 import '../state/layout_density.dart';
+import '../state/corner_radius_style.dart';
 import '../state/sidebar_item.dart';
 import '../state/accent_color_source.dart';
 import '../state/theme_palette_source.dart';
@@ -57,6 +58,7 @@ class SettingsStore {
       'settings_shortcut_search_enabled';
   static const _searchShortcutKey = 'settings_shortcut_search';
   static const _layoutDensityKey = 'settings_layout_density';
+  static const _cornerRadiusStyleKey = 'settings_corner_radius_style';
   static const _deviceIdKey = 'settings_device_id';
   static const _offlineModeKey = 'settings_offline_mode';
   static const _smartListsKey = 'settings_smart_lists';
@@ -462,6 +464,20 @@ class SettingsStore {
     final preferences = await SharedPreferences.getInstance();
     final raw = preferences.getDouble(_fontScaleKey);
     return raw ?? 1.0;
+  }
+
+  /// Loads the preferred corner radius style.
+  Future<CornerRadiusStyle> loadCornerRadiusStyle() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_cornerRadiusStyleKey);
+    return CornerRadiusStyleX.tryParse(raw) ??
+        CornerRadiusStyle.babyProofed;
+  }
+
+  /// Saves the preferred corner radius style.
+  Future<void> saveCornerRadiusStyle(CornerRadiusStyle style) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_cornerRadiusStyleKey, style.storageKey);
   }
 
   /// Loads the preferred accent color value.
