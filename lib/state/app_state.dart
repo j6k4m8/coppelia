@@ -668,6 +668,7 @@ class AppState extends ChangeNotifier {
     _sidebarCollapsed = await _settingsStore.loadSidebarCollapsed();
     _smartLists = await _settingsStore.loadSmartLists();
     _pinnedAudio = await _cacheStore.loadPinnedAudio();
+    _ensureHomeInHistory();
     unawaited(refreshMediaCacheBytes());
     await _loadCachedLibrary();
     await _applyPlaybackSettings();
@@ -723,6 +724,7 @@ class AppState extends ChangeNotifier {
     _selectedSmartList = null;
     _selectedView = LibraryView.home;
     _viewHistory.clear();
+    _ensureHomeInHistory();
     _selectedAlbum = null;
     _selectedArtist = null;
     _selectedGenre = null;
@@ -1256,6 +1258,12 @@ class AppState extends ChangeNotifier {
     _viewHistory.add(view);
     if (_viewHistory.length > 20) {
       _viewHistory.removeAt(0);
+    }
+  }
+
+  void _ensureHomeInHistory() {
+    if (_viewHistory.isEmpty) {
+      _viewHistory.add(LibraryView.home);
     }
   }
 
