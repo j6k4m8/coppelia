@@ -7,8 +7,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../state/now_playing_layout.dart';
 import '../state/home_section.dart';
+import '../state/home_shelf_layout.dart';
 import '../state/keyboard_shortcut.dart';
 import '../state/layout_density.dart';
+import '../state/corner_radius_style.dart';
 import '../state/sidebar_item.dart';
 import '../state/accent_color_source.dart';
 import '../state/theme_palette_source.dart';
@@ -25,6 +27,8 @@ class SettingsStore {
   static const _sidebarCollapsedKey = 'settings_sidebar_collapsed';
   static const _homeSectionKey = 'settings_home_sections';
   static const _homeSectionOrderKey = 'settings_home_section_order';
+  static const _homeShelfLayoutKey = 'settings_home_shelf_layout';
+  static const _homeShelfGridRowsKey = 'settings_home_shelf_grid_rows';
   static const _sidebarVisibilityKey = 'settings_sidebar_visibility';
   static const _fontFamilyKey = 'settings_font_family';
   static const _fontScaleKey = 'settings_font_scale';
@@ -54,6 +58,7 @@ class SettingsStore {
       'settings_shortcut_search_enabled';
   static const _searchShortcutKey = 'settings_shortcut_search';
   static const _layoutDensityKey = 'settings_layout_density';
+  static const _cornerRadiusStyleKey = 'settings_corner_radius_style';
   static const _deviceIdKey = 'settings_device_id';
   static const _offlineModeKey = 'settings_offline_mode';
   static const _smartListsKey = 'settings_smart_lists';
@@ -346,6 +351,29 @@ class SettingsStore {
     }
   }
 
+  /// Loads the preferred home shelf layout.
+  Future<HomeShelfLayout> loadHomeShelfLayout() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_homeShelfLayoutKey);
+    if (raw == null) {
+      return HomeShelfLayout.whooshy;
+    }
+    return HomeShelfLayout.values.firstWhere(
+      (layout) => layout.name == raw,
+      orElse: () => HomeShelfLayout.whooshy,
+    );
+  }
+
+  /// Loads the preferred home shelf grid row count.
+  Future<int> loadHomeShelfGridRows() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getInt(_homeShelfGridRowsKey);
+    if (raw == null) {
+      return 2;
+    }
+    return raw.clamp(1, 4);
+  }
+
   /// Saves the preferred home section order.
   Future<void> saveHomeSectionOrder(List<HomeSection> order) async {
     final preferences = await SharedPreferences.getInstance();
@@ -363,6 +391,18 @@ class SettingsStore {
         section.storageKey: visibility[section] ?? true,
     };
     await preferences.setString(_homeSectionKey, jsonEncode(payload));
+  }
+
+  /// Saves the preferred home shelf layout.
+  Future<void> saveHomeShelfLayout(HomeShelfLayout layout) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_homeShelfLayoutKey, layout.name);
+  }
+
+  /// Saves the preferred home shelf grid row count.
+  Future<void> saveHomeShelfGridRows(int rows) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setInt(_homeShelfGridRowsKey, rows);
   }
 
   /// Loads the preferred sidebar visibility map.
@@ -424,6 +464,20 @@ class SettingsStore {
     final preferences = await SharedPreferences.getInstance();
     final raw = preferences.getDouble(_fontScaleKey);
     return raw ?? 1.0;
+  }
+
+  /// Loads the preferred corner radius style.
+  Future<CornerRadiusStyle> loadCornerRadiusStyle() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_cornerRadiusStyleKey);
+    return CornerRadiusStyleX.tryParse(raw) ??
+        CornerRadiusStyle.babyProofed;
+  }
+
+  /// Saves the preferred corner radius style.
+  Future<void> saveCornerRadiusStyle(CornerRadiusStyle style) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_cornerRadiusStyleKey, style.storageKey);
   }
 
   /// Loads the preferred accent color value.

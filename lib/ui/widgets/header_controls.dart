@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/color_tokens.dart';
+import 'corner_radius.dart';
 
 /// Circular button used in headers for navigation controls and search.
 class HeaderControlButton extends StatelessWidget {
@@ -20,6 +21,7 @@ class HeaderControlButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final radius = context.scaledRadius(size);
     final color = onTap == null
         ? theme
             .colorScheme
@@ -32,14 +34,14 @@ class HeaderControlButton extends StatelessWidget {
       child: Tooltip(
         message: tooltip ?? 'Back',
         child: InkWell(
-          borderRadius: BorderRadius.circular(size),
+          borderRadius: BorderRadius.circular(radius),
           onTap: onTap,
           child: Container(
             width: size,
             height: size,
             decoration: BoxDecoration(
               color: background,
-              borderRadius: BorderRadius.circular(size),
+              borderRadius: BorderRadius.circular(radius),
               border: Border.all(
                 color: ColorTokens.border(context, 0.08),
               ),
@@ -72,19 +74,20 @@ class SearchCircleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final radius = context.scaledRadius(size);
     return Material(
       type: MaterialType.transparency,
       child: Tooltip(
         message: tooltip,
         child: InkWell(
-          borderRadius: BorderRadius.circular(size),
+          borderRadius: BorderRadius.circular(radius),
           onTap: onTap,
           child: Container(
             width: size,
             height: size,
             decoration: BoxDecoration(
               color: theme.colorScheme.primary,
-              borderRadius: BorderRadius.circular(size),
+              borderRadius: BorderRadius.circular(radius),
               boxShadow: [
                 BoxShadow(
                   color:

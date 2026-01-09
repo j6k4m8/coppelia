@@ -18,6 +18,9 @@ class FeaturedTrackCard extends StatelessWidget {
     required this.track,
     required this.onTap,
     this.onArtistTap,
+    this.layout = MediaCardLayout.horizontal,
+    this.artAspectRatio,
+    this.expand = false,
   });
 
   /// Track to display.
@@ -29,6 +32,15 @@ class FeaturedTrackCard extends StatelessWidget {
   /// Optional handler for tapping the artist label.
   final VoidCallback? onArtistTap;
 
+  /// Card layout style.
+  final MediaCardLayout layout;
+
+  /// Optional artwork aspect ratio for vertical layouts.
+  final double? artAspectRatio;
+
+  /// When true, allow the card to fill the available width.
+  final bool expand;
+
   @override
   Widget build(BuildContext context) {
     final useSingleTap = !kIsWeb &&
@@ -37,8 +49,11 @@ class FeaturedTrackCard extends StatelessWidget {
         context.select((AppState state) => state.layoutDensity.scaleDouble);
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
+    final cardWidth = expand || layout == MediaCardLayout.vertical
+        ? null
+        : clamped(260, min: 170, max: 300);
     return MediaCard(
-      layout: MediaCardLayout.horizontal,
+      layout: layout,
       title: track.title,
       subtitle: track.subtitle,
       imageUrl: track.imageUrl,
@@ -46,7 +61,9 @@ class FeaturedTrackCard extends StatelessWidget {
       onTap: useSingleTap ? onTap : null,
       onDoubleTap: useSingleTap ? null : onTap,
       onSubtitleTap: onArtistTap,
-      width: clamped(260, min: 170, max: 300),
+      width: cardWidth,
+      artAspectRatio:
+          layout == MediaCardLayout.vertical ? artAspectRatio : null,
       backgroundGradient: LinearGradient(
         colors: [
           ColorTokens.cardFill(context, 0.1),

@@ -12,6 +12,7 @@ import '../../state/layout_density.dart';
 import 'app_snack.dart';
 import 'artwork_fallback.dart';
 import 'artwork_image.dart';
+import 'corner_radius.dart';
 import 'context_menu.dart';
 import 'playlist_dialogs.dart';
 
@@ -105,9 +106,11 @@ class TrackRow extends StatelessWidget {
         (Platform.isIOS || Platform.isAndroid || Platform.isFuchsia);
     final baseColor =
         isActive ? ColorTokens.activeRow(context) : Colors.transparent;
-    final rowRadius = clamped(14, min: 6, max: 16);
+    final rowRadius =
+        context.scaledRadius(clamped(14, min: 6, max: 16));
     final artSize = clamped(44, min: 24, max: 56);
-    final artRadius = clamped(10, min: 4, max: 12);
+    final artRadius =
+        context.scaledRadius(clamped(10, min: 4, max: 12));
     final indexWidth = clamped(32, min: 16, max: 36);
     Widget buildArtworkFallback() => ArtworkFallback(
           width: artSize,

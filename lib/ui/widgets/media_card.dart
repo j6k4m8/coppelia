@@ -30,6 +30,7 @@ class MediaCard extends StatelessWidget {
     this.backgroundColor,
     this.backgroundGradient,
     this.borderRadius,
+    this.artAspectRatio,
     this.width,
   });
 
@@ -78,6 +79,9 @@ class MediaCard extends StatelessWidget {
   /// Optional radius override.
   final double? borderRadius;
 
+  /// Optional aspect ratio override for vertical layouts.
+  final double? artAspectRatio;
+
   /// Optional fixed width override.
   final double? width;
 
@@ -86,10 +90,13 @@ class MediaCard extends StatelessWidget {
     final theme = Theme.of(context);
     final densityScale =
         context.select((AppState state) => state.layoutDensity.scaleDouble);
+    final radiusScale =
+        context.select((AppState state) => state.cornerRadiusScale);
     double space(double value) => value * densityScale;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
-    final cardRadius = borderRadius ?? clamped(22, min: 12, max: 26);
+    final baseRadius = borderRadius ?? clamped(22, min: 12, max: 26);
+    final cardRadius = baseRadius * radiusScale;
     final iconSize = clamped(32, min: 18, max: 36);
     final overlayPadding = artOverlayPadding ??
         EdgeInsets.all(space(10).clamp(4.0, 12.0));
@@ -104,11 +111,14 @@ class MediaCard extends StatelessWidget {
       border: Border.all(color: ColorTokens.border(context)),
     );
     final clickEnabled = onTap != null || onDoubleTap != null;
+    final isCompactVertical =
+        layout == MediaCardLayout.vertical && artAspectRatio != null;
     final subtitleStyle = theme.textTheme.bodySmall?.copyWith(
       color: onSubtitleTap == null
           ? ColorTokens.textSecondary(context)
           : theme.colorScheme.primary,
       fontWeight: onSubtitleTap == null ? FontWeight.normal : FontWeight.w600,
+      height: isCompactVertical ? 1.0 : null,
     );
 
     Widget buildSubtitle() {
@@ -180,7 +190,13 @@ class MediaCard extends StatelessWidget {
             child: layout == MediaCardLayout.vertical
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [art, text],
+                    children: [
+                      art,
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: text,
+                      ),
+                    ],
                   )
                 : Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -236,32 +252,50 @@ class MediaCard extends StatelessWidget {
       );
     }
 
-    final art = Expanded(
-      child: ClipRRect(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(cardRadius),
-          topRight: Radius.circular(cardRadius),
-        ),
-        child: buildArtWidget(),
+    final artBody = ClipRRect(
+      borderRadius: BorderRadius.only(
+        topLeft: Radius.circular(cardRadius),
+        topRight: Radius.circular(cardRadius),
       ),
+      child: buildArtWidget(),
     );
+    final art = artAspectRatio == null
+        ? Expanded(child: artBody)
+        : AspectRatio(
+            aspectRatio: artAspectRatio!,
+            child: artBody,
+          );
+    final textPadding = isCompactVertical
+        ? EdgeInsets.fromLTRB(
+            space(9).clamp(5.0, 12.0),
+            space(5).clamp(2.0, 6.0),
+            space(9).clamp(5.0, 12.0),
+            space(4).clamp(1.0, 5.0),
+          )
+        : EdgeInsets.fromLTRB(
+            space(16).clamp(10.0, 20.0),
+            space(10).clamp(6.0, 14.0),
+            space(16).clamp(10.0, 20.0),
+            space(12).clamp(6.0, 16.0),
+          );
+    final titleStyle = isCompactVertical
+        ? theme.textTheme.titleSmall?.copyWith(height: 1.0)
+        : theme.textTheme.titleMedium;
+    final subtitleGap =
+        isCompactVertical ? 0.0 : space(3).clamp(1.0, 5.0);
     final text = Padding(
-      padding: EdgeInsets.fromLTRB(
-        space(16).clamp(10.0, 20.0),
-        space(12).clamp(8.0, 16.0),
-        space(16).clamp(10.0, 20.0),
-        space(16).clamp(8.0, 20.0),
-      ),
+      padding: textPadding,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: theme.textTheme.titleMedium,
+            style: titleStyle,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          SizedBox(height: space(4).clamp(2.0, 6.0)),
+          SizedBox(height: subtitleGap),
           buildSubtitle(),
         ],
       ),

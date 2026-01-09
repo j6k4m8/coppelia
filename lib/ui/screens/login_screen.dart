@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../core/color_tokens.dart';
+import '../widgets/corner_radius.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/gradient_background.dart';
 
@@ -157,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
             fillColor: ColorTokens.cardFill(context, 0.06),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(
-                clamped(14, min: 10, max: 18),
+                context.scaledRadius(clamped(14, min: 10, max: 18)),
               ),
               borderSide: BorderSide.none,
             ),

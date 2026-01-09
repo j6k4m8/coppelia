@@ -8,6 +8,7 @@ import '../../state/layout_density.dart';
 import 'artwork_fallback.dart';
 import 'artwork_image.dart';
 import 'collection_header.dart';
+import 'corner_radius.dart';
 import 'track_row.dart';
 import 'header_controls.dart';
 
@@ -184,7 +185,8 @@ class _Header extends StatelessWidget {
     double space(double value) => value * densityScale;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
-    final cardRadius = clamped(26, min: 16, max: 30);
+    final cardRadius =
+        context.scaledRadius(clamped(26, min: 16, max: 30));
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 720;

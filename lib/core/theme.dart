@@ -106,6 +106,7 @@ class CoppeliaTheme {
   static ThemeData darkTheme({
     String? fontFamily = 'SF Pro Display',
     double fontScale = 1.0,
+    double cornerRadiusScale = 1.0,
     Color? accentColor,
     NowPlayingPalette? nowPlayingPalette,
   }) {
@@ -128,7 +129,32 @@ class CoppeliaTheme {
       cardTheme: CardThemeData(
         color: const Color(0xFF161920).withValues(alpha: 0.7),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20 * cornerRadiusScale),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24 * cornerRadiusScale),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14 * cornerRadiusScale),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14 * cornerRadiusScale),
+        ),
+      ),
+      menuTheme: MenuThemeData(
+        style: MenuStyle(
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14 * cornerRadiusScale),
+            ),
+          ),
         ),
       ),
       sliderTheme: const SliderThemeData(
@@ -144,6 +170,7 @@ class CoppeliaTheme {
   static ThemeData lightTheme({
     String? fontFamily = 'SF Pro Display',
     double fontScale = 1.0,
+    double cornerRadiusScale = 1.0,
     Color? accentColor,
     NowPlayingPalette? nowPlayingPalette,
   }) {
@@ -166,7 +193,32 @@ class CoppeliaTheme {
       cardTheme: CardThemeData(
         color: Colors.white.withValues(alpha: 0.9),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20 * cornerRadiusScale),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24 * cornerRadiusScale),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14 * cornerRadiusScale),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14 * cornerRadiusScale),
+        ),
+      ),
+      menuTheme: MenuThemeData(
+        style: MenuStyle(
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14 * cornerRadiusScale),
+            ),
+          ),
         ),
       ),
       sliderTheme: const SliderThemeData(

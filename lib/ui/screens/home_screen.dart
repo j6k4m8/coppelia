@@ -22,6 +22,7 @@ import '../widgets/library_overview.dart';
 import '../widgets/library_placeholder_view.dart';
 import '../widgets/genres_view.dart';
 import '../widgets/now_playing_panel.dart';
+import '../widgets/corner_radius.dart';
 import '../widgets/offline_albums_view.dart';
 import '../widgets/offline_artists_view.dart';
 import '../widgets/offline_playlists_view.dart';
@@ -278,7 +279,9 @@ class _MainContentState extends State<_MainContent> {
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: ColorTokens.cardFill(context, 0.08),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(
+                        context.scaledRadius(12),
+                      ),
                       border: Border.all(color: ColorTokens.border(context)),
                     ),
                     child: const Icon(Icons.chevron_right, size: 18),
@@ -296,7 +299,9 @@ class _MainContentState extends State<_MainContent> {
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: ColorTokens.cardFill(context, 0.08),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(
+                        context.scaledRadius(12),
+                      ),
                       border: Border.all(color: ColorTokens.border(context)),
                     ),
                     child: const Icon(Icons.chevron_right, size: 18),
@@ -507,7 +512,7 @@ class _SearchViewState extends State<_SearchView> {
         filled: true,
         fillColor: ColorTokens.cardFill(context, 0.06),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(context.scaledRadius(16)),
           borderSide: BorderSide.none,
         ),
       ),
@@ -713,13 +718,15 @@ class PlaylistListRow extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: ColorTokens.cardFill(context, 0.04),
-          borderRadius: BorderRadius.circular(space(16)),
+          borderRadius:
+              BorderRadius.circular(context.scaledRadius(space(16))),
           border: Border.all(color: ColorTokens.border(context)),
         ),
         child: Row(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(space(12)),
+              borderRadius:
+                  BorderRadius.circular(context.scaledRadius(space(12))),
               child: ArtworkImage(
                 imageUrl: playlist.imageUrl,
                 width: artSize,

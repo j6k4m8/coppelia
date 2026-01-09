@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
+import 'corner_radius.dart';
 
 /// A subtle glowing bar that indicates background buffering.
 class GlowingLoadingBar extends StatefulWidget {
@@ -40,7 +41,8 @@ class _GlowingLoadingBarState extends State<GlowingLoadingBar>
     final densityScale =
         context.watch<AppState>().layoutDensity.scaleDouble;
     final barHeight = (6 * densityScale).clamp(3.0, 8.0);
-    final radius = (6 * densityScale).clamp(3.0, 8.0);
+    final radius =
+        context.scaledRadius((6 * densityScale).clamp(3.0, 8.0));
     return SizedBox(
       height: barHeight,
       child: AnimatedOpacity(

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/color_tokens.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
+import 'corner_radius.dart';
 
 class AlphabetScroller extends StatelessWidget {
   const AlphabetScroller({
@@ -67,7 +68,7 @@ class AlphabetScroller extends StatelessWidget {
         decoration: BoxDecoration(
           color: ColorTokens.cardFill(context, 0.04),
           borderRadius: BorderRadius.circular(
-            space(20).clamp(14.0, 24.0),
+            context.scaledRadius(space(20).clamp(14.0, 24.0)),
           ),
           border: Border.all(color: ColorTokens.border(context)),
         ),

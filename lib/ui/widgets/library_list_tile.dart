@@ -6,6 +6,7 @@ import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'artwork_fallback.dart';
 import 'artwork_image.dart';
+import 'corner_radius.dart';
 
 /// Compact list tile for library items.
 class LibraryListTile extends StatelessWidget {
@@ -81,7 +82,7 @@ class LibraryListTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: ColorTokens.cardFill(context, 0.04),
           borderRadius: BorderRadius.circular(
-            clamped(16, min: 8, max: 20),
+            context.scaledRadius(clamped(16, min: 8, max: 20)),
           ),
           border: Border.all(color: ColorTokens.border(context)),
         ),
@@ -89,7 +90,7 @@ class LibraryListTile extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(
-                clamped(12, min: 6, max: 16),
+                context.scaledRadius(clamped(12, min: 6, max: 16)),
               ),
               child: ArtworkImage(
                 imageUrl: imageUrl,

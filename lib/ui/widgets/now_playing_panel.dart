@@ -15,6 +15,7 @@ import '../../state/now_playing_layout.dart';
 import 'app_snack.dart';
 import 'artwork_fallback.dart';
 import 'artwork_image.dart';
+import 'corner_radius.dart';
 
 /// Right-side panel for playback and queue control.
 class NowPlayingPanel extends StatelessWidget {
@@ -873,7 +874,8 @@ class _Artwork extends StatelessWidget {
     final imageUrl = track?.imageUrl;
     return _NowPlayingArtworkImage(
       imageUrl: imageUrl,
-      borderRadius: clamped(24, min: 14, max: 30),
+      borderRadius:
+          context.scaledRadius(clamped(24, min: 14, max: 30)),
       iconSize: clamped(48, min: 34, max: 60),
       useAspectRatio: true,
     );
@@ -895,7 +897,8 @@ class _MiniArtwork extends StatelessWidget {
     return _NowPlayingArtworkImage(
       imageUrl: imageUrl,
       size: artSize,
-      borderRadius: clamped(14, min: 10, max: 18),
+      borderRadius:
+          context.scaledRadius(clamped(14, min: 10, max: 18)),
       iconSize: clamped(24, min: 16, max: 28),
     );
   }
@@ -1182,7 +1185,8 @@ class _ExpandedArtwork extends StatelessWidget {
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
     final imageUrl = track?.imageUrl;
-    final radius = clamped(28, min: 18, max: 34);
+    final radius =
+        context.scaledRadius(clamped(28, min: 18, max: 34));
     return _NowPlayingArtworkImage(
       imageUrl: imageUrl,
       size: size,

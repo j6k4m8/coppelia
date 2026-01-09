@@ -1,12 +1,16 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
 import '../../state/home_section.dart';
+import '../../state/home_shelf_layout.dart';
 import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
 import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
+import '../../models/media_item.dart';
 import 'featured_track_card.dart';
 import 'media_card.dart';
 import 'playlist_tile.dart';
@@ -15,6 +19,7 @@ import 'smart_list_card.dart';
 import 'header_controls.dart';
 import 'header_action.dart';
 import 'adaptive_grid.dart';
+import 'grid_metrics.dart';
 
 /// Displays featured content and playlists.
 class LibraryOverview extends StatelessWidget {
@@ -133,6 +138,75 @@ class LibraryOverview extends StatelessWidget {
       children.addAll(section);
     }
 
+    Widget buildShelf({
+      required List<MediaItem> tracks,
+      required void Function(MediaItem track) onTap,
+      VoidCallback? Function(MediaItem track)? onArtistTap,
+    }) {
+      if (state.homeShelfLayout == HomeShelfLayout.grid) {
+        return Padding(
+          padding: sectionPadding(),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final targetWidth = space(180).clamp(130.0, 220.0);
+              const aspectRatio = 1.35;
+              final columns = math.max(
+                2,
+                GridMetrics.fromWidth(
+                  width: constraints.maxWidth,
+                  itemAspectRatio: aspectRatio,
+                  itemMinWidth: targetWidth,
+                  spacing: space(12),
+                ).columns,
+              );
+              final rows = state.homeShelfGridRows;
+              final maxItems = math.min(tracks.length, columns * rows);
+              final displayTracks = tracks.take(maxItems).toList();
+              return AdaptiveGrid(
+                itemCount: displayTracks.length,
+                aspectRatio: aspectRatio,
+                spacing: space(12),
+                targetMinWidth: targetWidth,
+                columns: columns,
+                itemBuilder: (context, index) {
+                  final track = displayTracks[index];
+                  return FeaturedTrackCard(
+                    track: track,
+                    onTap: () => onTap(track),
+                    onArtistTap: onArtistTap?.call(track),
+                    expand: true,
+                    layout: MediaCardLayout.vertical,
+                    artAspectRatio: 2.6,
+                  );
+                },
+              );
+            },
+          ),
+        );
+      }
+
+      return Padding(
+        padding: leftPadding(),
+        child: SizedBox(
+          height: space(110).clamp(86.0, 140.0),
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.zero,
+            itemCount: tracks.length,
+            separatorBuilder: (_, __) => SizedBox(width: space(16)),
+            itemBuilder: (context, index) {
+              final track = tracks[index];
+              return FeaturedTrackCard(
+                track: track,
+                onTap: () => onTap(track),
+                onArtistTap: onArtistTap?.call(track),
+              );
+            },
+          ),
+        ),
+      );
+    }
+
     final builders = <HomeSection, void Function()>{
       HomeSection.featured: () {
         if (!state.isHomeSectionVisible(HomeSection.featured)) {
@@ -163,24 +237,9 @@ class LibraryOverview extends StatelessWidget {
             ),
           ),
           SizedBox(height: space(16)),
-          Padding(
-            padding: leftPadding(),
-            child: SizedBox(
-              height: space(110).clamp(86.0, 140.0),
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: EdgeInsets.zero,
-                itemCount: state.featuredTracks.length,
-                separatorBuilder: (_, __) => SizedBox(width: space(16)),
-                itemBuilder: (context, index) {
-                  final track = state.featuredTracks[index];
-                  return FeaturedTrackCard(
-                    track: track,
-                    onTap: () => state.playFeatured(track),
-                  );
-                },
-              ),
-            ),
+          buildShelf(
+            tracks: state.featuredTracks,
+            onTap: state.playFeatured,
           ),
         ]);
       },
@@ -213,27 +272,12 @@ class LibraryOverview extends StatelessWidget {
             ),
           ),
           SizedBox(height: space(16)),
-          Padding(
-            padding: leftPadding(),
-            child: SizedBox(
-              height: space(110).clamp(86.0, 140.0),
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: EdgeInsets.zero,
-                itemCount: recent.length,
-                separatorBuilder: (_, __) => SizedBox(width: space(16)),
-                itemBuilder: (context, index) {
-                  final track = recent[index];
-                  return FeaturedTrackCard(
-                    track: track,
-                    onTap: () => state.playFromList(recent, track),
-                    onArtistTap: track.artistIds.isEmpty
-                        ? null
-                        : () => state.selectArtistById(track.artistIds.first),
-                  );
-                },
-              ),
-            ),
+          buildShelf(
+            tracks: recent,
+            onTap: (track) => state.playFromList(recent, track),
+            onArtistTap: (track) => track.artistIds.isEmpty
+                ? null
+                : () => state.selectArtistById(track.artistIds.first),
           ),
         ]);
       },
