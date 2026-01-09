@@ -132,6 +132,31 @@ class CoppeliaTheme {
           borderRadius: BorderRadius.circular(20 * cornerRadiusScale),
         ),
       ),
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24 * cornerRadiusScale),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14 * cornerRadiusScale),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14 * cornerRadiusScale),
+        ),
+      ),
+      menuTheme: MenuThemeData(
+        style: MenuStyle(
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14 * cornerRadiusScale),
+            ),
+          ),
+        ),
+      ),
       sliderTheme: const SliderThemeData(
         trackHeight: 3.5,
       ),
@@ -169,6 +194,31 @@ class CoppeliaTheme {
         color: Colors.white.withValues(alpha: 0.9),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20 * cornerRadiusScale),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24 * cornerRadiusScale),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14 * cornerRadiusScale),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14 * cornerRadiusScale),
+        ),
+      ),
+      menuTheme: MenuThemeData(
+        style: MenuStyle(
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14 * cornerRadiusScale),
+            ),
+          ),
         ),
       ),
       sliderTheme: const SliderThemeData(
