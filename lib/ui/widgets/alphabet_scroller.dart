@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../../core/color_tokens.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
-import 'corner_radius.dart';
 
 class AlphabetScroller extends StatelessWidget {
   const AlphabetScroller({
@@ -30,8 +29,11 @@ class AlphabetScroller extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
+    final radiusScale = state.cornerRadiusScale;
     double space(double value) => value * densityScale;
+    double scaledRadius(double value) => value * radiusScale;
     final slotHeight = space(18).clamp(14.0, 22.0);
 
     Widget buildColumn(List<String> displayLetters) {
@@ -68,7 +70,7 @@ class AlphabetScroller extends StatelessWidget {
         decoration: BoxDecoration(
           color: ColorTokens.cardFill(context, 0.04),
           borderRadius: BorderRadius.circular(
-            context.scaledRadius(space(20).clamp(14.0, 24.0)),
+            scaledRadius(space(20).clamp(14.0, 24.0)),
           ),
           border: Border.all(color: ColorTokens.border(context)),
         ),
