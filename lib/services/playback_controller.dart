@@ -60,6 +60,7 @@ class PlaybackController {
   Future<void> setQueue(
     List<MediaItem> items, {
     int startIndex = 0,
+    Duration? startPosition,
     CacheStore? cacheStore,
     Map<String, String>? headers,
   }) async {
@@ -76,6 +77,7 @@ class PlaybackController {
     await _player.setAudioSources(
       sources,
       initialIndex: targetIndex,
+      initialPosition: startPosition,
       preload: _gaplessPlayback,
     );
   }

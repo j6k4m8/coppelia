@@ -6,7 +6,6 @@ import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'artwork_fallback.dart';
 import 'artwork_image.dart';
-import 'corner_radius.dart';
 import 'header_controls.dart';
 
 /// Shared hero header for playlist-like detail views.
@@ -54,8 +53,11 @@ class CollectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
+    final radiusScale = state.cornerRadiusScale;
     double space(double value) => value * densityScale;
+    double scaledRadius(double value) => value * radiusScale;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
     Widget buildArtworkFallback(bool isNarrow) => ArtworkFallback(
@@ -64,8 +66,7 @@ class CollectionHeader extends StatelessWidget {
           icon: fallbackIcon,
           iconSize: clamped(36, min: 26, max: 42),
         );
-    final cardRadius =
-        context.scaledRadius(clamped(26, min: 16, max: 30));
+    final cardRadius = scaledRadius(clamped(26, min: 16, max: 30));
     final cardPadding = EdgeInsets.fromLTRB(
       space(24),
       space(32),
@@ -123,7 +124,7 @@ class CollectionHeader extends StatelessWidget {
                     clamped(isNarrow ? 160 : 140, min: 110, max: 190);
                 final artwork = ClipRRect(
                   borderRadius: BorderRadius.circular(
-                    context.scaledRadius(clamped(20, min: 12, max: 24)),
+                    scaledRadius(clamped(20, min: 12, max: 24)),
                   ),
                   child: ArtworkImage(
                     imageUrl: imageUrl,

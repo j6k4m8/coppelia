@@ -35,6 +35,7 @@ class TrackRow extends StatelessWidget {
     this.onGoToAlbum,
     this.onGoToArtist,
     this.onRemoveFromPlaylist,
+    this.enableContextMenu = true,
     this.leading,
     this.trailing,
   });
@@ -81,6 +82,9 @@ class TrackRow extends StatelessWidget {
   /// Optional handler to remove this track from a playlist.
   final Future<String?> Function()? onRemoveFromPlaylist;
 
+  /// Whether to enable the context menu interactions.
+  final bool enableContextMenu;
+
   /// Optional leading widget to show before the track index.
   final Widget? leading;
 
@@ -125,17 +129,20 @@ class TrackRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(rowRadius),
         onTap: useSingleTap ? onTap : null,
         onDoubleTap: useSingleTap ? null : onTap,
-        onLongPress: () async {
-          final box = context.findRenderObject() as RenderBox?;
-          if (box == null) {
-            return;
-          }
-          final position =
-              box.localToGlobal(box.size.center(Offset.zero));
-          await _showMenu(context, position);
-        },
-        onSecondaryTapDown: (details) =>
-            _showMenu(context, details.globalPosition),
+        onLongPress: enableContextMenu
+            ? () async {
+                final box = context.findRenderObject() as RenderBox?;
+                if (box == null) {
+                  return;
+                }
+                final position =
+                    box.localToGlobal(box.size.center(Offset.zero));
+                await _showMenu(context, position);
+              }
+            : null,
+        onSecondaryTapDown: enableContextMenu
+            ? (details) => _showMenu(context, details.globalPosition)
+            : null,
         hoverColor: ColorTokens.hoverRow(context),
         splashColor: ColorTokens.hoverRow(context),
         child: Padding(

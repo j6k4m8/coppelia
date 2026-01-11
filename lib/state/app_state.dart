@@ -2414,6 +2414,60 @@ class AppState extends ChangeNotifier {
     );
   }
 
+  /// Reorders the playback queue.
+  Future<void> reorderQueue(int oldIndex, int newIndex) async {
+    if (_queue.isEmpty) {
+      return;
+    }
+    final from = oldIndex.clamp(0, _queue.length - 1);
+    var to = newIndex.clamp(0, _queue.length);
+    if (from < to) {
+      to -= 1;
+    }
+    if (from == to) {
+      return;
+    }
+    final previousQueue = List<MediaItem>.from(_queue);
+    final updated = List<MediaItem>.from(_queue);
+    final moved = updated.removeAt(from);
+    updated.insert(to, moved);
+
+    final currentTrack = _nowPlaying;
+    final startPosition = _position;
+    final wasPlaying = _isPlaying;
+    _queue = updated;
+    notifyListeners();
+
+    if (currentTrack == null) {
+      return;
+    }
+    final targetIndex = updated.indexWhere(
+      (track) => identical(track, currentTrack),
+    );
+    final startIndex = targetIndex < 0 ? 0 : targetIndex;
+    final didSetQueue = await _performPlaybackAction(
+      () => _playback.setQueue(
+        updated,
+        startIndex: startIndex,
+        startPosition: startPosition,
+        cacheStore: _cacheStore,
+        headers: _playbackHeaders(),
+      ),
+      'reorder queue',
+    );
+    if (!didSetQueue) {
+      _queue = previousQueue;
+      notifyListeners();
+      return;
+    }
+    if (wasPlaying) {
+      await _performPlaybackAction(
+        () => _playback.play(),
+        'play',
+      );
+    }
+  }
+
   /// Adds a track to the end of the queue.
   Future<void> enqueueTrack(MediaItem track) async {
     if (_offlineMode && !_pinnedAudio.contains(track.streamUrl)) {
