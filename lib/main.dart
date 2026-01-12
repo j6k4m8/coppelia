@@ -21,11 +21,12 @@ Future<void> main() async {
   if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
     await windowManager.ensureInitialized();
 
-    const windowOptions = WindowOptions(
-      size: Size(1280, 800),
-      minimumSize: Size(320, 360),
+    final windowOptions = WindowOptions(
+      size: const Size(1280, 800),
+      minimumSize: const Size(320, 360),
       center: true,
-      titleBarStyle: TitleBarStyle.hidden,
+      titleBarStyle:
+          Platform.isMacOS ? TitleBarStyle.hidden : TitleBarStyle.normal,
       backgroundColor: Colors.transparent,
     );
 
