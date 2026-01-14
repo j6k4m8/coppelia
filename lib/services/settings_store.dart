@@ -62,6 +62,11 @@ class SettingsStore {
   static const _deviceIdKey = 'settings_device_id';
   static const _offlineModeKey = 'settings_offline_mode';
   static const _smartListsKey = 'settings_smart_lists';
+  static const _skysetOnTrackChangeKey = 'settings_skyset_on_track_change';
+  static const _skysetPeriodicKey = 'settings_skyset_periodic';
+  static const _skysetIntervalMinutesKey =
+      'settings_skyset_interval_minutes';
+  static const _skysetOutputPathKey = 'settings_skyset_output_path';
   static const int _defaultAccentValue = 0xFF6F7BFF;
 
   /// Loads the preferred theme mode.
@@ -644,5 +649,60 @@ class SettingsStore {
   Future<void> saveAutoDownloadFavoritesWifiOnly(bool enabled) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_autoDownloadFavoritesWifiOnlyKey, enabled);
+  }
+
+  /// Loads whether Skyset writes should run on track changes.
+  Future<bool> loadSkysetWriteOnTrackChange() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_skysetOnTrackChangeKey) ?? false;
+  }
+
+  /// Saves whether Skyset writes should run on track changes.
+  Future<void> saveSkysetWriteOnTrackChange(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_skysetOnTrackChangeKey, enabled);
+  }
+
+  /// Loads whether Skyset writes should run on a periodic interval.
+  Future<bool> loadSkysetWritePeriodic() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_skysetPeriodicKey) ?? false;
+  }
+
+  /// Saves whether Skyset writes should run on a periodic interval.
+  Future<void> saveSkysetWritePeriodic(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_skysetPeriodicKey, enabled);
+  }
+
+  /// Loads the Skyset write interval in minutes.
+  Future<int> loadSkysetIntervalMinutes() async {
+    final preferences = await SharedPreferences.getInstance();
+    final value = preferences.getInt(_skysetIntervalMinutesKey) ?? 5;
+    if (value < 1) {
+      return 1;
+    }
+    if (value > 120) {
+      return 120;
+    }
+    return value;
+  }
+
+  /// Saves the Skyset write interval in minutes.
+  Future<void> saveSkysetIntervalMinutes(int minutes) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setInt(_skysetIntervalMinutesKey, minutes);
+  }
+
+  /// Loads the Skyset output path override.
+  Future<String> loadSkysetOutputPath() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getString(_skysetOutputPathKey) ?? '';
+  }
+
+  /// Saves the Skyset output path override.
+  Future<void> saveSkysetOutputPath(String path) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_skysetOutputPathKey, path);
   }
 }

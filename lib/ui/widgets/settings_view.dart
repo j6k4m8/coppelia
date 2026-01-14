@@ -172,12 +172,23 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
   late final TextEditingController _accentController;
   final FocusNode _accentFocusNode = FocusNode();
   String? _accentError;
+  late final TextEditingController _skysetIntervalController;
+  late final TextEditingController _skysetPathController;
+  final FocusNode _skysetIntervalFocusNode = FocusNode();
+  final FocusNode _skysetPathFocusNode = FocusNode();
+  String? _skysetIntervalError;
 
   @override
   void initState() {
     super.initState();
     _accentController = TextEditingController(
       text: _formatHex(widget.state.accentColorValue),
+    );
+    _skysetIntervalController = TextEditingController(
+      text: widget.state.skysetIntervalMinutes.toString(),
+    );
+    _skysetPathController = TextEditingController(
+      text: widget.state.skysetOutputPath,
     );
   }
 
@@ -189,12 +200,26 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
         _accentController.text.toUpperCase() != nextHex) {
       _accentController.text = nextHex;
     }
+    final nextInterval = widget.state.skysetIntervalMinutes.toString();
+    if (!_skysetIntervalFocusNode.hasFocus &&
+        _skysetIntervalController.text != nextInterval) {
+      _skysetIntervalController.text = nextInterval;
+    }
+    final nextPath = widget.state.skysetOutputPath;
+    if (!_skysetPathFocusNode.hasFocus &&
+        _skysetPathController.text != nextPath) {
+      _skysetPathController.text = nextPath;
+    }
   }
 
   @override
   void dispose() {
     _accentController.dispose();
     _accentFocusNode.dispose();
+    _skysetIntervalController.dispose();
+    _skysetPathController.dispose();
+    _skysetIntervalFocusNode.dispose();
+    _skysetPathFocusNode.dispose();
     super.dispose();
   }
 
@@ -214,6 +239,14 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
     }
     final value = int.parse(raw, radix: 16);
     return Color(0xFF000000 | value);
+  }
+
+  int? _parseSkysetInterval(String input) {
+    final trimmed = input.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    return int.tryParse(trimmed);
   }
 
   @override
@@ -490,6 +523,124 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
                       ),
                     ),
                   ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: space(20)),
+        Container(
+          decoration: BoxDecoration(
+            color: ColorTokens.cardFill(context, 0.04),
+            borderRadius: BorderRadius.circular(context.scaledRadius(16)),
+            border: Border.all(color: ColorTokens.border(context, 0.1)),
+          ),
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              dividerColor: Colors.transparent,
+            ),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.symmetric(
+                horizontal: space(14).clamp(10.0, 20.0),
+              ),
+              childrenPadding: EdgeInsets.fromLTRB(
+                space(14).clamp(10.0, 20.0),
+                0,
+                space(14).clamp(10.0, 20.0),
+                space(12).clamp(8.0, 16.0),
+              ),
+              title: Text(
+                'Skyset',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              subtitle: Text(
+                'Export the current theme for other apps to sync.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: ColorTokens.textSecondary(context),
+                    ),
+              ),
+              children: [
+                _SettingRow(
+                  title: 'On track change',
+                  subtitle: 'Write theme updates when the current track changes.',
+                  trailing: CompactSwitch(
+                    value: state.skysetWriteOnTrackChange,
+                    onChanged: (value) =>
+                        state.setSkysetWriteOnTrackChange(value),
+                  ),
+                ),
+                SizedBox(height: space(12)),
+                _SettingRow(
+                  title: 'Every N minutes',
+                  subtitle: 'Periodically refresh Skyset output.',
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 72,
+                        child: TextField(
+                          controller: _skysetIntervalController,
+                          focusNode: _skysetIntervalFocusNode,
+                          enabled: state.skysetWritePeriodic,
+                          textAlign: TextAlign.center,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(3),
+                          ],
+                          decoration: InputDecoration(
+                            hintText: '5',
+                            errorText: _skysetIntervalError,
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                              vertical: space(10).clamp(6.0, 12.0),
+                            ),
+                          ),
+                          onChanged: (value) {
+                            final parsed = _parseSkysetInterval(value);
+                            if (parsed == null) {
+                              setState(() {
+                                _skysetIntervalError = null;
+                              });
+                              return;
+                            }
+                            if (parsed < 1) {
+                              setState(() {
+                                _skysetIntervalError = 'Min 1';
+                              });
+                              return;
+                            }
+                            setState(() {
+                              _skysetIntervalError = null;
+                            });
+                            state.setSkysetIntervalMinutes(parsed);
+                          },
+                        ),
+                      ),
+                      SizedBox(width: space(10)),
+                      CompactSwitch(
+                        value: state.skysetWritePeriodic,
+                        onChanged: (value) =>
+                            state.setSkysetWritePeriodic(value),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: space(12)),
+                _SettingRow(
+                  title: 'Write location',
+                  subtitle: 'Path for the skyset latest.yml output.',
+                  trailing: SizedBox(
+                    width: 320,
+                    child: TextField(
+                      controller: _skysetPathController,
+                      focusNode: _skysetPathFocusNode,
+                      decoration: const InputDecoration(
+                        hintText: '~/.config/skyset/latest.yml',
+                      ),
+                      onChanged: (value) => state.setSkysetOutputPath(value),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

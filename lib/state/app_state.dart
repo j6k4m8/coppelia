@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/scheduler.dart';
 
@@ -30,6 +31,7 @@ import '../services/now_playing_service.dart';
 import '../services/playback_controller.dart';
 import '../services/settings_store.dart';
 import '../services/session_store.dart';
+import '../services/skyset_writer.dart';
 import 'browse_layout.dart';
 import 'accent_color_source.dart';
 import 'home_section.dart';
@@ -71,6 +73,7 @@ class AppState extends ChangeNotifier {
   final NowPlayingService _nowPlayingService = NowPlayingService();
   final SessionStore _sessionStore;
   final SettingsStore _settingsStore;
+  final SkysetWriter _skysetWriter = SkysetWriter();
 
   AuthSession? _session;
   bool _isBootstrapping = true;
@@ -182,6 +185,12 @@ class AppState extends ChangeNotifier {
   final List<LibraryView> _viewHistory = [];
   final Map<LibraryView, BrowseLayout> _browseLayouts = {};
   final Map<String, double> _scrollOffsets = {};
+  bool _skysetWriteOnTrackChange = false;
+  bool _skysetWritePeriodic = false;
+  int _skysetIntervalMinutes = 5;
+  String _skysetOutputPath = '';
+  DateTime? _lastSkysetWriteAt;
+  Timer? _skysetTimer;
 
   MediaItem? _jumpInTrack;
   Album? _jumpInAlbum;
@@ -501,6 +510,19 @@ class AppState extends ChangeNotifier {
   /// Preferred row count for home shelf grids.
   int get homeShelfGridRows => _homeShelfGridRows;
 
+  /// True when Skyset writes are triggered on track change.
+  bool get skysetWriteOnTrackChange => _skysetWriteOnTrackChange;
+
+  /// True when Skyset writes run on a periodic interval.
+  bool get skysetWritePeriodic => _skysetWritePeriodic;
+
+  /// Preferred Skyset interval in minutes.
+  int get skysetIntervalMinutes => _skysetIntervalMinutes;
+
+  /// Output path for Skyset writes.
+  String get skysetOutputPath =>
+      _skysetOutputPath.isEmpty ? _defaultSkysetPath() : _skysetOutputPath;
+
   /// Home section visibility settings.
   Map<HomeSection, bool> get homeSectionVisibility =>
       Map.unmodifiable(_homeSectionVisibility);
@@ -661,6 +683,12 @@ class AppState extends ChangeNotifier {
     _homeShelfGridRows = await _settingsStore.loadHomeShelfGridRows();
     _offlineMode = await _settingsStore.loadOfflineMode();
     _cacheMaxBytes = await _cacheStore.loadCacheMaxBytes();
+    _skysetWriteOnTrackChange =
+        await _settingsStore.loadSkysetWriteOnTrackChange();
+    _skysetWritePeriodic = await _settingsStore.loadSkysetWritePeriodic();
+    _skysetIntervalMinutes =
+        await _settingsStore.loadSkysetIntervalMinutes();
+    _skysetOutputPath = await _settingsStore.loadSkysetOutputPath();
     _homeSectionVisibility = await _settingsStore.loadHomeSectionVisibility();
     _homeSectionOrder = await _settingsStore.loadHomeSectionOrder();
     _sidebarVisibility = await _settingsStore.loadSidebarVisibility();
@@ -676,7 +704,9 @@ class AppState extends ChangeNotifier {
       await _applyOfflineModeData();
     }
     await _restorePlaybackResumeState();
+    _configureSkysetTimer();
     unawaited(_maybeUpdateNowPlayingPalette(_nowPlaying));
+    unawaited(_writeSkysetIfEnabled(reason: 'bootstrap'));
     _isBootstrapping = false;
     notifyListeners();
 
@@ -2763,6 +2793,51 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Updates whether Skyset writes run on track changes.
+  Future<void> setSkysetWriteOnTrackChange(bool enabled) async {
+    _skysetWriteOnTrackChange = enabled;
+    await _settingsStore.saveSkysetWriteOnTrackChange(enabled);
+    notifyListeners();
+    if (enabled) {
+      unawaited(_maybeUpdateNowPlayingPalette(_nowPlaying));
+      unawaited(_writeSkysetIfEnabled(reason: 'toggle'));
+    }
+  }
+
+  /// Updates whether Skyset writes run on a periodic interval.
+  Future<void> setSkysetWritePeriodic(bool enabled) async {
+    _skysetWritePeriodic = enabled;
+    await _settingsStore.saveSkysetWritePeriodic(enabled);
+    _configureSkysetTimer();
+    notifyListeners();
+    if (enabled) {
+      unawaited(_maybeUpdateNowPlayingPalette(_nowPlaying));
+      unawaited(_writeSkysetIfEnabled(reason: 'toggle'));
+    }
+  }
+
+  /// Updates the Skyset interval preference.
+  Future<void> setSkysetIntervalMinutes(int minutes) async {
+    final next = minutes < 1 ? 1 : (minutes > 120 ? 120 : minutes);
+    if (next == _skysetIntervalMinutes) {
+      return;
+    }
+    _skysetIntervalMinutes = next;
+    await _settingsStore.saveSkysetIntervalMinutes(next);
+    _configureSkysetTimer();
+    notifyListeners();
+  }
+
+  /// Updates the Skyset output path preference.
+  Future<void> setSkysetOutputPath(String path) async {
+    _skysetOutputPath = path.trim();
+    await _settingsStore.saveSkysetOutputPath(_skysetOutputPath);
+    notifyListeners();
+    if (_skysetWriteOnTrackChange || _skysetWritePeriodic) {
+      unawaited(_writeSkysetIfEnabled(reason: 'path'));
+    }
+  }
+
   /// Updates the settings shortcut enabled preference.
   Future<void> setSettingsShortcutEnabled(bool enabled) async {
     _settingsShortcutEnabled = enabled;
@@ -3444,6 +3519,7 @@ class AppState extends ChangeNotifier {
     _playerStateSubscription?.cancel();
     _currentIndexSubscription?.cancel();
     _playbackPollTimer?.cancel();
+    _skysetTimer?.cancel();
     _positionNotifier.dispose();
     _durationNotifier.dispose();
     _isPlayingNotifier.dispose();
@@ -3742,6 +3818,9 @@ class AppState extends ChangeNotifier {
     if (recordHistory) {
       _recordPlayHistory(track);
     }
+    if (_skysetWriteOnTrackChange) {
+      unawaited(_writeSkysetIfEnabled(reason: 'track-change'));
+    }
     _playSessionId = _buildPlaySessionId(track);
     _reportedStartSessionId = null;
     _reportedStopSessionId = null;
@@ -3787,7 +3866,9 @@ class AppState extends ChangeNotifier {
 
   bool _needsNowPlayingPalette() {
     return _accentColorSource == AccentColorSource.nowPlaying ||
-        _themePaletteSource == ThemePaletteSource.nowPlaying;
+        _themePaletteSource == ThemePaletteSource.nowPlaying ||
+        _skysetWriteOnTrackChange ||
+        _skysetWritePeriodic;
   }
 
   Future<void> _maybeUpdateNowPlayingPalette(MediaItem? track) async {
@@ -3820,6 +3901,9 @@ class AppState extends ChangeNotifier {
       _paletteCache[imageUrl] = palette;
       _nowPlayingPalette = palette;
       notifyListeners();
+      if (_skysetWriteOnTrackChange) {
+        unawaited(_writeSkysetIfEnabled(reason: 'palette'));
+      }
     } catch (_) {
       // Ignore palette extraction failures.
     }
@@ -3864,6 +3948,104 @@ class AppState extends ChangeNotifier {
         return 'Coppelia Linux';
       case TargetPlatform.fuchsia:
         return 'Coppelia Fuchsia';
+    }
+  }
+
+  String _defaultSkysetPath() {
+    if (kIsWeb) {
+      return '';
+    }
+    if (Platform.isWindows) {
+      final appData = Platform.environment['APPDATA'];
+      if (appData != null && appData.isNotEmpty) {
+        return '$appData\\skyset\\latest.yml';
+      }
+      final home = Platform.environment['USERPROFILE'] ?? '';
+      if (home.isEmpty) {
+        return '';
+      }
+      return '$home\\AppData\\Roaming\\skyset\\latest.yml';
+    }
+    final home = Platform.environment['HOME'] ?? '';
+    if (home.isEmpty) {
+      return '';
+    }
+    return '$home/.config/skyset/latest.yml';
+  }
+
+  Brightness _resolvedBrightness() {
+    return switch (_themeMode) {
+      ThemeMode.light => Brightness.light,
+      ThemeMode.dark => Brightness.dark,
+      ThemeMode.system =>
+        WidgetsBinding.instance.platformDispatcher.platformBrightness,
+    };
+  }
+
+  void _configureSkysetTimer() {
+    _skysetTimer?.cancel();
+    if (!_skysetWritePeriodic) {
+      _skysetTimer = null;
+      return;
+    }
+    final minutes = _skysetIntervalMinutes < 1
+        ? 1
+        : (_skysetIntervalMinutes > 120 ? 120 : _skysetIntervalMinutes);
+    _skysetTimer = Timer.periodic(
+      Duration(minutes: minutes),
+      (_) => unawaited(_writeSkysetIfEnabled(reason: 'interval')),
+    );
+  }
+
+  Future<void> _writeSkysetIfEnabled({required String reason}) async {
+    assert(reason.isNotEmpty);
+    if (!_skysetWriteOnTrackChange && !_skysetWritePeriodic) {
+      return;
+    }
+    final track = _nowPlaying;
+    if (track == null) {
+      return;
+    }
+    final now = DateTime.now();
+    final lastWrite = _lastSkysetWriteAt;
+    if (lastWrite != null &&
+        now.difference(lastWrite) < const Duration(milliseconds: 750)) {
+      return;
+    }
+    _lastSkysetWriteAt = now;
+    final accent = accentColor;
+    final palette = _nowPlayingPalette ??
+        NowPlayingPalette(
+          primary: accent,
+          secondary: accent,
+          tertiary: accent,
+        );
+    final brightness = _resolvedBrightness();
+    final gradients =
+        SkysetWriter.buildPalette(brightness: brightness, palette: palette);
+    final artists = track.artists.isEmpty
+        ? 'Unknown Artist'
+        : track.artists.join(', ');
+    final submessage =
+        track.album.isEmpty ? artists : '$artists - ${track.album}';
+    final payload = SkysetPayload(
+      path: skysetOutputPath,
+      origin: 'com.matelsky.coppelia',
+      updatedAt: now,
+      message: track.title,
+      submessage: submessage,
+      themeMode: _themeMode,
+      brightness: brightness,
+      accentColor: accent,
+      palette: palette,
+      track: track,
+      backgroundGradient: gradients.backgroundGradient,
+      heroGradient: gradients.heroGradient,
+    );
+    try {
+      await _skysetWriter.write(payload);
+    } catch (_) {
+      // Ignore Skyset write failures.
     }
   }
 
