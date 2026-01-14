@@ -2801,6 +2801,10 @@ class AppState extends ChangeNotifier {
     if (enabled) {
       unawaited(_maybeUpdateNowPlayingPalette(_nowPlaying));
       unawaited(_writeSkysetIfEnabled(reason: 'toggle'));
+    } else {
+      unawaited(
+        _writeSkysetIfEnabled(reason: 'toggle', allowDisabled: true),
+      );
     }
   }
 
@@ -2813,6 +2817,10 @@ class AppState extends ChangeNotifier {
     if (enabled) {
       unawaited(_maybeUpdateNowPlayingPalette(_nowPlaying));
       unawaited(_writeSkysetIfEnabled(reason: 'toggle'));
+    } else {
+      unawaited(
+        _writeSkysetIfEnabled(reason: 'toggle', allowDisabled: true),
+      );
     }
   }
 
@@ -3970,7 +3978,7 @@ class AppState extends ChangeNotifier {
     if (home.isEmpty) {
       return '';
     }
-    return '$home/.config/skyset/latest.yml';
+    return '$home/.config/skyset';
   }
 
   Brightness _resolvedBrightness() {
@@ -3997,9 +4005,14 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  Future<void> _writeSkysetIfEnabled({required String reason}) async {
+  Future<void> _writeSkysetIfEnabled({
+    required String reason,
+    bool allowDisabled = false,
+  }) async {
     assert(reason.isNotEmpty);
-    if (!_skysetWriteOnTrackChange && !_skysetWritePeriodic) {
+    final sourceWillUpdate =
+        _skysetWriteOnTrackChange || _skysetWritePeriodic;
+    if (!sourceWillUpdate && !allowDisabled) {
       return;
     }
     final track = _nowPlaying;
@@ -4034,11 +4047,11 @@ class AppState extends ChangeNotifier {
       updatedAt: now,
       message: track.title,
       submessage: submessage,
+      sourceWillUpdate: sourceWillUpdate,
       themeMode: _themeMode,
       brightness: brightness,
       accentColor: accent,
       palette: palette,
-      track: track,
       backgroundGradient: gradients.backgroundGradient,
       heroGradient: gradients.heroGradient,
     );

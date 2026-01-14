@@ -1,5 +1,7 @@
-import 'dart:io' show Platform;
+import 'dart:io' show Directory, Platform;
 
+import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -169,6 +171,8 @@ class _AppearanceSettings extends StatefulWidget {
 }
 
 class _AppearanceSettingsState extends State<_AppearanceSettings> {
+  static const MethodChannel _skysetChannel =
+      MethodChannel('com.matelsky.coppelia/skyset');
   late final TextEditingController _accentController;
   final FocusNode _accentFocusNode = FocusNode();
   String? _accentError;
@@ -247,6 +251,98 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
       return null;
     }
     return int.tryParse(trimmed);
+  }
+
+  Future<String?> _resolveSkysetInitialDirectory(AppState state) async {
+    final rawPath = state.skysetOutputPath.trim();
+    if (rawPath.isEmpty) {
+      return _userHomeDirectory();
+    }
+    final expanded = await _expandHomePath(rawPath);
+    final lower = expanded.toLowerCase();
+    var candidate = expanded;
+    if (lower.endsWith('.yml') || lower.endsWith('.yaml')) {
+      final separator = Platform.pathSeparator;
+      final index = expanded.lastIndexOf(separator);
+      if (index > 0) {
+        candidate = expanded.substring(0, index);
+      }
+    }
+    if (candidate.isEmpty) {
+      return _userHomeDirectory();
+    }
+    if (!Directory(candidate).existsSync()) {
+      return _userHomeDirectory();
+    }
+    return candidate;
+  }
+
+  Future<String> _expandHomePath(String path) async {
+    final trimmed = path.trim();
+    if (!trimmed.startsWith('~')) {
+      return trimmed;
+    }
+    final home = await _userHomeDirectory() ?? '';
+    if (home.isEmpty) {
+      return trimmed;
+    }
+    if (trimmed == '~') {
+      return home;
+    }
+    if (trimmed.startsWith('~/')) {
+      return '$home/${trimmed.substring(2)}';
+    }
+    return trimmed.replaceFirst('~', home);
+  }
+
+  Future<String?> _userHomeDirectory() async {
+    if (kIsWeb) {
+      return null;
+    }
+    if (Platform.isMacOS) {
+      try {
+        final path = await _skysetChannel.invokeMethod<String>(
+          'getUserHomeDirectory',
+        );
+        if (path != null && path.isNotEmpty) {
+          return path;
+        }
+      } catch (_) {}
+    }
+    final home =
+        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+    return home?.isEmpty == true ? null : home;
+  }
+
+  Future<void> _chooseSkysetDirectory(AppState state) async {
+    final initialDirectory = await _resolveSkysetInitialDirectory(state);
+    final directory = await getDirectoryPath(
+      initialDirectory: initialDirectory,
+    );
+    if (directory == null || directory.isEmpty) {
+      return;
+    }
+    final separator = Platform.pathSeparator;
+    final trimmed = directory.endsWith(separator)
+        ? directory.substring(0, directory.length - 1)
+        : directory;
+    final baseName = trimmed.split(separator).last;
+    String targetDir;
+    if (baseName == 'skyset') {
+      targetDir = trimmed;
+    } else if (baseName == '.config') {
+      targetDir = '$trimmed${separator}skyset';
+    } else if (Directory('$trimmed${separator}.config').existsSync()) {
+      targetDir = '$trimmed${separator}.config${separator}skyset';
+    } else {
+      targetDir = trimmed;
+    }
+    final path = '$targetDir${separator}latest.yml';
+    if (!mounted) {
+      return;
+    }
+    _skysetPathController.text = path;
+    await state.setSkysetOutputPath(path);
   }
 
   @override
@@ -631,13 +727,26 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
                   subtitle: 'Path for the skyset latest.yml output.',
                   trailing: SizedBox(
                     width: 320,
-                    child: TextField(
-                      controller: _skysetPathController,
-                      focusNode: _skysetPathFocusNode,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextField(
+                          controller: _skysetPathController,
+                          focusNode: _skysetPathFocusNode,
                       decoration: const InputDecoration(
-                        hintText: '~/.config/skyset/latest.yml',
+                        hintText: '~/.config/skyset',
                       ),
-                      onChanged: (value) => state.setSkysetOutputPath(value),
+                          onChanged: (value) => state.setSkysetOutputPath(value),
+                        ),
+                        SizedBox(height: space(8)),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: OutlinedButton(
+                            onPressed: () => _chooseSkysetDirectory(state),
+                            child: const Text('Choose...'),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

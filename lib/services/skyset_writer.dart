@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../core/app_palette.dart';
-import '../models/media_item.dart';
 
 class SkysetPayload {
   const SkysetPayload({
@@ -13,11 +12,11 @@ class SkysetPayload {
     required this.updatedAt,
     required this.message,
     required this.submessage,
+    required this.sourceWillUpdate,
     required this.themeMode,
     required this.brightness,
     required this.accentColor,
     required this.palette,
-    required this.track,
     required this.backgroundGradient,
     required this.heroGradient,
   });
@@ -27,11 +26,11 @@ class SkysetPayload {
   final DateTime updatedAt;
   final String message;
   final String submessage;
+  final bool sourceWillUpdate;
   final ThemeMode themeMode;
   final Brightness brightness;
   final Color accentColor;
   final NowPlayingPalette palette;
-  final MediaItem track;
   final List<Color> backgroundGradient;
   final List<Color> heroGradient;
 }
@@ -40,7 +39,7 @@ class SkysetWriter {
   static const int schemaVersion = 1;
 
   Future<void> write(SkysetPayload payload) async {
-    final resolvedPath = _expandPath(payload.path);
+    final resolvedPath = _resolveSkysetPath(_expandPath(payload.path));
     if (resolvedPath.isEmpty) {
       return;
     }
@@ -92,6 +91,7 @@ class SkysetWriter {
       'updated_at: ${_yamlString(payload.updatedAt.toUtc().toIso8601String())}',
       'message: ${_yamlString(payload.message)}',
       'submessage: ${_yamlString(payload.submessage)}',
+      'source_will_update: ${payload.sourceWillUpdate ? 'true' : 'false'}',
       'theme:',
       '  mode: ${_yamlString(_themeModeLabel(payload.themeMode))}',
       '  brightness: ${_yamlString(_brightnessLabel(payload.brightness))}',
@@ -107,19 +107,6 @@ class SkysetWriter {
       '  hero:',
       for (final color in payload.heroGradient)
         '    - ${_yamlString(_hex(color))}',
-      'track:',
-      '  id: ${_yamlString(payload.track.id)}',
-      '  title: ${_yamlString(payload.track.title)}',
-      '  album: ${_yamlString(payload.track.album)}',
-      '  artists:',
-      if (payload.track.artists.isEmpty)
-        '    - ${_yamlString('Unknown Artist')}'
-      else
-        for (final artist in payload.track.artists)
-          '    - ${_yamlString(artist)}',
-      if (payload.track.imageUrl != null &&
-          payload.track.imageUrl!.isNotEmpty)
-        '  artwork_url: ${_yamlString(payload.track.imageUrl!)}',
     ];
     return lines.join('\n');
   }
@@ -145,6 +132,21 @@ class SkysetWriter {
       return '$home/${trimmed.substring(2)}';
     }
     return trimmed.replaceFirst('~', home);
+  }
+
+  String _resolveSkysetPath(String path) {
+    if (path.isEmpty) {
+      return '';
+    }
+    final separator = Platform.pathSeparator;
+    final trimmed = path.endsWith(separator)
+        ? path.substring(0, path.length - 1)
+        : path;
+    final lower = trimmed.toLowerCase();
+    if (lower.endsWith('.yml') || lower.endsWith('.yaml')) {
+      return trimmed;
+    }
+    return '$trimmed${separator}latest.yml';
   }
 
   static Color _tint(Color color, Brightness brightness, double amount) {
