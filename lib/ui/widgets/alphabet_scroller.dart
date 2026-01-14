@@ -36,7 +36,7 @@ class AlphabetScroller extends StatelessWidget {
     double scaledRadius(double value) => value * radiusScale;
     final slotHeight = space(18).clamp(14.0, 22.0);
 
-    Widget buildColumn(List<String> displayLetters) {
+    Widget buildColumn(List<String> displayLetters, {required bool allowScroll}) {
       final children = displayLetters
           .map(
             (letter) => SizedBox(
@@ -49,7 +49,7 @@ class AlphabetScroller extends StatelessWidget {
             ),
           )
           .toList();
-      if (scrollable && !useSubsampling) {
+      if (allowScroll) {
         return SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -59,6 +59,7 @@ class AlphabetScroller extends StatelessWidget {
       }
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: children,
       );
     }
@@ -78,19 +79,19 @@ class AlphabetScroller extends StatelessWidget {
       );
     }
 
-    if (useSubsampling) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          final maxSlots = ((constraints.maxHeight - space(16)) / slotHeight)
-              .floor()
-              .clamp(1, letters.length);
-          final displayLetters = _subsampleLetters(letters, maxSlots);
-          return buildContainer(buildColumn(displayLetters));
-        },
-      );
-    }
-
-    return buildContainer(buildColumn(letters));
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxSlots = ((constraints.maxHeight - space(16)) / slotHeight)
+            .floor()
+            .clamp(1, letters.length);
+        final shouldSubsample = useSubsampling || letters.length > maxSlots;
+        final displayLetters = shouldSubsample
+            ? _subsampleLetters(letters, maxSlots)
+            : letters;
+        final allowScroll = scrollable && !shouldSubsample;
+        return buildContainer(buildColumn(displayLetters, allowScroll: allowScroll));
+      },
+    );
   }
 
   List<String> _subsampleLetters(List<String> items, int maxSlots) {
