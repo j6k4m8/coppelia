@@ -1,12 +1,16 @@
 import 'dart:io';
+import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Service for logging app events and errors to a file that users can share.
 class LogService {
   static LogService? _instance;
+  static Completer<LogService>? _initCompleter;
   File? _logFile;
-  IOSink? _sink;
+  Completer<void> _writeLock = Completer<void>()
+    ..complete(); // Initial lock is unlocked
 
   /// Maximum log file size (5 MB)
   static const int maxLogSize = 5 * 1024 * 1024;
@@ -18,10 +22,30 @@ class LogService {
 
   /// Gets the singleton instance and initializes it if needed.
   static Future<LogService> get instance async {
-    if (_instance == null) {
-      _instance = LogService._();
-      await _instance!._initialize();
+    // If already initialized, return immediately
+    if (_instance != null) {
+      return _instance!;
     }
+
+    // If initialization is in progress, wait for it
+    if (_initCompleter != null) {
+      return _initCompleter!.future;
+    }
+
+    // Start initialization
+    _initCompleter = Completer<LogService>();
+    _instance = LogService._();
+
+    try {
+      await _instance!._initialize();
+      _initCompleter!.complete(_instance!);
+    } catch (e) {
+      _initCompleter!.completeError(e);
+      _instance = null;
+      _initCompleter = null;
+      rethrow;
+    }
+
     return _instance!;
   }
 
@@ -38,15 +62,29 @@ class LogService {
         }
       }
 
-      // Open for appending
-      _sink = _logFile!.openWrite(mode: FileMode.append);
-
       // Write session start marker
       await _writeLog('INFO', 'Log session started');
+
+      // Capture Flutter errors
+      _setupFlutterErrorCapture();
     } catch (e) {
       // Fail silently - logging shouldn't crash the app
-      print('Failed to initialize logging: $e');
+      debugPrint('Failed to initialize logging: $e');
     }
+  }
+
+  void _setupFlutterErrorCapture() {
+    // Capture Flutter framework errors
+    final originalOnError = FlutterError.onError;
+    FlutterError.onError = (FlutterErrorDetails details) {
+      // Log the error
+      _writeLog('FLUTTER_ERROR', details.exception.toString());
+      if (details.stack != null) {
+        _writeLog('FLUTTER_ERROR', 'Stack: ${details.stack}');
+      }
+      // Call original handler if it exists
+      originalOnError?.call(details);
+    };
   }
 
   Future<Directory> _getLogsDirectory() async {
@@ -79,17 +117,30 @@ class LogService {
     }
   }
 
+  /// Writes a log entry with thread-safe file access.
+  /// Uses a lock pattern to prevent concurrent writes.
   Future<void> _writeLog(String level, String message) async {
-    if (_sink == null) return;
+    if (_logFile == null) return;
 
-    final timestamp = DateTime.now().toIso8601String();
-    final entry = '[$timestamp] [$level] $message\n';
+    // Wait for any pending write to complete (implements a write queue)
+    await _writeLock.future;
+
+    // Create new lock that will be released when this write completes
+    final currentWrite = Completer<void>();
+    _writeLock = currentWrite;
 
     try {
-      _sink!.write(entry);
-      await _sink!.flush();
+      final timestamp = DateTime.now().toIso8601String();
+      final entry = '[$timestamp] [$level] $message\n';
+
+      // Append to file (each write is atomic)
+      await _logFile!.writeAsString(entry, mode: FileMode.append);
     } catch (e) {
-      print('Failed to write log: $e');
+      // Don't use regular print to avoid potential recursion
+      debugPrintSynchronously('Failed to write log: $e');
+    } finally {
+      // Release lock so next write can proceed
+      currentWrite.complete();
     }
   }
 
@@ -99,8 +150,12 @@ class LogService {
   /// Logs a warning message.
   Future<void> warning(String message) => _writeLog('WARN', message);
 
+  /// Logs a debug/print-style message (for manual logging of console output).
+  Future<void> print(String message) => _writeLog('PRINT', message);
+
   /// Logs an error message with optional error object and stack trace.
-  Future<void> error(String message, [Object? error, StackTrace? stackTrace]) async {
+  Future<void> error(String message,
+      [Object? error, StackTrace? stackTrace]) async {
     final errorText = error != null ? ' | Error: $error' : '';
     final stackText = stackTrace != null ? '\n$stackTrace' : '';
     await _writeLog('ERROR', '$message$errorText$stackText');
@@ -134,8 +189,8 @@ class LogService {
 
   /// Clears all logs.
   Future<void> clearLogs() async {
-    await _sink?.close();
-    _sink = null;
+    // Wait for any pending writes to complete
+    await _writeLock.future;
 
     if (_logFile != null && await _logFile!.exists()) {
       await _logFile!.delete();
@@ -148,7 +203,7 @@ class LogService {
   /// Closes the log file (call on app shutdown).
   Future<void> close() async {
     await _writeLog('INFO', 'Log session ended');
-    await _sink?.close();
-    _sink = null;
+    // Wait for final write to complete
+    await _writeLock.future;
   }
 }

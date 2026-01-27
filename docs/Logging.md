@@ -50,13 +50,41 @@ When reporting issues on GitHub, including your logs can help developers diagnos
 
 The logging system captures:
 
--   App startup and shutdown events
--   Authentication attempts and results
--   API errors and network failures
--   Playback errors
--   Critical state changes
+-   **App lifecycle**: Startup and shutdown events with version information
+-   **Authentication**: Login attempts, successes, and failures with error details
+-   **Logged messages**: Calls to `LogService.instance.info()`, `.warning()`, `.error()`, `.debug()`, and `.print()`
+-   **Flutter errors**: Framework errors and exceptions
+-   **Playback flow**: Detailed tracking of the entire playback initialization process
+    -   Playlist/album play requests
+    -   Track fetching from server
+    -   Queue setup and validation
+    -   **Audio format details** (container, codec, bitrate, sample rate)
+    -   Audio player state changes (playing, paused, buffering, loading)
+    -   Track transitions with format information
+    -   Play/pause/resume commands
+-   **Network requests**: API calls to Jellyfin server with response status
+-   **Errors**: All errors with full stack traces for debugging
+-   **State changes**: Critical application state transitions
 
-Sensitive information like passwords is **never** logged.
+### Playback Logging Details
+
+When you play music, the logs will show:
+
+1. `playPlaylist` or `playAlbum` - Initial request to play content
+2. `JellyfinClient: Fetching tracks` - Network request to Jellyfin server
+3. `_playFromList: Starting with X tracks` - Queue preparation **with codec/format info**
+    - Example: `[container=flac, codec=flac, bitrate=1411200, sampleRate=44100Hz]`
+4. `_playFromList: Setting queue` - Audio player queue setup
+5. `Playback action: set queue` - Queue set result (success/failure)
+6. `Playback action: play` - Play command result
+7. `Player state: playing=true, processingState=...` - Audio player state updates
+8. `Current index changed` - Track changes
+9. `Now playing: "Track Name" [container/codec]` - Current track with format info
+    - Example: `Now playing: "Song Title" by Artist [flac/flac]`
+
+This detailed logging helps diagnose freezing issues by showing exactly where the process stops. **The codec and container information is especially useful for identifying if certain formats (like WAV, FLAC, or high-bitrate files) are causing problems.**
+
+Sensitive information like passwords and access tokens is **never** logged.
 
 ## For Developers
 

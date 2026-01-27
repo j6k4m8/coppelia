@@ -872,7 +872,7 @@ class AppState extends ChangeNotifier {
   Future<void> playPlaylist(Playlist playlist) async {
     final logService = await LogService.instance;
     await logService.info(
-        'playPlaylist: Starting "${playlist.name}" (${playlist.id}), offline=${_offlineMode}');
+        'playPlaylist: Starting "${playlist.name}" (${playlist.id}), offline=$_offlineMode');
 
     List<MediaItem> tracks = const [];
     if (_offlineMode) {
@@ -2240,7 +2240,7 @@ class AppState extends ChangeNotifier {
   Future<void> playAlbum(Album album) async {
     final logService = await LogService.instance;
     await logService.info(
-        'playAlbum: Starting "${album.name}" (${album.id}), offline=${_offlineMode}');
+        'playAlbum: Starting "${album.name}" (${album.id}), offline=$_offlineMode');
 
     await selectAlbum(album);
     final tracks =
@@ -3590,6 +3590,9 @@ class AppState extends ChangeNotifier {
       _updateNowPlayingInfo(force: true);
     });
     _playerStateSubscription = _playback.playerStateStream.listen((state) {
+      LogService.instance.then((log) => log.info(
+          'Player state: playing=${state.playing}, processingState=${state.processingState}'));
+
       final nextPlaying = state.playing;
       final nextBuffering = state.processingState == ProcessingState.loading ||
           state.processingState == ProcessingState.buffering;
@@ -3627,8 +3630,16 @@ class AppState extends ChangeNotifier {
       }
     });
     _currentIndexSubscription = _playback.currentIndexStream.listen((index) {
+      LogService.instance.then((log) => log.info(
+          'Current index changed to $index (queue size: ${_queue.length})'));
+
       if (index != null && index >= 0 && index < _queue.length) {
         final next = _queue[index];
+        final formatInfo = next.container != null || next.codec != null
+            ? ' [${next.container ?? "unknown"}/${next.codec ?? "unknown"}]'
+            : '';
+        LogService.instance.then((log) => log.info(
+            'Now playing: "${next.title}" by ${next.artists.join(", ")}$formatInfo'));
         _setNowPlaying(next, notify: false);
         unawaited(_cacheStore.handlePlaybackAdvance(_queue, index));
       }
@@ -4461,8 +4472,13 @@ class AppState extends ChangeNotifier {
     MediaItem track,
   ) async {
     final logService = await LogService.instance;
+    final formatInfo = track.container != null || track.codec != null
+        ? ' [container=${track.container ?? "unknown"}, codec=${track.codec ?? "unknown"}'
+            '${track.bitrate != null ? ", bitrate=${track.bitrate}" : ""}'
+            '${track.sampleRate != null ? ", sampleRate=${track.sampleRate}Hz" : ""}]'
+        : '';
     await logService.info(
-        '_playFromList: Starting with ${tracks.length} tracks, playing "${track.title}"');
+        '_playFromList: Starting with ${tracks.length} tracks, playing "${track.title}"$formatInfo');
 
     final index = tracks.indexWhere((item) => item.id == track.id);
     if (index < 0) {

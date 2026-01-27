@@ -244,22 +244,35 @@ class JellyfinClient {
 
   /// Fetches the tracks for a playlist.
   Future<List<MediaItem>> fetchPlaylistTracks(String playlistId) async {
+    final logService = await LogService.instance;
+    await logService
+        .info('JellyfinClient: Fetching playlist tracks for $playlistId');
+
     final session = _requireSession();
     final uri = Uri.parse(
       '${session.serverUrl}/Playlists/$playlistId/Items',
     ).replace(
       queryParameters: {
         'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
-            'DateCreated,UserData,Genres',
+            'DateCreated,UserData,Genres,MediaStreams,Container',
         'api_key': session.accessToken,
       },
     );
+
+    await logService.info('JellyfinClient: Making HTTP request to ${uri.path}');
     final response = await _httpClient.get(uri);
+
     if (response.statusCode != 200) {
+      await logService.error('JellyfinClient: Failed to load playlist tracks',
+          'HTTP ${response.statusCode}');
       throw Exception('Unable to load playlist tracks.');
     }
+
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
     final items = payload['Items'] as List<dynamic>? ?? [];
+    await logService
+        .info('JellyfinClient: Received ${items.length} playlist tracks');
+
     return items
         .map((item) => MediaItem.fromJellyfin(
               item as Map<String, dynamic>,
@@ -585,6 +598,9 @@ class JellyfinClient {
 
   /// Fetches tracks for an album.
   Future<List<MediaItem>> fetchAlbumTracks(String albumId) async {
+    final logService = await LogService.instance;
+    await logService.info('JellyfinClient: Fetching album tracks for $albumId');
+
     final session = _requireSession();
     final uri = Uri.parse(
       '${session.serverUrl}/Users/${session.userId}/Items',
@@ -594,16 +610,25 @@ class JellyfinClient {
         'IncludeItemTypes': 'Audio',
         'Recursive': 'true',
         'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
-            'DateCreated,UserData,Genres',
+            'DateCreated,UserData,Genres,MediaStreams,Container',
         'api_key': session.accessToken,
       },
     );
+
+    await logService.info('JellyfinClient: Making HTTP request to ${uri.path}');
     final response = await _httpClient.get(uri);
+
     if (response.statusCode != 200) {
+      await logService.error('JellyfinClient: Failed to load album tracks',
+          'HTTP ${response.statusCode}');
       throw Exception('Unable to load album tracks.');
     }
+
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
     final items = payload['Items'] as List<dynamic>? ?? [];
+    await logService
+        .info('JellyfinClient: Received ${items.length} album tracks');
+
     return items
         .map((item) => MediaItem.fromJellyfin(
               item as Map<String, dynamic>,
