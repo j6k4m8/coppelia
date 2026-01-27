@@ -66,6 +66,28 @@
                         </items>
                     </menu>
                 </menuItem>
+                <menuItem title="Playback" id="Playback-Menu">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="Playback" id="Playback-Submenu">
+                        <items>
+                            <menuItem title="Play/Pause" id="PlayPause-Item">
+                                <connections>
+                                    <action selector="togglePlayback:" target="Voe-Tx-rLC" id="PlayPause-Connection"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Next" keyEquivalent="→" id="Next-Item">
+                                <connections>
+                                    <action selector="nextTrack:" target="Voe-Tx-rLC" id="Next-Connection"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Previous" keyEquivalent="←" id="Previous-Item">
+                                <connections>
+                                    <action selector="previousTrack:" target="Voe-Tx-rLC" id="Previous-Connection"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
                 <menuItem title="Edit" id="5QF-Oa-p0T">
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="Edit" id="W48-6f-4Dl">
