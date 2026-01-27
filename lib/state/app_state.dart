@@ -870,23 +870,41 @@ class AppState extends ChangeNotifier {
 
   /// Loads a playlist and starts playback without navigating.
   Future<void> playPlaylist(Playlist playlist) async {
+    final logService = await LogService.instance;
+    await logService.info(
+        'playPlaylist: Starting "${playlist.name}" (${playlist.id}), offline=${_offlineMode}');
+
     List<MediaItem> tracks = const [];
     if (_offlineMode) {
+      await logService
+          .info('playPlaylist: Loading cached tracks for offline mode');
       tracks = await _cacheStore.loadPlaylistTracks(playlist.id);
       final filtered = _filterPinnedTracks(tracks);
       if (filtered.isEmpty) {
+        await logService.warning(
+            'playPlaylist: No pinned tracks available in offline mode');
         return;
       }
+      await logService
+          .info('playPlaylist: Playing ${filtered.length} pinned tracks');
       await _playFromList(filtered, filtered.first);
       return;
     }
     try {
+      await logService.info('playPlaylist: Fetching tracks from server');
       tracks = await _client.fetchPlaylistTracks(playlist.id);
+      await logService
+          .info('playPlaylist: Fetched ${tracks.length} tracks, caching');
       await _cacheStore.savePlaylistTracks(playlist.id, tracks);
-    } catch (_) {
+    } catch (error, stackTrace) {
+      await logService.error(
+          'playPlaylist: Failed to fetch from server, trying cache',
+          error,
+          stackTrace);
       tracks = await _cacheStore.loadPlaylistTracks(playlist.id);
     }
     if (tracks.isEmpty) {
+      await logService.warning('playPlaylist: No tracks available');
       return;
     }
     await _playFromList(tracks, tracks.first);
@@ -2220,11 +2238,18 @@ class AppState extends ChangeNotifier {
 
   /// Loads an album and starts playback.
   Future<void> playAlbum(Album album) async {
+    final logService = await LogService.instance;
+    await logService.info(
+        'playAlbum: Starting "${album.name}" (${album.id}), offline=${_offlineMode}');
+
     await selectAlbum(album);
     final tracks =
         _offlineMode ? _filterPinnedTracks(_albumTracks) : _albumTracks;
     if (tracks.isNotEmpty) {
+      await logService.info('playAlbum: Playing ${tracks.length} tracks');
       await _playFromList(tracks, tracks.first);
+    } else {
+      await logService.warning('playAlbum: No tracks available');
     }
   }
 
@@ -2361,12 +2386,15 @@ class AppState extends ChangeNotifier {
 
   /// Toggles between play and pause states.
   Future<void> togglePlayback() async {
+    final logService = await LogService.instance;
     if (_playback.isPlaying) {
+      await logService.info('togglePlayback: Pausing');
       await _performPlaybackAction(
         () => _playback.pause(),
         'pause',
       );
     } else {
+      await logService.info('togglePlayback: Resuming playback');
       _startPlaybackPolling();
       await _performPlaybackAction(
         () => _playback.play(),
@@ -4432,15 +4460,29 @@ class AppState extends ChangeNotifier {
     List<MediaItem> tracks,
     MediaItem track,
   ) async {
+    final logService = await LogService.instance;
+    await logService.info(
+        '_playFromList: Starting with ${tracks.length} tracks, playing "${track.title}"');
+
     final index = tracks.indexWhere((item) => item.id == track.id);
     if (index < 0) {
+      await logService.warning('_playFromList: Track not found in list');
       return;
     }
+
+    await logService
+        .info('_playFromList: Track index $index, normalizing tracks');
     final normalized = _normalizeTracksForPlayback(tracks);
     final playbackTrack = normalized[index];
+
+    await logService.info('_playFromList: Refreshing cache status for track');
     await _refreshNowPlayingCacheStatus(playbackTrack);
+
     final previousQueue = List<MediaItem>.from(_queue);
     _queue = normalized;
+
+    await logService.info(
+        '_playFromList: Setting queue with ${_queue.length} tracks at index $index');
     final didSetQueue = await _performPlaybackAction(
       () => _playback.setQueue(
         _queue,
@@ -4450,7 +4492,11 @@ class AppState extends ChangeNotifier {
       ),
       'set queue',
     );
+    await logService.info(
+        '_playFromList: Queue setup ${didSetQueue ? "successful" : "failed"}');
     if (!didSetQueue) {
+      await logService.warning(
+          '_playFromList: Failed to set queue, restoring previous queue');
       _queue = previousQueue;
       if (_isPreparingPlayback) {
         _isPreparingPlayback = false;
@@ -4458,6 +4504,8 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return;
     }
+
+    await logService.info('_playFromList: Setting now playing track');
     if (_nowPlaying?.id != playbackTrack.id) {
       _setNowPlaying(playbackTrack);
     } else if (playbackTrack.duration > Duration.zero &&
@@ -4465,11 +4513,17 @@ class AppState extends ChangeNotifier {
       _duration = playbackTrack.duration;
       _durationNotifier.value = _duration;
     }
+
+    await logService.info('_playFromList: Starting playback polling');
     _startPlaybackPolling();
-    await _performPlaybackAction(
+
+    await logService.info('_playFromList: Initiating play command');
+    final didPlay = await _performPlaybackAction(
       () => _playback.play(),
       'play',
     );
+    await logService.info(
+        '_playFromList: Play command ${didPlay ? "successful" : "failed"}');
   }
 
   Map<String, String>? _playbackHeaders() {
@@ -4518,10 +4572,15 @@ class AppState extends ChangeNotifier {
     Future<void> Function() action,
     String label,
   ) async {
+    final logService = await LogService.instance;
+    await logService.info('Playback action: $label - starting');
     try {
       await action();
+      await logService.info('Playback action: $label - completed successfully');
       return true;
-    } catch (error) {
+    } catch (error, stackTrace) {
+      await logService.error(
+          'Playback action: $label - failed', error, stackTrace);
       debugPrint('Playback $label failed: $error');
       return false;
     }
