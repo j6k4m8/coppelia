@@ -26,6 +26,7 @@ import '../models/search_results.dart';
 import '../models/smart_list.dart';
 import '../services/cache_store.dart';
 import '../services/jellyfin_client.dart';
+import '../services/log_service.dart';
 import '../services/now_playing_service.dart';
 import '../services/playback_controller.dart';
 import '../services/settings_store.dart';
@@ -708,7 +709,9 @@ class AppState extends ChangeNotifier {
       await refreshLibrary();
       notifyListeners();
       return true;
-    } catch (error) {
+    } catch (error, stackTrace) {
+      final logService = await LogService.instance;
+      await logService.error('Sign in failed', error, stackTrace);
       _authError = error.toString();
       notifyListeners();
       return false;
@@ -3620,8 +3623,7 @@ class AppState extends ChangeNotifier {
     if (_playbackPollTimer != null) {
       return;
     }
-    _playbackPollTimer =
-        Timer.periodic(const Duration(milliseconds: 500), (_) {
+    _playbackPollTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
       final position = _playback.position;
       if (position != _position) {
         _position = position;

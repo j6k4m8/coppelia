@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+import 'dart:io' show Platform, Process;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -19,6 +19,7 @@ import '../../state/sidebar_item.dart';
 import '../../state/theme_palette_source.dart';
 import '../../core/color_tokens.dart';
 import '../../core/app_info.dart';
+import '../../services/log_service.dart';
 import 'compact_switch.dart';
 import 'corner_radius.dart';
 import 'glass_container.dart';
@@ -1902,6 +1903,158 @@ class _AccountSettings extends StatelessWidget {
             onPressed: state.signOut,
             child: const Text('Sign out'),
           ),
+        ),
+        SizedBox(height: space(32)),
+        Text('Diagnostics', style: Theme.of(context).textTheme.titleMedium),
+        SizedBox(height: space(12)),
+        _SettingRow(
+          title: 'App logs',
+          subtitle: 'View and share diagnostic logs to help troubleshoot issues.',
+          trailing: OutlinedButton(
+            onPressed: () => _showLogsDialog(context),
+            child: const Text('View logs'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showLogsDialog(BuildContext context) async {
+    final logService = await LogService.instance;
+    final logContent = await logService.getLogContent();
+    final logPath = await logService.getLogFilePath();
+
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => _LogsDialog(
+        logContent: logContent,
+        logPath: logPath,
+        onClear: () async {
+          await logService.clearLogs();
+          if (context.mounted) Navigator.of(context).pop();
+        },
+      ),
+    );
+  }
+}
+
+class _LogsDialog extends StatelessWidget {
+  const _LogsDialog({
+    required this.logContent,
+    required this.logPath,
+    required this.onClear,
+  });
+
+  final String logContent;
+  final String? logPath;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+
+    return AlertDialog(
+      title: const Text('App Logs'),
+      content: SizedBox(
+        width: 600,
+        height: 400,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (logPath != null) ...[
+              Text(
+                'Log file location:',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: ColorTokens.textSecondary(context),
+                    ),
+              ),
+              SizedBox(height: space(4)),
+              SelectableText(
+                logPath!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontFamily: 'monospace',
+                      color: ColorTokens.textSecondary(context, 0.7),
+                    ),
+              ),
+              SizedBox(height: space(16)),
+            ],
+            Text(
+              'Recent logs:',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: ColorTokens.textSecondary(context),
+                  ),
+            ),
+            SizedBox(height: space(8)),
+            Expanded(
+              child: Container(
+                padding: EdgeInsets.all(space(12)),
+                decoration: BoxDecoration(
+                  color: ColorTokens.cardFill(context, 0.08),
+                  borderRadius: BorderRadius.circular(
+                    context.scaledRadius(12),
+                  ),
+                  border: Border.all(
+                    color: ColorTokens.border(context, 0.12),
+                  ),
+                ),
+                child: SingleChildScrollView(
+                  child: SelectableText(
+                    logContent,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                        ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        if (logPath != null && Platform.isMacOS)
+          TextButton(
+            onPressed: () async {
+              // Extract directory from file path
+              final dir = logPath!.substring(0, logPath!.lastIndexOf('/'));
+              // Use 'open' command to reveal in Finder
+              await Process.run('open', [dir]);
+            },
+            child: const Text('Show in Finder'),
+          ),
+        TextButton(
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: logContent));
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Logs copied to clipboard')),
+              );
+            }
+          },
+          child: const Text('Copy'),
+        ),
+        if (logPath != null)
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: logPath!));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Path copied to clipboard')),
+                );
+              }
+            },
+            child: const Text('Copy path'),
+          ),
+        TextButton(
+          onPressed: onClear,
+          child: const Text('Clear logs'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
         ),
       ],
     );

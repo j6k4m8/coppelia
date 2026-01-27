@@ -11,6 +11,7 @@ import '../models/media_item.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
 import '../core/app_info.dart';
+import 'log_service.dart';
 
 /// Client wrapper for Jellyfin REST APIs.
 class JellyfinClient {
@@ -93,7 +94,12 @@ class JellyfinClient {
     required String username,
     required String password,
   }) async {
+    final logService = await LogService.instance;
     final sanitizedUrl = _sanitizeServerUrl(serverUrl);
+
+    await logService
+        .info('Attempting authentication to $sanitizedUrl for user $username');
+
     final uri = Uri.parse('$sanitizedUrl/Users/AuthenticateByName');
     final response = await _httpClient.post(
       uri,
@@ -108,6 +114,8 @@ class JellyfinClient {
     );
 
     if (response.statusCode != 200) {
+      await logService.error(
+          'Authentication failed', 'HTTP ${response.statusCode}');
       throw Exception('Authentication failed (${response.statusCode}).');
     }
 
@@ -120,6 +128,10 @@ class JellyfinClient {
       userName: user['Name'] as String? ?? username,
     );
     _session = session;
+
+    await logService.info(
+        'Authentication successful for user ${session.userName} (${session.userId})');
+
     return session;
   }
 

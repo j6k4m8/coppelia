@@ -6,11 +6,18 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
 import 'core/app_info.dart';
+import 'services/log_service.dart';
 
 /// Entry point for the Coppelia music player.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load app info first
   await AppInfo.load();
+
+  // Initialize logging service
+  final logService = await LogService.instance;
+  await logService.info('App starting - version ${AppInfo.displayVersion}');
   if (Platform.isAndroid) {
     await JustAudioBackground.init(
       androidNotificationChannelId: 'com.matelsky.coppelia.audio',
