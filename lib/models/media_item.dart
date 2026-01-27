@@ -16,6 +16,10 @@ class MediaItem {
     this.playCount,
     this.lastPlayedAt,
     this.genres = const [],
+    this.container,
+    this.codec,
+    this.bitrate,
+    this.sampleRate,
   });
 
   /// Jellyfin item identifier.
@@ -60,8 +64,29 @@ class MediaItem {
   /// Genre labels for the track.
   final List<String> genres;
 
+  /// Original file container format from Jellyfin (e.g., 'flac', 'mp3', 'aac').
+  final String? container;
+
+  /// Audio codec from Jellyfin (e.g., 'flac', 'mp3', 'aac', 'opus').
+  final String? codec;
+
+  /// Bitrate in bits per second.
+  final int? bitrate;
+
+  /// Sample rate in Hz.
+  final int? sampleRate;
+
   /// User-friendly subtitle.
   String get subtitle => artists.isEmpty ? album : artists.join(', ');
+
+  /// Extracts codec/container info from stream URL for logging.
+  String get codecInfo {
+    final uri = Uri.tryParse(streamUrl);
+    if (uri == null) return 'unknown';
+    final container = uri.queryParameters['Container'] ?? 'unknown';
+    final codec = uri.queryParameters['AudioCodec'] ?? 'unknown';
+    return 'container=$container, codec=$codec';
+  }
 
   /// Builds a MediaItem from Jellyfin JSON.
   factory MediaItem.fromJellyfin(
@@ -102,8 +127,7 @@ class MediaItem {
         const <String>[];
     final playlistItemId = json['PlaylistItemId']?.toString();
     final addedAtRaw = json['DateCreated']?.toString();
-    final addedAt =
-        addedAtRaw == null ? null : DateTime.tryParse(addedAtRaw);
+    final addedAt = addedAtRaw == null ? null : DateTime.tryParse(addedAtRaw);
     final userData = json['UserData'] as Map<String, dynamic>?;
     final playCount = (userData?['PlayCount'] as num?)?.toInt();
     final lastPlayedRaw = userData?['LastPlayedDate']?.toString();
@@ -113,6 +137,24 @@ class MediaItem {
         .map((entry) => entry.toString())
         .where((entry) => entry.isNotEmpty)
         .toList();
+
+    // Extract format info from MediaStreams
+    String? container;
+    String? codec;
+    int? bitrate;
+    int? sampleRate;
+    final mediaStreams = json['MediaStreams'] as List<dynamic>?;
+    if (mediaStreams != null) {
+      for (final stream in mediaStreams) {
+        if (stream is Map<String, dynamic> && stream['Type'] == 'Audio') {
+          codec = stream['Codec']?.toString();
+          bitrate = (stream['BitRate'] as num?)?.toInt();
+          sampleRate = (stream['SampleRate'] as num?)?.toInt();
+          break;
+        }
+      }
+    }
+    container = json['Container']?.toString();
 
     return MediaItem(
       id: id,
@@ -131,6 +173,10 @@ class MediaItem {
       playCount: playCount,
       lastPlayedAt: lastPlayedAt,
       genres: genres,
+      container: container,
+      codec: codec,
+      bitrate: bitrate,
+      sampleRate: sampleRate,
     );
   }
 
@@ -150,6 +196,10 @@ class MediaItem {
         'playCount': playCount,
         'lastPlayedAt': lastPlayedAt?.toIso8601String(),
         'genres': genres,
+        'container': container,
+        'codec': codec,
+        'bitrate': bitrate,
+        'sampleRate': sampleRate,
       };
 
   /// Restores a track from cached JSON.
@@ -181,5 +231,9 @@ class MediaItem {
                 ?.map((entry) => entry.toString())
                 .toList() ??
             const [],
+        container: json['container'] as String?,
+        codec: json['codec'] as String?,
+        bitrate: json['bitrate'] as int?,
+        sampleRate: json['sampleRate'] as int?,
       );
 }

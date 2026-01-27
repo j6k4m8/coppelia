@@ -26,6 +26,7 @@ import '../models/search_results.dart';
 import '../models/smart_list.dart';
 import '../services/cache_store.dart';
 import '../services/jellyfin_client.dart';
+import '../services/log_service.dart';
 import '../services/now_playing_service.dart';
 import '../services/playback_controller.dart';
 import '../services/settings_store.dart';
@@ -708,7 +709,9 @@ class AppState extends ChangeNotifier {
       await refreshLibrary();
       notifyListeners();
       return true;
-    } catch (error) {
+    } catch (error, stackTrace) {
+      final logService = await LogService.instance;
+      await logService.error('Sign in failed', error, stackTrace);
       _authError = error.toString();
       notifyListeners();
       return false;
@@ -867,23 +870,41 @@ class AppState extends ChangeNotifier {
 
   /// Loads a playlist and starts playback without navigating.
   Future<void> playPlaylist(Playlist playlist) async {
+    final logService = await LogService.instance;
+    await logService.info(
+        'playPlaylist: Starting "${playlist.name}" (${playlist.id}), offline=$_offlineMode');
+
     List<MediaItem> tracks = const [];
     if (_offlineMode) {
+      await logService
+          .info('playPlaylist: Loading cached tracks for offline mode');
       tracks = await _cacheStore.loadPlaylistTracks(playlist.id);
       final filtered = _filterPinnedTracks(tracks);
       if (filtered.isEmpty) {
+        await logService.warning(
+            'playPlaylist: No pinned tracks available in offline mode');
         return;
       }
+      await logService
+          .info('playPlaylist: Playing ${filtered.length} pinned tracks');
       await _playFromList(filtered, filtered.first);
       return;
     }
     try {
+      await logService.info('playPlaylist: Fetching tracks from server');
       tracks = await _client.fetchPlaylistTracks(playlist.id);
+      await logService
+          .info('playPlaylist: Fetched ${tracks.length} tracks, caching');
       await _cacheStore.savePlaylistTracks(playlist.id, tracks);
-    } catch (_) {
+    } catch (error, stackTrace) {
+      await logService.error(
+          'playPlaylist: Failed to fetch from server, trying cache',
+          error,
+          stackTrace);
       tracks = await _cacheStore.loadPlaylistTracks(playlist.id);
     }
     if (tracks.isEmpty) {
+      await logService.warning('playPlaylist: No tracks available');
       return;
     }
     await _playFromList(tracks, tracks.first);
@@ -1432,6 +1453,9 @@ class AppState extends ChangeNotifier {
     }
     _searchQuery = query;
     if (_offlineMode) {
+      await LogService.instance.then(
+          (log) => log.info('Search: Offline mode search for: "$trimmed"'));
+
       _isSearching = true;
       notifyListeners();
       final needle = trimmed.toLowerCase();
@@ -1460,15 +1484,29 @@ class AppState extends ChangeNotifier {
         genres: genres,
         playlists: playlists,
       );
+
+      await LogService.instance.then((log) =>
+          log.info('Search: Offline results - ${tracks.length} tracks, '
+              '${albums.length} albums, ${artists.length} artists'));
+
       _isSearching = false;
       notifyListeners();
       return;
     }
     _isSearching = true;
     notifyListeners();
+
+    await LogService.instance.then(
+        (log) => log.info('Search: User initiated search for: "$trimmed"'));
+
     try {
       _searchResults = await _client.searchLibrary(trimmed);
-    } catch (_) {
+
+      await LogService.instance.then((log) => log.info(
+          'Search: Completed successfully, isEmpty=${_searchResults?.isEmpty}'));
+    } catch (e, stackTrace) {
+      await LogService.instance
+          .then((log) => log.error('Search: Failed', e, stackTrace));
       _searchResults = const SearchResults();
     } finally {
       _isSearching = false;
@@ -2217,11 +2255,18 @@ class AppState extends ChangeNotifier {
 
   /// Loads an album and starts playback.
   Future<void> playAlbum(Album album) async {
+    final logService = await LogService.instance;
+    await logService.info(
+        'playAlbum: Starting "${album.name}" (${album.id}), offline=$_offlineMode');
+
     await selectAlbum(album);
     final tracks =
         _offlineMode ? _filterPinnedTracks(_albumTracks) : _albumTracks;
     if (tracks.isNotEmpty) {
+      await logService.info('playAlbum: Playing ${tracks.length} tracks');
       await _playFromList(tracks, tracks.first);
+    } else {
+      await logService.warning('playAlbum: No tracks available');
     }
   }
 
@@ -2358,12 +2403,15 @@ class AppState extends ChangeNotifier {
 
   /// Toggles between play and pause states.
   Future<void> togglePlayback() async {
+    final logService = await LogService.instance;
     if (_playback.isPlaying) {
+      await logService.info('togglePlayback: Pausing');
       await _performPlaybackAction(
         () => _playback.pause(),
         'pause',
       );
     } else {
+      await logService.info('togglePlayback: Resuming playback');
       _startPlaybackPolling();
       await _performPlaybackAction(
         () => _playback.play(),
@@ -3559,6 +3607,9 @@ class AppState extends ChangeNotifier {
       _updateNowPlayingInfo(force: true);
     });
     _playerStateSubscription = _playback.playerStateStream.listen((state) {
+      LogService.instance.then((log) => log.info(
+          'Player state: playing=${state.playing}, processingState=${state.processingState}'));
+
       final nextPlaying = state.playing;
       final nextBuffering = state.processingState == ProcessingState.loading ||
           state.processingState == ProcessingState.buffering;
@@ -3596,8 +3647,16 @@ class AppState extends ChangeNotifier {
       }
     });
     _currentIndexSubscription = _playback.currentIndexStream.listen((index) {
+      LogService.instance.then((log) => log.info(
+          'Current index changed to $index (queue size: ${_queue.length})'));
+
       if (index != null && index >= 0 && index < _queue.length) {
         final next = _queue[index];
+        final formatInfo = next.container != null || next.codec != null
+            ? ' [${next.container ?? "unknown"}/${next.codec ?? "unknown"}]'
+            : '';
+        LogService.instance.then((log) => log.info(
+            'Now playing: "${next.title}" by ${next.artists.join(", ")}$formatInfo'));
         _setNowPlaying(next, notify: false);
         unawaited(_cacheStore.handlePlaybackAdvance(_queue, index));
       }
@@ -3620,8 +3679,7 @@ class AppState extends ChangeNotifier {
     if (_playbackPollTimer != null) {
       return;
     }
-    _playbackPollTimer =
-        Timer.periodic(const Duration(milliseconds: 500), (_) {
+    _playbackPollTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
       final position = _playback.position;
       if (position != _position) {
         _position = position;
@@ -4430,15 +4488,34 @@ class AppState extends ChangeNotifier {
     List<MediaItem> tracks,
     MediaItem track,
   ) async {
+    final logService = await LogService.instance;
+    final formatInfo = track.container != null || track.codec != null
+        ? ' [container=${track.container ?? "unknown"}, codec=${track.codec ?? "unknown"}'
+            '${track.bitrate != null ? ", bitrate=${track.bitrate}" : ""}'
+            '${track.sampleRate != null ? ", sampleRate=${track.sampleRate}Hz" : ""}]'
+        : '';
+    await logService.info(
+        '_playFromList: Starting with ${tracks.length} tracks, playing "${track.title}"$formatInfo');
+
     final index = tracks.indexWhere((item) => item.id == track.id);
     if (index < 0) {
+      await logService.warning('_playFromList: Track not found in list');
       return;
     }
+
+    await logService
+        .info('_playFromList: Track index $index, normalizing tracks');
     final normalized = _normalizeTracksForPlayback(tracks);
     final playbackTrack = normalized[index];
+
+    await logService.info('_playFromList: Refreshing cache status for track');
     await _refreshNowPlayingCacheStatus(playbackTrack);
+
     final previousQueue = List<MediaItem>.from(_queue);
     _queue = normalized;
+
+    await logService.info(
+        '_playFromList: Setting queue with ${_queue.length} tracks at index $index');
     final didSetQueue = await _performPlaybackAction(
       () => _playback.setQueue(
         _queue,
@@ -4448,7 +4525,11 @@ class AppState extends ChangeNotifier {
       ),
       'set queue',
     );
+    await logService.info(
+        '_playFromList: Queue setup ${didSetQueue ? "successful" : "failed"}');
     if (!didSetQueue) {
+      await logService.warning(
+          '_playFromList: Failed to set queue, restoring previous queue');
       _queue = previousQueue;
       if (_isPreparingPlayback) {
         _isPreparingPlayback = false;
@@ -4456,6 +4537,8 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return;
     }
+
+    await logService.info('_playFromList: Setting now playing track');
     if (_nowPlaying?.id != playbackTrack.id) {
       _setNowPlaying(playbackTrack);
     } else if (playbackTrack.duration > Duration.zero &&
@@ -4463,11 +4546,17 @@ class AppState extends ChangeNotifier {
       _duration = playbackTrack.duration;
       _durationNotifier.value = _duration;
     }
+
+    await logService.info('_playFromList: Starting playback polling');
     _startPlaybackPolling();
-    await _performPlaybackAction(
+
+    await logService.info('_playFromList: Initiating play command');
+    final didPlay = await _performPlaybackAction(
       () => _playback.play(),
       'play',
     );
+    await logService.info(
+        '_playFromList: Play command ${didPlay ? "successful" : "failed"}');
   }
 
   Map<String, String>? _playbackHeaders() {
@@ -4516,10 +4605,15 @@ class AppState extends ChangeNotifier {
     Future<void> Function() action,
     String label,
   ) async {
+    final logService = await LogService.instance;
+    await logService.info('Playback action: $label - starting');
     try {
       await action();
+      await logService.info('Playback action: $label - completed successfully');
       return true;
-    } catch (error) {
+    } catch (error, stackTrace) {
+      await logService.error(
+          'Playback action: $label - failed', error, stackTrace);
       debugPrint('Playback $label failed: $error');
       return false;
     }

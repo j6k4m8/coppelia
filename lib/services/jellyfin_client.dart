@@ -11,6 +11,7 @@ import '../models/media_item.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
 import '../core/app_info.dart';
+import 'log_service.dart';
 
 /// Client wrapper for Jellyfin REST APIs.
 class JellyfinClient {
@@ -93,7 +94,12 @@ class JellyfinClient {
     required String username,
     required String password,
   }) async {
+    final logService = await LogService.instance;
     final sanitizedUrl = _sanitizeServerUrl(serverUrl);
+
+    await logService
+        .info('Attempting authentication to $sanitizedUrl for user $username');
+
     final uri = Uri.parse('$sanitizedUrl/Users/AuthenticateByName');
     final response = await _httpClient.post(
       uri,
@@ -108,6 +114,8 @@ class JellyfinClient {
     );
 
     if (response.statusCode != 200) {
+      await logService.error(
+          'Authentication failed', 'HTTP ${response.statusCode}');
       throw Exception('Authentication failed (${response.statusCode}).');
     }
 
@@ -120,6 +128,10 @@ class JellyfinClient {
       userName: user['Name'] as String? ?? username,
     );
     _session = session;
+
+    await logService.info(
+        'Authentication successful for user ${session.userName} (${session.userId})');
+
     return session;
   }
 
@@ -232,22 +244,35 @@ class JellyfinClient {
 
   /// Fetches the tracks for a playlist.
   Future<List<MediaItem>> fetchPlaylistTracks(String playlistId) async {
+    final logService = await LogService.instance;
+    await logService
+        .info('JellyfinClient: Fetching playlist tracks for $playlistId');
+
     final session = _requireSession();
     final uri = Uri.parse(
       '${session.serverUrl}/Playlists/$playlistId/Items',
     ).replace(
       queryParameters: {
         'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
-            'DateCreated,UserData,Genres',
+            'DateCreated,UserData,Genres,MediaStreams,Container',
         'api_key': session.accessToken,
       },
     );
+
+    await logService.info('JellyfinClient: Making HTTP request to ${uri.path}');
     final response = await _httpClient.get(uri);
+
     if (response.statusCode != 200) {
+      await logService.error('JellyfinClient: Failed to load playlist tracks',
+          'HTTP ${response.statusCode}');
       throw Exception('Unable to load playlist tracks.');
     }
+
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
     final items = payload['Items'] as List<dynamic>? ?? [];
+    await logService
+        .info('JellyfinClient: Received ${items.length} playlist tracks');
+
     return items
         .map((item) => MediaItem.fromJellyfin(
               item as Map<String, dynamic>,
@@ -573,6 +598,9 @@ class JellyfinClient {
 
   /// Fetches tracks for an album.
   Future<List<MediaItem>> fetchAlbumTracks(String albumId) async {
+    final logService = await LogService.instance;
+    await logService.info('JellyfinClient: Fetching album tracks for $albumId');
+
     final session = _requireSession();
     final uri = Uri.parse(
       '${session.serverUrl}/Users/${session.userId}/Items',
@@ -582,16 +610,25 @@ class JellyfinClient {
         'IncludeItemTypes': 'Audio',
         'Recursive': 'true',
         'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
-            'DateCreated,UserData,Genres',
+            'DateCreated,UserData,Genres,MediaStreams,Container',
         'api_key': session.accessToken,
       },
     );
+
+    await logService.info('JellyfinClient: Making HTTP request to ${uri.path}');
     final response = await _httpClient.get(uri);
+
     if (response.statusCode != 200) {
+      await logService.error('JellyfinClient: Failed to load album tracks',
+          'HTTP ${response.statusCode}');
       throw Exception('Unable to load album tracks.');
     }
+
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
     final items = payload['Items'] as List<dynamic>? ?? [];
+    await logService
+        .info('JellyfinClient: Received ${items.length} album tracks');
+
     return items
         .map((item) => MediaItem.fromJellyfin(
               item as Map<String, dynamic>,
@@ -929,6 +966,9 @@ class JellyfinClient {
 
   /// Searches the library for matching items.
   Future<SearchResults> searchLibrary(String query) async {
+    await LogService.instance.then((log) =>
+        log.info('Search: Starting library search for query: "$query"'));
+
     final session = _requireSession();
     final uri = Uri.parse(
       '${session.serverUrl}/Users/${session.userId}/Items',
@@ -945,8 +985,19 @@ class JellyfinClient {
         'api_key': session.accessToken,
       },
     );
+
+    await LogService.instance
+        .then((log) => log.info('Search: GET ${uri.path}?SearchTerm=$query'));
+
     final response = await _httpClient.get(uri);
+
+    await LogService.instance.then(
+        (log) => log.info('Search: Response status ${response.statusCode}, '
+            'headers: ${response.headers}'));
+
     if (response.statusCode != 200) {
+      await LogService.instance.then((log) =>
+          log.error('Search: Failed with status ${response.statusCode}'));
       throw Exception('Unable to search library.');
     }
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
@@ -1018,13 +1069,21 @@ class JellyfinClient {
         }
       } catch (_) {}
     }
-    return SearchResults(
+
+    final results = SearchResults(
       tracks: tracks,
       albums: albums,
       artists: artists,
       genres: genres,
       playlists: playlists,
     );
+
+    await LogService.instance
+        .then((log) => log.info('Search: Results - ${tracks.length} tracks, '
+            '${albums.length} albums, ${artists.length} artists, '
+            '${genres.length} genres, ${playlists.length} playlists'));
+
+    return results;
   }
 
   /// Fetches recently added tracks for the home shelf.
