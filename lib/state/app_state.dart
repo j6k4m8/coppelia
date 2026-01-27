@@ -1453,6 +1453,9 @@ class AppState extends ChangeNotifier {
     }
     _searchQuery = query;
     if (_offlineMode) {
+      await LogService.instance.then(
+          (log) => log.info('Search: Offline mode search for: "$trimmed"'));
+
       _isSearching = true;
       notifyListeners();
       final needle = trimmed.toLowerCase();
@@ -1481,15 +1484,29 @@ class AppState extends ChangeNotifier {
         genres: genres,
         playlists: playlists,
       );
+
+      await LogService.instance.then((log) =>
+          log.info('Search: Offline results - ${tracks.length} tracks, '
+              '${albums.length} albums, ${artists.length} artists'));
+
       _isSearching = false;
       notifyListeners();
       return;
     }
     _isSearching = true;
     notifyListeners();
+
+    await LogService.instance.then(
+        (log) => log.info('Search: User initiated search for: "$trimmed"'));
+
     try {
       _searchResults = await _client.searchLibrary(trimmed);
-    } catch (_) {
+
+      await LogService.instance.then((log) => log.info(
+          'Search: Completed successfully, isEmpty=${_searchResults?.isEmpty}'));
+    } catch (e, stackTrace) {
+      await LogService.instance
+          .then((log) => log.error('Search: Failed', e, stackTrace));
       _searchResults = const SearchResults();
     } finally {
       _isSearching = false;

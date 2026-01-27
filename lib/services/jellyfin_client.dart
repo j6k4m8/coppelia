@@ -966,6 +966,9 @@ class JellyfinClient {
 
   /// Searches the library for matching items.
   Future<SearchResults> searchLibrary(String query) async {
+    await LogService.instance.then((log) =>
+        log.info('Search: Starting library search for query: "$query"'));
+
     final session = _requireSession();
     final uri = Uri.parse(
       '${session.serverUrl}/Users/${session.userId}/Items',
@@ -982,8 +985,19 @@ class JellyfinClient {
         'api_key': session.accessToken,
       },
     );
+
+    await LogService.instance
+        .then((log) => log.info('Search: GET ${uri.path}?SearchTerm=$query'));
+
     final response = await _httpClient.get(uri);
+
+    await LogService.instance.then(
+        (log) => log.info('Search: Response status ${response.statusCode}, '
+            'headers: ${response.headers}'));
+
     if (response.statusCode != 200) {
+      await LogService.instance.then((log) =>
+          log.error('Search: Failed with status ${response.statusCode}'));
       throw Exception('Unable to search library.');
     }
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
@@ -1055,13 +1069,21 @@ class JellyfinClient {
         }
       } catch (_) {}
     }
-    return SearchResults(
+
+    final results = SearchResults(
       tracks: tracks,
       albums: albums,
       artists: artists,
       genres: genres,
       playlists: playlists,
     );
+
+    await LogService.instance
+        .then((log) => log.info('Search: Results - ${tracks.length} tracks, '
+            '${albums.length} albums, ${artists.length} artists, '
+            '${genres.length} genres, ${playlists.length} playlists'));
+
+    return results;
   }
 
   /// Fetches recently added tracks for the home shelf.

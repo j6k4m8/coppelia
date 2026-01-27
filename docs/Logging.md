@@ -54,6 +54,10 @@ The logging system captures:
 -   **Authentication**: Login attempts, successes, and failures with error details
 -   **Logged messages**: Calls to `LogService.instance.info()`, `.warning()`, `.error()`, `.debug()`, and `.print()`
 -   **Flutter errors**: Framework errors and exceptions
+-   **Search**: Search queries, API requests, response headers, and result counts
+    -   Query text (both online and offline mode)
+    -   HTTP response status and headers (helpful for debugging reverse proxy issues)
+    -   Number of results returned per category (tracks, albums, artists, genres, playlists)
 -   **Playback flow**: Detailed tracking of the entire playback initialization process
     -   Playlist/album play requests
     -   Track fetching from server
