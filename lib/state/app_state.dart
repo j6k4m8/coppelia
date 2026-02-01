@@ -143,6 +143,7 @@ class AppState extends ChangeNotifier {
   final ValueNotifier<int> _mediaCacheBytesNotifier = ValueNotifier(0);
   final ValueNotifier<int> _pinnedCacheBytesNotifier = ValueNotifier(0);
   final Random _random = Random();
+  int _playRequestId = 0;
 
   void _updatePlaybackProgress({Duration? position, Duration? duration}) {
     final nextDuration = duration ?? _duration;
@@ -156,6 +157,8 @@ class AppState extends ChangeNotifier {
     _durationNotifier.value = _duration;
     _positionNotifier.value = _position;
   }
+
+  bool _isPlayRequestStale(int requestId) => requestId != _playRequestId;
 
   ThemeMode _themeMode = ThemeMode.dark;
   String? _fontFamily = 'SF Pro Display';
@@ -4496,33 +4499,40 @@ class AppState extends ChangeNotifier {
     MediaItem track,
   ) async {
     final logService = await LogService.instance;
+    final requestId = ++_playRequestId;
     final formatInfo = track.container != null || track.codec != null
         ? ' [container=${track.container ?? "unknown"}, codec=${track.codec ?? "unknown"}'
             '${track.bitrate != null ? ", bitrate=${track.bitrate}" : ""}'
             '${track.sampleRate != null ? ", sampleRate=${track.sampleRate}Hz" : ""}]'
         : '';
     await logService.info(
-        '_playFromList: Starting with ${tracks.length} tracks, playing "${track.title}"$formatInfo');
+      '_playFromList[$requestId]: Starting with ${tracks.length} tracks, playing "${track.title}"$formatInfo');
 
     final index = tracks.indexWhere((item) => item.id == track.id);
     if (index < 0) {
-      await logService.warning('_playFromList: Track not found in list');
+      await logService.warning('_playFromList[$requestId]: Track not found in list');
       return;
     }
 
     await logService
-        .info('_playFromList: Track index $index, normalizing tracks');
+        .info('_playFromList[$requestId]: Track index $index, normalizing tracks');
     final normalized = _normalizeTracksForPlayback(tracks);
     final playbackTrack = normalized[index];
 
-    await logService.info('_playFromList: Refreshing cache status for track');
+    await logService
+        .info('_playFromList[$requestId]: Refreshing cache status for track');
     await _refreshNowPlayingCacheStatus(playbackTrack);
+    if (_isPlayRequestStale(requestId)) {
+      await logService
+          .info('_playFromList[$requestId]: Stale request after cache refresh; aborting');
+      return;
+    }
 
     final previousQueue = List<MediaItem>.from(_queue);
     _queue = normalized;
 
     await logService.info(
-        '_playFromList: Setting queue with ${_queue.length} tracks at index $index');
+      '_playFromList[$requestId]: Setting queue with ${_queue.length} tracks at index $index');
     final didSetQueue = await _performPlaybackAction(
       () => _playback.setQueue(
         _queue,
@@ -4533,10 +4543,15 @@ class AppState extends ChangeNotifier {
       'set queue',
     );
     await logService.info(
-        '_playFromList: Queue setup ${didSetQueue ? "successful" : "failed"}');
+      '_playFromList[$requestId]: Queue setup ${didSetQueue ? "successful" : "failed"}');
+    if (_isPlayRequestStale(requestId)) {
+      await logService
+        .info('_playFromList[$requestId]: Stale request after set queue; aborting');
+      return;
+    }
     if (!didSetQueue) {
       await logService.warning(
-          '_playFromList: Failed to set queue, restoring previous queue');
+        '_playFromList[$requestId]: Failed to set queue, restoring previous queue');
       _queue = previousQueue;
       if (_isPreparingPlayback) {
         _isPreparingPlayback = false;
@@ -4545,7 +4560,7 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    await logService.info('_playFromList: Setting now playing track');
+    await logService.info('_playFromList[$requestId]: Setting now playing track');
     if (_nowPlaying?.id != playbackTrack.id) {
       _setNowPlaying(playbackTrack);
     } else if (playbackTrack.duration > Duration.zero &&
@@ -4553,16 +4568,16 @@ class AppState extends ChangeNotifier {
       _updatePlaybackProgress(duration: playbackTrack.duration);
     }
 
-    await logService.info('_playFromList: Starting playback polling');
+    await logService.info('_playFromList[$requestId]: Starting playback polling');
     _startPlaybackPolling();
 
-    await logService.info('_playFromList: Initiating play command');
+    await logService.info('_playFromList[$requestId]: Initiating play command');
     final didPlay = await _performPlaybackAction(
       () => _playback.play(),
       'play',
     );
     await logService.info(
-        '_playFromList: Play command ${didPlay ? "successful" : "failed"}');
+        '_playFromList[$requestId]: Play command ${didPlay ? "successful" : "failed"}');
   }
 
   Map<String, String>? _playbackHeaders() {
