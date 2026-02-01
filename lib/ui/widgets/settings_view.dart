@@ -300,9 +300,9 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
                   (preset) => _AccentSwatch(
                     label: preset.label,
                     color: preset.color,
-                    selected: state.accentColorValue ==
-                            preset.color.toARGB32() &&
-                        accentSource == AccentColorSource.preset,
+                    selected:
+                        state.accentColorValue == preset.color.toARGB32() &&
+                            accentSource == AccentColorSource.preset,
                     onTap: () {
                       state.setAccentColor(preset.color);
                     },
@@ -509,6 +509,28 @@ class _LayoutSettings extends StatelessWidget {
   Widget build(BuildContext context) {
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final browseItems = <_SidebarToggleSpec>[
+      const _SidebarToggleSpec(
+        item: SidebarItem.browseAlbums,
+        subtitle: 'Show albums in Browse.',
+      ),
+      const _SidebarToggleSpec(
+        item: SidebarItem.browseArtists,
+        subtitle: 'Show artists in Browse.',
+      ),
+      const _SidebarToggleSpec(
+        item: SidebarItem.browseGenres,
+        subtitle: 'Show genres in Browse.',
+      ),
+      const _SidebarToggleSpec(
+        item: SidebarItem.browsePlaylists,
+        subtitle: 'Show playlists in Browse.',
+      ),
+      const _SidebarToggleSpec(
+        item: SidebarItem.browseTracks,
+        subtitle: 'Show tracks in Browse.',
+      ),
+    ];
     final segmentedStyle = ButtonStyle(
       textStyle: WidgetStatePropertyAll(
         Theme.of(context).textTheme.bodySmall,
@@ -782,76 +804,23 @@ class _LayoutSettings extends StatelessWidget {
               child: _SettingsSubheader(title: 'Browse'),
             ),
             SizedBox(height: space(8)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.browseAlbums.label,
-                subtitle: 'Show albums in Browse.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(
-                    SidebarItem.browseAlbums,
-                  ),
-                  onChanged: (value) => state.setSidebarItemVisible(
-                    SidebarItem.browseAlbums,
-                    value,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: space(12)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.browseArtists.label,
-                subtitle: 'Show artists in Browse.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(
-                    SidebarItem.browseArtists,
-                  ),
-                  onChanged: (value) => state.setSidebarItemVisible(
-                    SidebarItem.browseArtists,
-                    value,
+            ...browseItems.expand(
+              (spec) => [
+                Padding(
+                  padding: const EdgeInsets.only(left: 24),
+                  child: _SettingRow(
+                    title: spec.item.label,
+                    subtitle: spec.subtitle,
+                    forceInline: true,
+                    trailing: CompactSwitch(
+                      value: state.isSidebarItemVisible(spec.item),
+                      onChanged: (value) =>
+                          state.setSidebarItemVisible(spec.item, value),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            SizedBox(height: space(12)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.browseGenres.label,
-                subtitle: 'Show genres in Browse.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(
-                    SidebarItem.browseGenres,
-                  ),
-                  onChanged: (value) => state.setSidebarItemVisible(
-                    SidebarItem.browseGenres,
-                    value,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: space(12)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.browseTracks.label,
-                subtitle: 'Show tracks in Browse.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(
-                    SidebarItem.browseTracks,
-                  ),
-                  onChanged: (value) => state.setSidebarItemVisible(
-                    SidebarItem.browseTracks,
-                    value,
-                  ),
-                ),
-              ),
+                SizedBox(height: space(12)),
+              ],
             ),
             SizedBox(height: space(16)),
             const Padding(
@@ -1909,7 +1878,8 @@ class _AccountSettings extends StatelessWidget {
         SizedBox(height: space(12)),
         _SettingRow(
           title: 'App logs',
-          subtitle: 'View and share diagnostic logs to help troubleshoot issues.',
+          subtitle:
+              'View and share diagnostic logs to help troubleshoot issues.',
           trailing: OutlinedButton(
             onPressed: () => _showLogsDialog(context),
             child: const Text('View logs'),
@@ -2135,6 +2105,12 @@ class _SettingsSubheader extends StatelessWidget {
   }
 }
 
+class _SidebarToggleSpec {
+  const _SidebarToggleSpec({required this.item, required this.subtitle});
+
+  final SidebarItem item;
+  final String subtitle;
+}
 
 class _AccountMetaRow extends StatelessWidget {
   const _AccountMetaRow({required this.label, required this.value});
@@ -2295,10 +2271,7 @@ class _CornerRadiusOption extends StatelessWidget {
           height: space(52).clamp(42.0, 60.0),
           decoration: BoxDecoration(
             color: selected
-                ? Theme.of(context)
-                    .colorScheme
-                    .primary
-                    .withValues(alpha: 0.1)
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
                 : Colors.transparent,
             border: Border.all(color: borderColor),
             borderRadius: BorderRadius.circular(radius),
@@ -2308,11 +2281,9 @@ class _CornerRadiusOption extends StatelessWidget {
             label,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: selected
-                      ? Theme.of(context).colorScheme.primary
-                      : null,
-                  fontWeight:
-                      selected ? FontWeight.w600 : FontWeight.normal,
+                  color:
+                      selected ? Theme.of(context).colorScheme.primary : null,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                 ),
           ),
         ),
