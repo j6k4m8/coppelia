@@ -143,6 +143,23 @@ class AppState extends ChangeNotifier {
   final ValueNotifier<int> _mediaCacheBytesNotifier = ValueNotifier(0);
   final ValueNotifier<int> _pinnedCacheBytesNotifier = ValueNotifier(0);
   final Random _random = Random();
+  int _playRequestId = 0;
+
+  void _updatePlaybackProgress({Duration? position, Duration? duration}) {
+    final nextDuration = duration ?? _duration;
+    final nextPosition = position ?? _position;
+    final clampedPosition = (nextDuration > Duration.zero &&
+            nextPosition > nextDuration)
+        ? nextDuration
+        : nextPosition;
+    _duration = nextDuration;
+    _position = clampedPosition;
+    _durationNotifier.value = _duration;
+    _positionNotifier.value = _position;
+  }
+
+  bool _isPlayRequestStale(int requestId) => requestId != _playRequestId;
+
   ThemeMode _themeMode = ThemeMode.dark;
   String? _fontFamily = 'SF Pro Display';
   double _fontScale = 1.0;
@@ -2570,10 +2587,10 @@ class AppState extends ChangeNotifier {
       _queue = [];
       _nowPlaying = null;
       unawaited(_maybeUpdateNowPlayingPalette(null));
-      _position = Duration.zero;
-      _duration = Duration.zero;
-      _positionNotifier.value = _position;
-      _durationNotifier.value = _duration;
+      _updatePlaybackProgress(
+        position: Duration.zero,
+        duration: Duration.zero,
+      );
       _isPlaying = false;
       _isBuffering = false;
       _isNowPlayingCached = false;
@@ -2598,6 +2615,7 @@ class AppState extends ChangeNotifier {
       () => _playback.seek(position),
       'seek',
     );
+    _updatePlaybackProgress(position: position);
   }
 
   /// Updates the theme preference.
@@ -3588,13 +3606,11 @@ class AppState extends ChangeNotifier {
 
   void _bindPlayback() {
     _positionSubscription = _playback.positionStream.listen((position) {
-      _position = position;
-      _positionNotifier.value = position;
+      _updatePlaybackProgress(position: position);
       if (_duration == Duration.zero) {
         final liveDuration = _playback.duration;
         if (liveDuration != null && liveDuration > Duration.zero) {
-          _duration = liveDuration;
-          _durationNotifier.value = liveDuration;
+          _updatePlaybackProgress(duration: liveDuration);
         }
       }
       _maybeReportProgress();
@@ -3602,8 +3618,7 @@ class AppState extends ChangeNotifier {
       _updateNowPlayingInfo();
     });
     _durationSubscription = _playback.durationStream.listen((duration) {
-      _duration = duration ?? Duration.zero;
-      _durationNotifier.value = _duration;
+      _updatePlaybackProgress(duration: duration ?? Duration.zero);
       _updateNowPlayingInfo(force: true);
     });
     _playerStateSubscription = _playback.playerStateStream.listen((state) {
@@ -3682,15 +3697,13 @@ class AppState extends ChangeNotifier {
     _playbackPollTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
       final position = _playback.position;
       if (position != _position) {
-        _position = position;
-        _positionNotifier.value = position;
+        _updatePlaybackProgress(position: position);
       }
       final liveDuration = _playback.duration;
       if (liveDuration != null &&
           liveDuration > Duration.zero &&
           liveDuration != _duration) {
-        _duration = liveDuration;
-        _durationNotifier.value = liveDuration;
+        _updatePlaybackProgress(duration: liveDuration);
       }
     });
   }
@@ -3719,10 +3732,10 @@ class AppState extends ChangeNotifier {
     }
     _queue = [resume.track];
     _nowPlaying = resume.track;
-    _position = resume.position;
-    _duration = Duration.zero;
-    _positionNotifier.value = _position;
-    _durationNotifier.value = _duration;
+    _updatePlaybackProgress(
+      position: resume.position,
+      duration: Duration.zero,
+    );
     _playSessionId = _buildPlaySessionId(resume.track);
     _reportedStartSessionId = null;
     _reportedStopSessionId = null;
@@ -3770,8 +3783,7 @@ class AppState extends ChangeNotifier {
   }) {
     if (_nowPlaying?.id == track.id) {
       if (_duration == Duration.zero && track.duration > Duration.zero) {
-        _duration = track.duration;
-        _durationNotifier.value = _duration;
+        _updatePlaybackProgress(duration: track.duration);
         _updateNowPlayingInfo(force: true);
         if (notify) {
           notifyListeners();
@@ -3789,11 +3801,9 @@ class AppState extends ChangeNotifier {
       );
     }
     _nowPlaying = track;
-    _position = Duration.zero;
-    _positionNotifier.value = _position;
+    _updatePlaybackProgress(position: Duration.zero);
     if (track.duration > Duration.zero) {
-      _duration = track.duration;
-      _durationNotifier.value = _duration;
+      _updatePlaybackProgress(duration: track.duration);
     }
     unawaited(_refreshNowPlayingCacheStatus(track));
     unawaited(_maybeUpdateNowPlayingPalette(track));
@@ -4489,33 +4499,40 @@ class AppState extends ChangeNotifier {
     MediaItem track,
   ) async {
     final logService = await LogService.instance;
+    final requestId = ++_playRequestId;
     final formatInfo = track.container != null || track.codec != null
         ? ' [container=${track.container ?? "unknown"}, codec=${track.codec ?? "unknown"}'
             '${track.bitrate != null ? ", bitrate=${track.bitrate}" : ""}'
             '${track.sampleRate != null ? ", sampleRate=${track.sampleRate}Hz" : ""}]'
         : '';
     await logService.info(
-        '_playFromList: Starting with ${tracks.length} tracks, playing "${track.title}"$formatInfo');
+      '_playFromList[$requestId]: Starting with ${tracks.length} tracks, playing "${track.title}"$formatInfo');
 
     final index = tracks.indexWhere((item) => item.id == track.id);
     if (index < 0) {
-      await logService.warning('_playFromList: Track not found in list');
+      await logService.warning('_playFromList[$requestId]: Track not found in list');
       return;
     }
 
     await logService
-        .info('_playFromList: Track index $index, normalizing tracks');
+        .info('_playFromList[$requestId]: Track index $index, normalizing tracks');
     final normalized = _normalizeTracksForPlayback(tracks);
     final playbackTrack = normalized[index];
 
-    await logService.info('_playFromList: Refreshing cache status for track');
+    await logService
+        .info('_playFromList[$requestId]: Refreshing cache status for track');
     await _refreshNowPlayingCacheStatus(playbackTrack);
+    if (_isPlayRequestStale(requestId)) {
+      await logService
+          .info('_playFromList[$requestId]: Stale request after cache refresh; aborting');
+      return;
+    }
 
     final previousQueue = List<MediaItem>.from(_queue);
     _queue = normalized;
 
     await logService.info(
-        '_playFromList: Setting queue with ${_queue.length} tracks at index $index');
+      '_playFromList[$requestId]: Setting queue with ${_queue.length} tracks at index $index');
     final didSetQueue = await _performPlaybackAction(
       () => _playback.setQueue(
         _queue,
@@ -4526,10 +4543,15 @@ class AppState extends ChangeNotifier {
       'set queue',
     );
     await logService.info(
-        '_playFromList: Queue setup ${didSetQueue ? "successful" : "failed"}');
+      '_playFromList[$requestId]: Queue setup ${didSetQueue ? "successful" : "failed"}');
+    if (_isPlayRequestStale(requestId)) {
+      await logService
+        .info('_playFromList[$requestId]: Stale request after set queue; aborting');
+      return;
+    }
     if (!didSetQueue) {
       await logService.warning(
-          '_playFromList: Failed to set queue, restoring previous queue');
+        '_playFromList[$requestId]: Failed to set queue, restoring previous queue');
       _queue = previousQueue;
       if (_isPreparingPlayback) {
         _isPreparingPlayback = false;
@@ -4538,25 +4560,24 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    await logService.info('_playFromList: Setting now playing track');
+    await logService.info('_playFromList[$requestId]: Setting now playing track');
     if (_nowPlaying?.id != playbackTrack.id) {
       _setNowPlaying(playbackTrack);
     } else if (playbackTrack.duration > Duration.zero &&
         _duration == Duration.zero) {
-      _duration = playbackTrack.duration;
-      _durationNotifier.value = _duration;
+      _updatePlaybackProgress(duration: playbackTrack.duration);
     }
 
-    await logService.info('_playFromList: Starting playback polling');
+    await logService.info('_playFromList[$requestId]: Starting playback polling');
     _startPlaybackPolling();
 
-    await logService.info('_playFromList: Initiating play command');
+    await logService.info('_playFromList[$requestId]: Initiating play command');
     final didPlay = await _performPlaybackAction(
       () => _playback.play(),
       'play',
     );
     await logService.info(
-        '_playFromList: Play command ${didPlay ? "successful" : "failed"}');
+        '_playFromList[$requestId]: Play command ${didPlay ? "successful" : "failed"}');
   }
 
   Map<String, String>? _playbackHeaders() {
