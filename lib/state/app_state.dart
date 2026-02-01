@@ -144,21 +144,17 @@ class AppState extends ChangeNotifier {
   final ValueNotifier<int> _pinnedCacheBytesNotifier = ValueNotifier(0);
   final Random _random = Random();
 
-  void _setPosition(Duration position) {
-    _position = position;
-    _positionNotifier.value = position;
-  }
-
-  void _setDuration(Duration duration) {
-    _duration = duration;
-    _durationNotifier.value = duration;
-  }
-
-  void _setPositionAndDuration(Duration position, Duration duration) {
-    _position = position;
-    _duration = duration;
-    _positionNotifier.value = position;
-    _durationNotifier.value = duration;
+  void _updatePlaybackProgress({Duration? position, Duration? duration}) {
+    final nextDuration = duration ?? _duration;
+    final nextPosition = position ?? _position;
+    final clampedPosition = (nextDuration > Duration.zero &&
+            nextPosition > nextDuration)
+        ? nextDuration
+        : nextPosition;
+    _duration = nextDuration;
+    _position = clampedPosition;
+    _durationNotifier.value = _duration;
+    _positionNotifier.value = _position;
   }
 
   ThemeMode _themeMode = ThemeMode.dark;
@@ -2588,7 +2584,10 @@ class AppState extends ChangeNotifier {
       _queue = [];
       _nowPlaying = null;
       unawaited(_maybeUpdateNowPlayingPalette(null));
-      _setPositionAndDuration(Duration.zero, Duration.zero);
+      _updatePlaybackProgress(
+        position: Duration.zero,
+        duration: Duration.zero,
+      );
       _isPlaying = false;
       _isBuffering = false;
       _isNowPlayingCached = false;
@@ -2613,6 +2612,7 @@ class AppState extends ChangeNotifier {
       () => _playback.seek(position),
       'seek',
     );
+    _updatePlaybackProgress(position: position);
   }
 
   /// Updates the theme preference.
@@ -3603,11 +3603,11 @@ class AppState extends ChangeNotifier {
 
   void _bindPlayback() {
     _positionSubscription = _playback.positionStream.listen((position) {
-      _setPosition(position);
+      _updatePlaybackProgress(position: position);
       if (_duration == Duration.zero) {
         final liveDuration = _playback.duration;
         if (liveDuration != null && liveDuration > Duration.zero) {
-          _setDuration(liveDuration);
+          _updatePlaybackProgress(duration: liveDuration);
         }
       }
       _maybeReportProgress();
@@ -3615,7 +3615,7 @@ class AppState extends ChangeNotifier {
       _updateNowPlayingInfo();
     });
     _durationSubscription = _playback.durationStream.listen((duration) {
-      _setDuration(duration ?? Duration.zero);
+      _updatePlaybackProgress(duration: duration ?? Duration.zero);
       _updateNowPlayingInfo(force: true);
     });
     _playerStateSubscription = _playback.playerStateStream.listen((state) {
@@ -3694,13 +3694,13 @@ class AppState extends ChangeNotifier {
     _playbackPollTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
       final position = _playback.position;
       if (position != _position) {
-        _setPosition(position);
+        _updatePlaybackProgress(position: position);
       }
       final liveDuration = _playback.duration;
       if (liveDuration != null &&
           liveDuration > Duration.zero &&
           liveDuration != _duration) {
-        _setDuration(liveDuration);
+        _updatePlaybackProgress(duration: liveDuration);
       }
     });
   }
@@ -3729,7 +3729,10 @@ class AppState extends ChangeNotifier {
     }
     _queue = [resume.track];
     _nowPlaying = resume.track;
-    _setPositionAndDuration(resume.position, Duration.zero);
+    _updatePlaybackProgress(
+      position: resume.position,
+      duration: Duration.zero,
+    );
     _playSessionId = _buildPlaySessionId(resume.track);
     _reportedStartSessionId = null;
     _reportedStopSessionId = null;
@@ -3777,7 +3780,7 @@ class AppState extends ChangeNotifier {
   }) {
     if (_nowPlaying?.id == track.id) {
       if (_duration == Duration.zero && track.duration > Duration.zero) {
-        _setDuration(track.duration);
+        _updatePlaybackProgress(duration: track.duration);
         _updateNowPlayingInfo(force: true);
         if (notify) {
           notifyListeners();
@@ -3795,9 +3798,9 @@ class AppState extends ChangeNotifier {
       );
     }
     _nowPlaying = track;
-    _setPosition(Duration.zero);
+    _updatePlaybackProgress(position: Duration.zero);
     if (track.duration > Duration.zero) {
-      _setDuration(track.duration);
+      _updatePlaybackProgress(duration: track.duration);
     }
     unawaited(_refreshNowPlayingCacheStatus(track));
     unawaited(_maybeUpdateNowPlayingPalette(track));
@@ -4547,7 +4550,7 @@ class AppState extends ChangeNotifier {
       _setNowPlaying(playbackTrack);
     } else if (playbackTrack.duration > Duration.zero &&
         _duration == Duration.zero) {
-      _setDuration(playbackTrack.duration);
+      _updatePlaybackProgress(duration: playbackTrack.duration);
     }
 
     await logService.info('_playFromList: Starting playback polling');
