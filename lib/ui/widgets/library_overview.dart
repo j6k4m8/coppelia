@@ -94,6 +94,11 @@ class LibraryOverview extends StatelessWidget {
 
     final greeting = _greetingFor(DateTime.now());
     final userName = state.session?.userName ?? 'Listener';
+    final stats = state.libraryStats;
+    final trackCount = stats?.trackCount ?? state.libraryTracks.length;
+    final albumCount = stats?.albumCount ?? state.albums.length;
+    final artistCount = stats?.artistCount ?? state.artists.length;
+    final playlistCount = stats?.playlistCount ?? state.playlists.length;
     children.addAll([
       Padding(
         padding: sectionPadding(),
@@ -110,14 +115,13 @@ class LibraryOverview extends StatelessWidget {
                   ),
                   SizedBox(height: space(4)),
                   Text(
-                    '${state.libraryTracks.length} tracks • '
-                    '${state.albums.length} albums • '
-                    '${state.artists.length} artists • '
-                    '${state.playlists.length} playlists',
-                    style:
-                        Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: ColorTokens.textSecondary(context, 0.7),
-                            ),
+                    '${formatCount(trackCount)} tracks • '
+                    '${formatCount(albumCount)} albums • '
+                    '${formatCount(artistCount)} artists • '
+                    '${formatCount(playlistCount)} playlists',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: ColorTokens.textSecondary(context, 0.7),
+                        ),
                   ),
                 ],
               ),
