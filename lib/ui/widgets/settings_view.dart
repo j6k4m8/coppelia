@@ -1762,26 +1762,6 @@ class _AccountSettings extends StatelessWidget {
       ],
     );
   }
-
-  Future<void> _showLogsDialog(BuildContext context) async {
-    final logService = await LogService.instance;
-    final logContent = await logService.getLogContent();
-    final logPath = await logService.getLogFilePath();
-
-    if (!context.mounted) return;
-
-    showDialog(
-      context: context,
-      builder: (context) => _LogsDialog(
-        logContent: logContent,
-        logPath: logPath,
-        onClear: () async {
-          await logService.clearLogs();
-          if (context.mounted) Navigator.of(context).pop();
-        },
-      ),
-    );
-  }
 }
 
 class _LogsDialog extends StatelessWidget {
@@ -1969,7 +1949,7 @@ class _AppSettingsState extends State<_AppSettings> {
     if (Platform.isIOS) {
       return '$base/Coppelia-ios-simulator.zip';
     }
-    return '$base';
+    return base;
   }
 
   Future<void> _showLogsDialog(BuildContext context) async {
