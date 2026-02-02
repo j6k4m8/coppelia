@@ -829,75 +829,71 @@ class _KeyboardSettings extends StatelessWidget {
   Widget build(BuildContext context) {
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    List<Widget> shortcutSection({
+      required String title,
+      required String description,
+      required bool enabled,
+      required ValueChanged<bool> onEnabled,
+      required KeyboardShortcut shortcut,
+      required ValueChanged<KeyboardShortcut> onChanged,
+    }) {
+      return [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        SizedBox(height: space(4)),
+        Text(
+          description,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: ColorTokens.textSecondary(context),
+              ),
+        ),
+        SizedBox(height: space(12)),
+        _SettingRow(
+          title: 'Enabled',
+          subtitle: 'Allow the shortcut to ${title.toLowerCase()}.',
+          forceInline: true,
+          trailing: CompactSwitch(
+            value: enabled,
+            onChanged: onEnabled,
+          ),
+        ),
+        SizedBox(height: space(8)),
+        _SettingRow(
+          title: 'Shortcut',
+          subtitle: 'Include Cmd/Ctrl/Alt plus a key.',
+          forceInline: true,
+          trailing: _ShortcutRecorder(
+            shortcut: shortcut,
+            enabled: enabled,
+            onChanged: onChanged,
+          ),
+        ),
+      ];
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Keyboard', style: Theme.of(context).textTheme.titleLarge),
         SizedBox(height: space(12)),
-        Text(
-          'Open settings',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        SizedBox(height: space(4)),
-        Text(
-          'Use a global shortcut to jump to Settings.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: ColorTokens.textSecondary(context),
-              ),
-        ),
-        SizedBox(height: space(12)),
-        _SettingRow(
-          title: 'Enabled',
-          subtitle: 'Allow the shortcut to open Settings.',
-          forceInline: true,
-          trailing: CompactSwitch(
-            value: state.settingsShortcutEnabled,
-            onChanged: (value) => state.setSettingsShortcutEnabled(value),
-          ),
-        ),
-        SizedBox(height: space(8)),
-        _SettingRow(
-          title: 'Shortcut',
-          subtitle: 'Include Cmd/Ctrl/Alt plus a key.',
-          forceInline: true,
-          trailing: _ShortcutRecorder(
-            shortcut: state.settingsShortcut,
-            enabled: state.settingsShortcutEnabled,
-            onChanged: (shortcut) => state.setSettingsShortcut(shortcut),
-          ),
+        ...shortcutSection(
+          title: 'Open settings',
+          description: 'Use a global shortcut to jump to Settings.',
+          enabled: state.settingsShortcutEnabled,
+          onEnabled: (value) => state.setSettingsShortcutEnabled(value),
+          shortcut: state.settingsShortcut,
+          onChanged: (shortcut) => state.setSettingsShortcut(shortcut),
         ),
         Divider(height: space(24), color: ColorTokens.border(context, 0.12)),
-        Text(
-          'Focus search',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        SizedBox(height: space(4)),
-        Text(
-          'Jump straight to the search field from anywhere.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: ColorTokens.textSecondary(context),
-              ),
-        ),
-        SizedBox(height: space(12)),
-        _SettingRow(
-          title: 'Enabled',
-          subtitle: 'Allow the shortcut to focus Search.',
-          forceInline: true,
-          trailing: CompactSwitch(
-            value: state.searchShortcutEnabled,
-            onChanged: (value) => state.setSearchShortcutEnabled(value),
-          ),
-        ),
-        SizedBox(height: space(8)),
-        _SettingRow(
-          title: 'Shortcut',
-          subtitle: 'Include Cmd/Ctrl/Alt plus a key.',
-          forceInline: true,
-          trailing: _ShortcutRecorder(
-            shortcut: state.searchShortcut,
-            enabled: state.searchShortcutEnabled,
-            onChanged: (shortcut) => state.setSearchShortcut(shortcut),
-          ),
+        ...shortcutSection(
+          title: 'Focus search',
+          description: 'Jump straight to the search field from anywhere.',
+          enabled: state.searchShortcutEnabled,
+          onEnabled: (value) => state.setSearchShortcutEnabled(value),
+          shortcut: state.searchShortcut,
+          onChanged: (shortcut) => state.setSearchShortcut(shortcut),
         ),
       ],
     );
