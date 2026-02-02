@@ -509,26 +509,136 @@ class _LayoutSettings extends StatelessWidget {
   Widget build(BuildContext context) {
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
-    final browseItems = <_SidebarToggleSpec>[
-      const _SidebarToggleSpec(
-        item: SidebarItem.browseAlbums,
-        subtitle: 'Show albums in Browse.',
+    List<Widget> buildSidebarSection(
+      String title,
+      List<_SidebarToggleSpec> items,
+    ) {
+      return [
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: _SettingsSubheader(title: title),
+        ),
+        SizedBox(height: space(8)),
+        ...items.expand(
+          (spec) => [
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _SettingRow(
+                title: spec.item.label,
+                subtitle: spec.subtitle,
+                forceInline: true,
+                trailing: CompactSwitch(
+                  value: state.isSidebarItemVisible(spec.item),
+                  onChanged: (value) =>
+                      state.setSidebarItemVisible(spec.item, value),
+                ),
+              ),
+            ),
+            SizedBox(height: space(12)),
+          ],
+        ),
+      ];
+    }
+
+    final sidebarSections = <_SidebarToggleSection>[
+      const _SidebarToggleSection(
+        title: 'Main',
+        items: [
+          _SidebarToggleSpec(
+            item: SidebarItem.home,
+            subtitle: 'Show Home in the sidebar.',
+          ),
+          _SidebarToggleSpec(
+            item: SidebarItem.settings,
+            subtitle: 'Show Settings in the sidebar.',
+          ),
+        ],
       ),
-      const _SidebarToggleSpec(
-        item: SidebarItem.browseArtists,
-        subtitle: 'Show artists in Browse.',
+      const _SidebarToggleSection(
+        title: 'Favorites',
+        items: [
+          _SidebarToggleSpec(
+            item: SidebarItem.favoritesAlbums,
+            subtitle: 'Show favorite albums.',
+          ),
+          _SidebarToggleSpec(
+            item: SidebarItem.favoritesArtists,
+            subtitle: 'Show favorite artists.',
+          ),
+          _SidebarToggleSpec(
+            item: SidebarItem.favoritesSongs,
+            subtitle: 'Show favorite tracks.',
+          ),
+        ],
       ),
-      const _SidebarToggleSpec(
-        item: SidebarItem.browseGenres,
-        subtitle: 'Show genres in Browse.',
+      const _SidebarToggleSection(
+        title: 'Available Offline',
+        items: [
+          _SidebarToggleSpec(
+            item: SidebarItem.offlineAlbums,
+            subtitle: 'Show offline albums.',
+          ),
+          _SidebarToggleSpec(
+            item: SidebarItem.offlineArtists,
+            subtitle: 'Show offline artists.',
+          ),
+          _SidebarToggleSpec(
+            item: SidebarItem.offlinePlaylists,
+            subtitle: 'Show offline playlists.',
+          ),
+          _SidebarToggleSpec(
+            item: SidebarItem.offlineTracks,
+            subtitle: 'Show offline tracks.',
+          ),
+        ],
       ),
-      const _SidebarToggleSpec(
-        item: SidebarItem.browsePlaylists,
-        subtitle: 'Show playlists in Browse.',
+      const _SidebarToggleSection(
+        title: 'Browse',
+        items: [
+          _SidebarToggleSpec(
+            item: SidebarItem.browseAlbums,
+            subtitle: 'Show albums in Browse.',
+          ),
+          _SidebarToggleSpec(
+            item: SidebarItem.browseArtists,
+            subtitle: 'Show artists in Browse.',
+          ),
+          _SidebarToggleSpec(
+            item: SidebarItem.browseGenres,
+            subtitle: 'Show genres in Browse.',
+          ),
+          _SidebarToggleSpec(
+            item: SidebarItem.browsePlaylists,
+            subtitle: 'Show playlists in Browse.',
+          ),
+          _SidebarToggleSpec(
+            item: SidebarItem.browseTracks,
+            subtitle: 'Show tracks in Browse.',
+          ),
+        ],
       ),
-      const _SidebarToggleSpec(
-        item: SidebarItem.browseTracks,
-        subtitle: 'Show tracks in Browse.',
+      const _SidebarToggleSection(
+        title: 'Playback',
+        items: [
+          _SidebarToggleSpec(
+            item: SidebarItem.history,
+            subtitle: 'Show playback history.',
+          ),
+          _SidebarToggleSpec(
+            item: SidebarItem.queue,
+            subtitle: 'Show the play queue.',
+          ),
+        ],
+      ),
+      const _SidebarToggleSection(
+        title: 'Playlists',
+        items: [
+          _SidebarToggleSpec(
+            item: SidebarItem.playlists,
+            subtitle: 'Show playlist list in the sidebar.',
+          ),
+        ],
       ),
     ];
     final segmentedStyle = ButtonStyle(
@@ -536,54 +646,70 @@ class _LayoutSettings extends StatelessWidget {
         Theme.of(context).textTheme.bodySmall,
       ),
     );
+    Widget sectionHeader(String title) => Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge,
+        );
+    Widget segmentedRow<T>({
+      required String title,
+      required String subtitle,
+      required Set<T> selected,
+      required List<ButtonSegment<T>> segments,
+      required ValueChanged<Set<T>> onSelectionChanged,
+    }) {
+      return _SettingRow(
+        title: title,
+        subtitle: subtitle,
+        forceInline: true,
+        trailing: SegmentedButton<T>(
+          style: segmentedStyle,
+          segments: segments,
+          selected: selected,
+          onSelectionChanged: onSelectionChanged,
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Layout', style: Theme.of(context).textTheme.titleLarge),
+        sectionHeader('Layout'),
         SizedBox(height: space(12)),
-        _SettingRow(
+        segmentedRow<NowPlayingLayout>(
           title: 'Now playing layout',
           subtitle: 'Choose where the player is docked.',
-          forceInline: true,
-          trailing: SegmentedButton<NowPlayingLayout>(
-            style: segmentedStyle,
-            segments: NowPlayingLayout.values
-                .map(
-                  (layout) => ButtonSegment(
-                    value: layout,
-                    label: Text(layout.label),
-                  ),
-                )
-                .toList(),
-            selected: {state.nowPlayingLayout},
-            onSelectionChanged: (selection) {
-              final layout = selection.first;
-              state.setNowPlayingLayout(layout);
-            },
-          ),
+          segments: NowPlayingLayout.values
+              .map(
+                (layout) => ButtonSegment(
+                  value: layout,
+                  label: Text(layout.label),
+                ),
+              )
+              .toList(),
+          selected: {state.nowPlayingLayout},
+          onSelectionChanged: (selection) {
+            final layout = selection.first;
+            state.setNowPlayingLayout(layout);
+          },
         ),
         Divider(height: space(32), color: ColorTokens.border(context, 0.12)),
-        Text('Home', style: Theme.of(context).textTheme.titleLarge),
+        sectionHeader('Home'),
         SizedBox(height: space(12)),
-        _SettingRow(
+        segmentedRow<HomeShelfLayout>(
           title: 'Featured & recent layout',
           subtitle: 'Switch between the scroller and a compact grid.',
-          forceInline: true,
-          trailing: SegmentedButton<HomeShelfLayout>(
-            style: segmentedStyle,
-            segments: HomeShelfLayout.values
-                .map(
-                  (layout) => ButtonSegment(
-                    value: layout,
-                    label: Text(layout.label),
-                  ),
-                )
-                .toList(),
-            selected: {state.homeShelfLayout},
-            onSelectionChanged: (selection) {
-              state.setHomeShelfLayout(selection.first);
-            },
-          ),
+          segments: HomeShelfLayout.values
+              .map(
+                (layout) => ButtonSegment(
+                  value: layout,
+                  label: Text(layout.label),
+                ),
+              )
+              .toList(),
+          selected: {state.homeShelfLayout},
+          onSelectionChanged: (selection) {
+            state.setHomeShelfLayout(selection.first);
+          },
         ),
         if (state.homeShelfLayout == HomeShelfLayout.grid) ...[
           SizedBox(height: space(12)),
@@ -630,251 +756,8 @@ class _LayoutSettings extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.only(left: 12),
-              child: _SettingsSubheader(title: 'Main'),
-            ),
-            SizedBox(height: space(8)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.home.label,
-                subtitle: 'Show Home in the sidebar.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(SidebarItem.home),
-                  onChanged: (value) =>
-                      state.setSidebarItemVisible(SidebarItem.home, value),
-                ),
-              ),
-            ),
-            SizedBox(height: space(12)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.settings.label,
-                subtitle: 'Show Settings in the sidebar.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(SidebarItem.settings),
-                  onChanged: (value) =>
-                      state.setSidebarItemVisible(SidebarItem.settings, value),
-                ),
-              ),
-            ),
-            SizedBox(height: space(16)),
-            const Padding(
-              padding: EdgeInsets.only(left: 12),
-              child: _SettingsSubheader(title: 'Favorites'),
-            ),
-            SizedBox(height: space(8)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.favoritesAlbums.label,
-                subtitle: 'Show favorite albums.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(
-                    SidebarItem.favoritesAlbums,
-                  ),
-                  onChanged: (value) => state.setSidebarItemVisible(
-                    SidebarItem.favoritesAlbums,
-                    value,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: space(12)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.favoritesArtists.label,
-                subtitle: 'Show favorite artists.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(
-                    SidebarItem.favoritesArtists,
-                  ),
-                  onChanged: (value) => state.setSidebarItemVisible(
-                    SidebarItem.favoritesArtists,
-                    value,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: space(12)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.favoritesSongs.label,
-                subtitle: 'Show favorite tracks.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(
-                    SidebarItem.favoritesSongs,
-                  ),
-                  onChanged: (value) => state.setSidebarItemVisible(
-                    SidebarItem.favoritesSongs,
-                    value,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: space(16)),
-            const Padding(
-              padding: EdgeInsets.only(left: 12),
-              child: _SettingsSubheader(title: 'Available Offline'),
-            ),
-            SizedBox(height: space(8)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.offlineAlbums.label,
-                subtitle: 'Show offline albums.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(
-                    SidebarItem.offlineAlbums,
-                  ),
-                  onChanged: (value) => state.setSidebarItemVisible(
-                    SidebarItem.offlineAlbums,
-                    value,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: space(12)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.offlineArtists.label,
-                subtitle: 'Show offline artists.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(
-                    SidebarItem.offlineArtists,
-                  ),
-                  onChanged: (value) => state.setSidebarItemVisible(
-                    SidebarItem.offlineArtists,
-                    value,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: space(12)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.offlinePlaylists.label,
-                subtitle: 'Show offline playlists.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(
-                    SidebarItem.offlinePlaylists,
-                  ),
-                  onChanged: (value) => state.setSidebarItemVisible(
-                    SidebarItem.offlinePlaylists,
-                    value,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: space(12)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.offlineTracks.label,
-                subtitle: 'Show offline tracks.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(
-                    SidebarItem.offlineTracks,
-                  ),
-                  onChanged: (value) => state.setSidebarItemVisible(
-                    SidebarItem.offlineTracks,
-                    value,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: space(16)),
-            const Padding(
-              padding: EdgeInsets.only(left: 12),
-              child: _SettingsSubheader(title: 'Browse'),
-            ),
-            SizedBox(height: space(8)),
-            ...browseItems.expand(
-              (spec) => [
-                Padding(
-                  padding: const EdgeInsets.only(left: 24),
-                  child: _SettingRow(
-                    title: spec.item.label,
-                    subtitle: spec.subtitle,
-                    forceInline: true,
-                    trailing: CompactSwitch(
-                      value: state.isSidebarItemVisible(spec.item),
-                      onChanged: (value) =>
-                          state.setSidebarItemVisible(spec.item, value),
-                    ),
-                  ),
-                ),
-                SizedBox(height: space(12)),
-              ],
-            ),
-            SizedBox(height: space(16)),
-            const Padding(
-              padding: EdgeInsets.only(left: 12),
-              child: _SettingsSubheader(title: 'Playback'),
-            ),
-            SizedBox(height: space(8)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.history.label,
-                subtitle: 'Show playback history.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(SidebarItem.history),
-                  onChanged: (value) =>
-                      state.setSidebarItemVisible(SidebarItem.history, value),
-                ),
-              ),
-            ),
-            SizedBox(height: space(12)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.queue.label,
-                subtitle: 'Show the play queue.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(SidebarItem.queue),
-                  onChanged: (value) =>
-                      state.setSidebarItemVisible(SidebarItem.queue, value),
-                ),
-              ),
-            ),
-            SizedBox(height: space(16)),
-            const Padding(
-              padding: EdgeInsets.only(left: 12),
-              child: _SettingsSubheader(title: 'Playlists'),
-            ),
-            SizedBox(height: space(8)),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _SettingRow(
-                title: SidebarItem.playlists.label,
-                subtitle: 'Show playlist list in the sidebar.',
-                forceInline: true,
-                trailing: CompactSwitch(
-                  value: state.isSidebarItemVisible(SidebarItem.playlists),
-                  onChanged: (value) => state.setSidebarItemVisible(
-                    SidebarItem.playlists,
-                    value,
-                  ),
-                ),
-              ),
+            ...sidebarSections.expand(
+              (section) => buildSidebarSection(section.title, section.items),
             ),
           ],
         ),
@@ -946,75 +829,71 @@ class _KeyboardSettings extends StatelessWidget {
   Widget build(BuildContext context) {
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    List<Widget> shortcutSection({
+      required String title,
+      required String description,
+      required bool enabled,
+      required ValueChanged<bool> onEnabled,
+      required KeyboardShortcut shortcut,
+      required ValueChanged<KeyboardShortcut> onChanged,
+    }) {
+      return [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        SizedBox(height: space(4)),
+        Text(
+          description,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: ColorTokens.textSecondary(context),
+              ),
+        ),
+        SizedBox(height: space(12)),
+        _SettingRow(
+          title: 'Enabled',
+          subtitle: 'Allow the shortcut to ${title.toLowerCase()}.',
+          forceInline: true,
+          trailing: CompactSwitch(
+            value: enabled,
+            onChanged: onEnabled,
+          ),
+        ),
+        SizedBox(height: space(8)),
+        _SettingRow(
+          title: 'Shortcut',
+          subtitle: 'Include Cmd/Ctrl/Alt plus a key.',
+          forceInline: true,
+          trailing: _ShortcutRecorder(
+            shortcut: shortcut,
+            enabled: enabled,
+            onChanged: onChanged,
+          ),
+        ),
+      ];
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Keyboard', style: Theme.of(context).textTheme.titleLarge),
         SizedBox(height: space(12)),
-        Text(
-          'Open settings',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        SizedBox(height: space(4)),
-        Text(
-          'Use a global shortcut to jump to Settings.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: ColorTokens.textSecondary(context),
-              ),
-        ),
-        SizedBox(height: space(12)),
-        _SettingRow(
-          title: 'Enabled',
-          subtitle: 'Allow the shortcut to open Settings.',
-          forceInline: true,
-          trailing: CompactSwitch(
-            value: state.settingsShortcutEnabled,
-            onChanged: (value) => state.setSettingsShortcutEnabled(value),
-          ),
-        ),
-        SizedBox(height: space(8)),
-        _SettingRow(
-          title: 'Shortcut',
-          subtitle: 'Include Cmd/Ctrl/Alt plus a key.',
-          forceInline: true,
-          trailing: _ShortcutRecorder(
-            shortcut: state.settingsShortcut,
-            enabled: state.settingsShortcutEnabled,
-            onChanged: (shortcut) => state.setSettingsShortcut(shortcut),
-          ),
+        ...shortcutSection(
+          title: 'Open settings',
+          description: 'Use a global shortcut to jump to Settings.',
+          enabled: state.settingsShortcutEnabled,
+          onEnabled: (value) => state.setSettingsShortcutEnabled(value),
+          shortcut: state.settingsShortcut,
+          onChanged: (shortcut) => state.setSettingsShortcut(shortcut),
         ),
         Divider(height: space(24), color: ColorTokens.border(context, 0.12)),
-        Text(
-          'Focus search',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        SizedBox(height: space(4)),
-        Text(
-          'Jump straight to the search field from anywhere.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: ColorTokens.textSecondary(context),
-              ),
-        ),
-        SizedBox(height: space(12)),
-        _SettingRow(
-          title: 'Enabled',
-          subtitle: 'Allow the shortcut to focus Search.',
-          forceInline: true,
-          trailing: CompactSwitch(
-            value: state.searchShortcutEnabled,
-            onChanged: (value) => state.setSearchShortcutEnabled(value),
-          ),
-        ),
-        SizedBox(height: space(8)),
-        _SettingRow(
-          title: 'Shortcut',
-          subtitle: 'Include Cmd/Ctrl/Alt plus a key.',
-          forceInline: true,
-          trailing: _ShortcutRecorder(
-            shortcut: state.searchShortcut,
-            enabled: state.searchShortcutEnabled,
-            onChanged: (shortcut) => state.setSearchShortcut(shortcut),
-          ),
+        ...shortcutSection(
+          title: 'Focus search',
+          description: 'Jump straight to the search field from anywhere.',
+          enabled: state.searchShortcutEnabled,
+          onEnabled: (value) => state.setSearchShortcutEnabled(value),
+          shortcut: state.searchShortcut,
+          onChanged: (shortcut) => state.setSearchShortcut(shortcut),
         ),
       ],
     );
@@ -2110,6 +1989,13 @@ class _SidebarToggleSpec {
 
   final SidebarItem item;
   final String subtitle;
+}
+
+class _SidebarToggleSection {
+  const _SidebarToggleSection({required this.title, required this.items});
+
+  final String title;
+  final List<_SidebarToggleSpec> items;
 }
 
 class _AccountMetaRow extends StatelessWidget {
