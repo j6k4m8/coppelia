@@ -646,54 +646,70 @@ class _LayoutSettings extends StatelessWidget {
         Theme.of(context).textTheme.bodySmall,
       ),
     );
+    Widget sectionHeader(String title) => Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge,
+        );
+    Widget segmentedRow<T>({
+      required String title,
+      required String subtitle,
+      required Set<T> selected,
+      required List<ButtonSegment<T>> segments,
+      required ValueChanged<Set<T>> onSelectionChanged,
+    }) {
+      return _SettingRow(
+        title: title,
+        subtitle: subtitle,
+        forceInline: true,
+        trailing: SegmentedButton<T>(
+          style: segmentedStyle,
+          segments: segments,
+          selected: selected,
+          onSelectionChanged: onSelectionChanged,
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Layout', style: Theme.of(context).textTheme.titleLarge),
+        sectionHeader('Layout'),
         SizedBox(height: space(12)),
-        _SettingRow(
+        segmentedRow<NowPlayingLayout>(
           title: 'Now playing layout',
           subtitle: 'Choose where the player is docked.',
-          forceInline: true,
-          trailing: SegmentedButton<NowPlayingLayout>(
-            style: segmentedStyle,
-            segments: NowPlayingLayout.values
-                .map(
-                  (layout) => ButtonSegment(
-                    value: layout,
-                    label: Text(layout.label),
-                  ),
-                )
-                .toList(),
-            selected: {state.nowPlayingLayout},
-            onSelectionChanged: (selection) {
-              final layout = selection.first;
-              state.setNowPlayingLayout(layout);
-            },
-          ),
+          segments: NowPlayingLayout.values
+              .map(
+                (layout) => ButtonSegment(
+                  value: layout,
+                  label: Text(layout.label),
+                ),
+              )
+              .toList(),
+          selected: {state.nowPlayingLayout},
+          onSelectionChanged: (selection) {
+            final layout = selection.first;
+            state.setNowPlayingLayout(layout);
+          },
         ),
         Divider(height: space(32), color: ColorTokens.border(context, 0.12)),
-        Text('Home', style: Theme.of(context).textTheme.titleLarge),
+        sectionHeader('Home'),
         SizedBox(height: space(12)),
-        _SettingRow(
+        segmentedRow<HomeShelfLayout>(
           title: 'Featured & recent layout',
           subtitle: 'Switch between the scroller and a compact grid.',
-          forceInline: true,
-          trailing: SegmentedButton<HomeShelfLayout>(
-            style: segmentedStyle,
-            segments: HomeShelfLayout.values
-                .map(
-                  (layout) => ButtonSegment(
-                    value: layout,
-                    label: Text(layout.label),
-                  ),
-                )
-                .toList(),
-            selected: {state.homeShelfLayout},
-            onSelectionChanged: (selection) {
-              state.setHomeShelfLayout(selection.first);
-            },
-          ),
+          segments: HomeShelfLayout.values
+              .map(
+                (layout) => ButtonSegment(
+                  value: layout,
+                  label: Text(layout.label),
+                ),
+              )
+              .toList(),
+          selected: {state.homeShelfLayout},
+          onSelectionChanged: (selection) {
+            state.setHomeShelfLayout(selection.first);
+          },
         ),
         if (state.homeShelfLayout == HomeShelfLayout.grid) ...[
           SizedBox(height: space(12)),
