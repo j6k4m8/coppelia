@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'dart:io' show Platform, Process;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 import '../../core/formatters.dart';
 import '../../models/download_task.dart';
@@ -39,7 +42,7 @@ class SettingsView extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
       child: DefaultTabController(
-        length: 6,
+        length: 7,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -68,6 +71,9 @@ class SettingsView extends StatelessWidget {
                   ),
                   _SettingsTab(
                     child: _AccountSettings(state: state),
+                  ),
+                  _SettingsTab(
+                    child: _AppSettings(),
                   ),
                 ],
               ),
@@ -115,6 +121,7 @@ class _SettingsTabBar extends StatelessWidget {
           _SettingsTabLabel(text: 'Playback'),
           _SettingsTabLabel(text: 'Cache'),
           _SettingsTabLabel(text: 'Account'),
+          _SettingsTabLabel(text: 'App'),
         ],
       ),
     );
@@ -1705,14 +1712,14 @@ class _AccountSettings extends StatelessWidget {
             ),
           ),
         SizedBox(height: space(24)),
-        Text('App', style: Theme.of(context).textTheme.titleMedium),
-        SizedBox(height: space(12)),
-        _AccountMetaRow(
-          label: 'Version',
-          value: AppInfo.displayVersion,
-        ),
-        SizedBox(height: space(24)),
         Text('Telemetry', style: Theme.of(context).textTheme.titleMedium),
+        SizedBox(height: space(6)),
+        Text(
+          'These updates are sent to your Jellyfin server to report your playback. They are all optional. None of these settings send any data to third parties like Coppelia or other analytics services.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: ColorTokens.textSecondary(context),
+              ),
+        ),
         SizedBox(height: space(12)),
         _SettingRow(
           title: 'Playback reporting',
@@ -1750,18 +1757,6 @@ class _AccountSettings extends StatelessWidget {
           trailing: OutlinedButton(
             onPressed: state.signOut,
             child: const Text('Sign out'),
-          ),
-        ),
-        SizedBox(height: space(32)),
-        Text('Diagnostics', style: Theme.of(context).textTheme.titleMedium),
-        SizedBox(height: space(12)),
-        _SettingRow(
-          title: 'App logs',
-          subtitle:
-              'View and share diagnostic logs to help troubleshoot issues.',
-          trailing: OutlinedButton(
-            onPressed: () => _showLogsDialog(context),
-            child: const Text('View logs'),
           ),
         ),
       ],
@@ -1904,6 +1899,152 @@ class _LogsDialog extends StatelessWidget {
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Close'),
+        ),
+      ],
+    );
+  }
+}
+
+class _AppSettings extends StatefulWidget {
+  @override
+  State<_AppSettings> createState() => _AppSettingsState();
+}
+
+class _AppSettingsState extends State<_AppSettings> {
+  bool _isChecking = false;
+  String? _latestTag;
+  String? _error;
+
+  Future<void> _checkLatestVersion() async {
+    setState(() {
+      _isChecking = true;
+      _error = null;
+    });
+    try {
+      final response = await http.get(
+        Uri.parse(
+            'https://api.github.com/repos/j6k4m8/coppelia/releases/latest'),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      final tag = payload['tag_name']?.toString();
+      setState(() {
+        _latestTag = tag;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isChecking = false;
+        });
+      }
+    }
+  }
+
+  bool get _isUpToDate {
+    final tag = _latestTag;
+    if (tag == null) return false;
+    final normalized = tag.startsWith('v') ? tag.substring(1) : tag;
+    return normalized == AppInfo.version;
+  }
+
+  String? _downloadUrlForPlatform() {
+    final tag = _latestTag;
+    if (tag == null) return null;
+    final base = 'https://github.com/j6k4m8/coppelia/releases/download/$tag';
+    if (Platform.isMacOS) {
+      return '$base/Coppelia-macos.zip';
+    }
+    if (Platform.isLinux) {
+      return '$base/Coppelia-linux.tar.gz';
+    }
+    if (Platform.isAndroid) {
+      return '$base/Coppelia-android.apk';
+    }
+    if (Platform.isIOS) {
+      return '$base/Coppelia-ios-simulator.zip';
+    }
+    return '$base';
+  }
+
+  Future<void> _showLogsDialog(BuildContext context) async {
+    final logService = await LogService.instance;
+    final logContent = await logService.getLogContent();
+    final logPath = await logService.getLogFilePath();
+
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => _LogsDialog(
+        logContent: logContent,
+        logPath: logPath,
+        onClear: () async {
+          await logService.clearLogs();
+          if (context.mounted) Navigator.of(context).pop();
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    final statusText = _error != null
+        ? 'Update check failed: $_error'
+        : _latestTag == null
+            ? 'Latest release: unknown'
+            : _isUpToDate
+                ? 'Up to date (latest: $_latestTag)'
+                : 'Update available (latest: $_latestTag)';
+    final downloadUrl = !_isUpToDate ? _downloadUrlForPlatform() : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('App', style: Theme.of(context).textTheme.titleLarge),
+        SizedBox(height: space(12)),
+        _SettingRow(
+          title: 'Version',
+          subtitle: 'Installed app version.',
+          trailing: Text(AppInfo.displayVersion),
+        ),
+        SizedBox(height: space(12)),
+        _SettingRow(
+          title: 'Check for updates',
+          subtitle: statusText,
+          trailing: OutlinedButton(
+            onPressed: _isChecking ? null : _checkLatestVersion,
+            child: Text(_isChecking ? 'Checking…' : 'Check'),
+          ),
+        ),
+        if (downloadUrl != null && _latestTag != null) ...[
+          SizedBox(height: space(8)),
+          _SettingRow(
+            title: 'Download update',
+            subtitle: 'Grab the latest release for this platform.',
+            trailing: OutlinedButton(
+              onPressed: () => launchUrlString(downloadUrl),
+              child: const Text('Download'),
+            ),
+          ),
+        ],
+        SizedBox(height: space(24)),
+        Text('Diagnostics', style: Theme.of(context).textTheme.titleMedium),
+        SizedBox(height: space(12)),
+        _SettingRow(
+          title: 'App logs',
+          subtitle:
+              'View and share diagnostic logs to help troubleshoot issues.',
+          trailing: OutlinedButton(
+            onPressed: () => _showLogsDialog(context),
+            child: const Text('View logs'),
+          ),
         ),
       ],
     );
