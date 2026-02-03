@@ -61,6 +61,7 @@ class SettingsStore {
   static const _cornerRadiusStyleKey = 'settings_corner_radius_style';
   static const _deviceIdKey = 'settings_device_id';
   static const _offlineModeKey = 'settings_offline_mode';
+  static const _preferLocalSearchKey = 'settings_prefer_local_search';
   static const _smartListsKey = 'settings_smart_lists';
   static const int _defaultAccentValue = 0xFF6F7BFF;
 
@@ -147,6 +148,18 @@ class SettingsStore {
   Future<bool> loadGaplessPlayback() async {
     final preferences = await SharedPreferences.getInstance();
     return preferences.getBool(_gaplessPlaybackKey) ?? true;
+  }
+
+  /// Loads whether to prefer local search even when online.
+  Future<bool> loadPreferLocalSearch() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_preferLocalSearchKey) ?? false;
+  }
+
+  /// Saves whether to prefer local search even when online.
+  Future<void> savePreferLocalSearch(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_preferLocalSearchKey, enabled);
   }
 
   /// Saves whether gapless playback is enabled.

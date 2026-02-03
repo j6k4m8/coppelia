@@ -1750,6 +1750,18 @@ class _AccountSettings extends StatelessWidget {
             onChanged: state.setTelemetryHistory,
           ),
         ),
+        SizedBox(height: space(32)),
+        Text('Search', style: Theme.of(context).textTheme.titleMedium),
+        SizedBox(height: space(12)),
+        _SettingRow(
+          title: 'Use local search even when online',
+          subtitle: 'Search cached library data instead of using server.',
+          forceInline: true,
+          trailing: CompactSwitch(
+            value: state.preferLocalSearch,
+            onChanged: state.setPreferLocalSearch,
+          ),
+        ),
         SizedBox(height: space(16)),
         _SettingRow(
           title: 'Sign out',

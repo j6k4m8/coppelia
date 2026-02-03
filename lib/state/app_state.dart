@@ -148,10 +148,10 @@ class AppState extends ChangeNotifier {
   void _updatePlaybackProgress({Duration? position, Duration? duration}) {
     final nextDuration = duration ?? _duration;
     final nextPosition = position ?? _position;
-    final clampedPosition = (nextDuration > Duration.zero &&
-            nextPosition > nextDuration)
-        ? nextDuration
-        : nextPosition;
+    final clampedPosition =
+        (nextDuration > Duration.zero && nextPosition > nextDuration)
+            ? nextDuration
+            : nextPosition;
     _duration = nextDuration;
     _position = clampedPosition;
     _durationNotifier.value = _duration;
@@ -181,6 +181,7 @@ class AppState extends ChangeNotifier {
   KeyboardShortcut _settingsShortcut = KeyboardShortcut.defaultForPlatform();
   bool _searchShortcutEnabled = true;
   KeyboardShortcut _searchShortcut = KeyboardShortcut.searchForPlatform();
+  bool _preferLocalSearch = false;
   LayoutDensity _layoutDensity = LayoutDensity.comfortable;
   CornerRadiusStyle _cornerRadiusStyle = CornerRadiusStyle.babyProofed;
   NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.bottom;
@@ -468,6 +469,9 @@ class AppState extends ChangeNotifier {
   /// Preferred keyboard shortcut for focusing search.
   KeyboardShortcut get searchShortcut => _searchShortcut;
 
+  /// True when local search should be used even when online.
+  bool get preferLocalSearch => _preferLocalSearch;
+
   /// Preferred layout density.
   LayoutDensity get layoutDensity => _layoutDensity;
 
@@ -672,6 +676,7 @@ class AppState extends ChangeNotifier {
     _settingsShortcut = await _settingsStore.loadSettingsShortcut();
     _searchShortcutEnabled = await _settingsStore.loadSearchShortcutEnabled();
     _searchShortcut = await _settingsStore.loadSearchShortcut();
+    _preferLocalSearch = await _settingsStore.loadPreferLocalSearch();
     _layoutDensity = await _settingsStore.loadLayoutDensity();
     _cornerRadiusStyle = await _settingsStore.loadCornerRadiusStyle();
     _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
@@ -1469,9 +1474,11 @@ class AppState extends ChangeNotifier {
       return;
     }
     _searchQuery = query;
-    if (_offlineMode) {
-      await LogService.instance.then(
-          (log) => log.info('Search: Offline mode search for: "$trimmed"'));
+
+    // Use local search if offline OR if prefer local search is enabled
+    if (_offlineMode || _preferLocalSearch) {
+      await LogService.instance.then((log) => log.info(
+          'Search: Local search for: "$trimmed" (offline=$_offlineMode, preferLocal=$_preferLocalSearch)'));
 
       _isSearching = true;
       notifyListeners();
@@ -1502,8 +1509,8 @@ class AppState extends ChangeNotifier {
         playlists: playlists,
       );
 
-      await LogService.instance.then((log) =>
-          log.info('Search: Offline results - ${tracks.length} tracks, '
+      await LogService.instance.then(
+          (log) => log.info('Search: Local results - ${tracks.length} tracks, '
               '${albums.length} albums, ${artists.length} artists'));
 
       _isSearching = false;
@@ -2854,6 +2861,13 @@ class AppState extends ChangeNotifier {
   Future<void> setSearchShortcut(KeyboardShortcut shortcut) async {
     _searchShortcut = shortcut;
     await _settingsStore.saveSearchShortcut(shortcut);
+    notifyListeners();
+  }
+
+  /// Updates the prefer local search preference.
+  Future<void> setPreferLocalSearch(bool enabled) async {
+    _preferLocalSearch = enabled;
+    await _settingsStore.savePreferLocalSearch(enabled);
     notifyListeners();
   }
 
@@ -4507,16 +4521,17 @@ class AppState extends ChangeNotifier {
             '${track.sampleRate != null ? ", sampleRate=${track.sampleRate}Hz" : ""}]'
         : '';
     await logService.info(
-      '_playFromList[$requestId]: Starting with ${tracks.length} tracks, playing "${track.title}"$formatInfo');
+        '_playFromList[$requestId]: Starting with ${tracks.length} tracks, playing "${track.title}"$formatInfo');
 
     final index = tracks.indexWhere((item) => item.id == track.id);
     if (index < 0) {
-      await logService.warning('_playFromList[$requestId]: Track not found in list');
+      await logService
+          .warning('_playFromList[$requestId]: Track not found in list');
       return;
     }
 
-    await logService
-        .info('_playFromList[$requestId]: Track index $index, normalizing tracks');
+    await logService.info(
+        '_playFromList[$requestId]: Track index $index, normalizing tracks');
     final normalized = _normalizeTracksForPlayback(tracks);
     final playbackTrack = normalized[index];
 
@@ -4524,8 +4539,8 @@ class AppState extends ChangeNotifier {
         .info('_playFromList[$requestId]: Refreshing cache status for track');
     await _refreshNowPlayingCacheStatus(playbackTrack);
     if (_isPlayRequestStale(requestId)) {
-      await logService
-          .info('_playFromList[$requestId]: Stale request after cache refresh; aborting');
+      await logService.info(
+          '_playFromList[$requestId]: Stale request after cache refresh; aborting');
       return;
     }
 
@@ -4533,7 +4548,7 @@ class AppState extends ChangeNotifier {
     _queue = normalized;
 
     await logService.info(
-      '_playFromList[$requestId]: Setting queue with ${_queue.length} tracks at index $index');
+        '_playFromList[$requestId]: Setting queue with ${_queue.length} tracks at index $index');
     final didSetQueue = await _performPlaybackAction(
       () => _playback.setQueue(
         _queue,
@@ -4544,15 +4559,15 @@ class AppState extends ChangeNotifier {
       'set queue',
     );
     await logService.info(
-      '_playFromList[$requestId]: Queue setup ${didSetQueue ? "successful" : "failed"}');
+        '_playFromList[$requestId]: Queue setup ${didSetQueue ? "successful" : "failed"}');
     if (_isPlayRequestStale(requestId)) {
-      await logService
-        .info('_playFromList[$requestId]: Stale request after set queue; aborting');
+      await logService.info(
+          '_playFromList[$requestId]: Stale request after set queue; aborting');
       return;
     }
     if (!didSetQueue) {
       await logService.warning(
-        '_playFromList[$requestId]: Failed to set queue, restoring previous queue');
+          '_playFromList[$requestId]: Failed to set queue, restoring previous queue');
       _queue = previousQueue;
       if (_isPreparingPlayback) {
         _isPreparingPlayback = false;
@@ -4561,7 +4576,8 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    await logService.info('_playFromList[$requestId]: Setting now playing track');
+    await logService
+        .info('_playFromList[$requestId]: Setting now playing track');
     if (_nowPlaying?.id != playbackTrack.id) {
       _setNowPlaying(playbackTrack);
     } else if (playbackTrack.duration > Duration.zero &&
@@ -4569,7 +4585,8 @@ class AppState extends ChangeNotifier {
       _updatePlaybackProgress(duration: playbackTrack.duration);
     }
 
-    await logService.info('_playFromList[$requestId]: Starting playback polling');
+    await logService
+        .info('_playFromList[$requestId]: Starting playback polling');
     _startPlaybackPolling();
 
     await logService.info('_playFromList[$requestId]: Initiating play command');
