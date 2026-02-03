@@ -29,6 +29,7 @@ import '../services/jellyfin_client.dart';
 import '../services/log_service.dart';
 import '../services/now_playing_service.dart';
 import '../services/playback_controller.dart';
+import '../services/search_service.dart';
 import '../services/settings_store.dart';
 import '../services/session_store.dart';
 import 'browse_layout.dart';
@@ -1481,67 +1482,33 @@ class AppState extends ChangeNotifier {
           'Search: Local search for: "$trimmed" (offline=$_offlineMode, preferLocal=$_preferLocalSearch)'));
 
       _isSearching = true;
-      notifyListeners();
-      final needle = trimmed.toLowerCase();
-      bool matches(String value) => value.toLowerCase().contains(needle);
-      
+
       // Collect all available tracks from various sources
-      final allTracks = <String, MediaItem>{};
-      for (final track in _libraryTracks) {
-        allTracks[track.id] = track;
-      }
-      for (final track in _recentTracks) {
-        allTracks[track.id] = track;
-      }
-      for (final track in _featuredTracks) {
-        allTracks[track.id] = track;
-      }
-      for (final track in _favoriteTracks) {
-        allTracks[track.id] = track;
-      }
-      for (final track in _playlistTracks) {
-        allTracks[track.id] = track;
-      }
-      for (final track in _albumTracks) {
-        allTracks[track.id] = track;
-      }
-      for (final track in _artistTracks) {
-        allTracks[track.id] = track;
-      }
-      for (final track in _genreTracks) {
-        allTracks[track.id] = track;
-      }
-      for (final track in _smartListTracks) {
-        allTracks[track.id] = track;
-      }
-      
-      final tracks = allTracks.values
-          .where(
-            (track) =>
-                matches(track.title) ||
-                matches(track.album) ||
-                track.artists.any(matches),
-          )
-          .toList();
-      final albums = _albums
-          .where(
-            (album) => matches(album.name) || matches(album.artistName),
-          )
-          .toList();
-      final artists = _artists.where((artist) => matches(artist.name)).toList();
-      final genres = _genres.where((genre) => matches(genre.name)).toList();
-      final playlists =
-          _playlists.where((playlist) => matches(playlist.name)).toList();
-      _searchResults = SearchResults(
-        tracks: tracks,
-        albums: albums,
-        artists: artists,
-        genres: genres,
-        playlists: playlists,
+      final allTracks = SearchService.collectUniqueTracks([
+        _libraryTracks,
+        _recentTracks,
+        _featuredTracks,
+        _favoriteTracks,
+        _playlistTracks,
+        _albumTracks,
+        _artistTracks,
+        _genreTracks,
+        _smartListTracks,
+      ]);
+
+      _searchResults = SearchService.searchLocal(
+        query: trimmed,
+        allTracks: allTracks,
+        albums: _albums,
+        artists: _artists,
+        genres: _genres,
+        playlists: _playlists,
       );
 
-      await LogService.instance.then(
-          (log) => log.info('Search: Local results - ${tracks.length} tracks, '
+      await LogService.instance.then((log) => log.info(
+          'Search: Local results - ${_searchResults?.tracks.length ?? 0} tracks, '
+          '${_searchResults?.albums.length ?? 0} albums, '
+          '${_searchResults?.artists.length ?? 0racks.length} tracks, '
               '${albums.length} albums, ${artists.length} artists'));
 
       _isSearching = false;
