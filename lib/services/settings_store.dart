@@ -41,8 +41,7 @@ class SettingsStore {
   static const _gaplessPlaybackKey = 'settings_gapless_playback';
   static const _downloadsWifiOnlyKey = 'settings_downloads_wifi_only';
   static const _downloadsPausedKey = 'settings_downloads_paused';
-  static const _autoDownloadFavoritesKey =
-      'settings_auto_download_favorites';
+  static const _autoDownloadFavoritesKey = 'settings_auto_download_favorites';
   static const _autoDownloadFavoriteAlbumsKey =
       'settings_auto_download_favorites_albums';
   static const _autoDownloadFavoriteArtistsKey =
@@ -54,8 +53,7 @@ class SettingsStore {
   static const _settingsShortcutEnabledKey =
       'settings_shortcut_settings_enabled';
   static const _settingsShortcutKey = 'settings_shortcut_settings';
-  static const _searchShortcutEnabledKey =
-      'settings_shortcut_search_enabled';
+  static const _searchShortcutEnabledKey = 'settings_shortcut_search_enabled';
   static const _searchShortcutKey = 'settings_shortcut_search';
   static const _layoutDensityKey = 'settings_layout_density';
   static const _cornerRadiusStyleKey = 'settings_corner_radius_style';
@@ -191,7 +189,6 @@ class SettingsStore {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_downloadsPausedKey, paused);
   }
-
 
   /// Loads whether offline mode is enabled.
   Future<bool> loadOfflineMode() async {
@@ -466,9 +463,8 @@ class SettingsStore {
   /// Saves the preferred font family.
   Future<void> saveFontFamily(String? family) async {
     final preferences = await SharedPreferences.getInstance();
-    final value = (family == null || family.trim().isEmpty)
-        ? 'system'
-        : family.trim();
+    final value =
+        (family == null || family.trim().isEmpty) ? 'system' : family.trim();
     await preferences.setString(_fontFamilyKey, value);
   }
 
@@ -483,8 +479,7 @@ class SettingsStore {
   Future<CornerRadiusStyle> loadCornerRadiusStyle() async {
     final preferences = await SharedPreferences.getInstance();
     final raw = preferences.getString(_cornerRadiusStyleKey);
-    return CornerRadiusStyleX.tryParse(raw) ??
-        CornerRadiusStyle.babyProofed;
+    return CornerRadiusStyleX.tryParse(raw) ?? CornerRadiusStyle.babyProofed;
   }
 
   /// Saves the preferred corner radius style.
