@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -181,9 +182,18 @@ class LogService {
     }
 
     try {
+      // Try normal UTF-8 reading first
       return await _logFile!.readAsString();
     } catch (e) {
-      return 'Failed to read logs: $e';
+      // If UTF-8 decoding fails, try reading as bytes and decode with error handling
+      try {
+        final bytes = await _logFile!.readAsBytes();
+        // Decode with replacement character (U+FFFD �) for invalid UTF-8 sequences
+        const decoder = Utf8Decoder(allowMalformed: true);
+        return decoder.convert(bytes);
+      } catch (e2) {
+        return 'Failed to read logs: $e (fallback also failed: $e2)';
+      }
     }
   }
 

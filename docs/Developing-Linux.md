@@ -5,6 +5,10 @@
 -   Flutter 3.3+ with Linux desktop enabled (`flutter doctor` should show Linux).
 -   GTK development headers and build tooling:
     -   `clang`, `cmake`, `ninja-build`, `pkg-config`, `libgtk-3-dev`, `liblzma-dev`
+-   **MPV** for audio playback (required by `just_audio_media_kit`):
+    -   Ubuntu/Debian: `sudo apt install mpv libmpv-dev`
+    -   Fedora: `sudo dnf install mpv mpv-devel`
+    -   Arch: `sudo pacman -S mpv`
 
 ## Setup
 

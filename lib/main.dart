@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
@@ -25,7 +26,13 @@ Future<void> main() async {
       androidNotificationOngoing: true,
     );
   }
+  if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
+    logService.info('Initializing MediaKit for desktop platforms');
+    MediaKit.ensureInitialized();
+    logService.info('MediaKit initialized for desktop platforms');
+  }
   if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+    logService.info('Initializing window manager for desktop platforms');
     await windowManager.ensureInitialized();
 
     final windowOptions = WindowOptions(
@@ -41,6 +48,7 @@ Future<void> main() async {
       await windowManager.show();
       await windowManager.focus();
     });
+    logService.info('Window manager initialized');
   }
 
   runApp(const CoppeliaApp());
