@@ -833,15 +833,12 @@ class AppState extends ChangeNotifier {
       final featured = await _client.fetchRecentTracks();
       _featuredTracks = featured;
       await _cacheStore.saveFeaturedTracks(featured);
-      if (_albums.isNotEmpty) {
-        await _loadAlbums();
-      }
-      if (_artists.isNotEmpty) {
-        await _loadArtists();
-      }
-      if (_genres.isNotEmpty) {
-        await _loadGenres();
-      }
+
+      // Load albums and artists eagerly for local search
+      await _loadAlbums();
+      await _loadArtists();
+      await _loadGenres();
+
       await _loadFavoriteAlbums();
       await _loadFavoriteArtists();
       await _loadFavoriteTracks();
@@ -1508,8 +1505,9 @@ class AppState extends ChangeNotifier {
       await LogService.instance.then((log) => log.info(
           'Search: Local results - ${_searchResults?.tracks.length ?? 0} tracks, '
           '${_searchResults?.albums.length ?? 0} albums, '
-          '${_searchResults?.artists.length ?? 0racks.length} tracks, '
-              '${albums.length} albums, ${artists.length} artists'));
+          '${_searchResults?.artists.length ?? 0} artists, '
+          '${_searchResults?.genres.length ?? 0} genres, '
+          '${_searchResults?.playlists.length ?? 0} playlists'));
 
       _isSearching = false;
       notifyListeners();
