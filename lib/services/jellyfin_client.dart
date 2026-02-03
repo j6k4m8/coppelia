@@ -970,50 +970,85 @@ class JellyfinClient {
         log.info('Search: Starting library search for query: "$query"'));
 
     final session = _requireSession();
-    final uri = Uri.parse(
-      '${session.serverUrl}/Users/${session.userId}/Items',
-    ).replace(
+    final uri = Uri.parse('${session.serverUrl}/Search/Hints').replace(
       queryParameters: {
-        'SearchTerm': query,
-        'IncludeItemTypes':
+        'searchTerm': query,
+        'userId': session.userId,
+        'limit': '100',
+        'includeItemTypes':
             'Audio,MusicAlbum,MusicArtist,Artist,Genre,Playlist',
-        'Recursive': 'true',
-        'Limit': '80',
-        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
-            'DateCreated,UserData,Genres,'
-            'ChildCount,AlbumArtist,AlbumArtists,SongCount,AlbumCount',
         'api_key': session.accessToken,
       },
     );
 
     await LogService.instance
-        .then((log) => log.info('Search: GET ${uri.path}?SearchTerm=$query'));
+        .then((log) => log.info('Search: GET ${uri.path}?searchTerm=$query'));
 
     final response = await _httpClient.get(uri);
 
     await LogService.instance.then(
-        (log) => log.info('Search: Response status ${response.statusCode}, '
-            'headers: ${response.headers}'));
+        (log) => log.info('Search: Response status ${response.statusCode}'));
 
     if (response.statusCode != 200) {
       await LogService.instance.then((log) =>
           log.error('Search: Failed with status ${response.statusCode}'));
       throw Exception('Unable to search library.');
     }
+
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
-    final items = payload['Items'] as List<dynamic>? ?? [];
+    final hints = payload['SearchHints'] as List<dynamic>? ?? [];
+
+    await LogService.instance.then(
+        (log) => log.info('Search: Received ${hints.length} hints total'));
+
     final tracks = <MediaItem>[];
     final albums = <Album>[];
     final artists = <Artist>[];
     final genres = <Genre>[];
     final playlists = <Playlist>[];
-    for (final entry in items) {
-      final item = entry as Map<String, dynamic>;
-      final type = item['Type']?.toString();
+
+    final typeCounts = <String, int>{};
+
+    for (final entry in hints) {
+      final hint = entry as Map<String, dynamic>;
+      final type = hint['Type']?.toString();
+      final itemId = hint['ItemId']?.toString();
+
+      if (type != null) {
+        typeCounts[type] = (typeCounts[type] ?? 0) + 1;
+      }
+
+      if (itemId == null) continue;
+
+      // Normalize SearchHint to look like a regular Item
+      final normalized = <String, dynamic>{
+        'Id': itemId,
+        'Name': hint['Name'],
+        'Type': type,
+        'RunTimeTicks': hint['RunTimeTicks'],
+        'Album': hint['Album'],
+        'AlbumId': hint['AlbumId'],
+        'Artists': hint['Artists'],
+        'ArtistItems': hint['ArtistItems'],
+        'ImageTags':
+            hint['ImageTags'] != null ? {'Primary': hint['ImageTags']} : null,
+        'UserData': hint['UserData'],
+        'Genres': hint['Genres'],
+        'DateCreated': hint['DateCreated'],
+        'ChildCount': hint['ChildCount'] ?? hint['SongCount'],
+        'AlbumArtist': hint['AlbumArtist'],
+        'AlbumArtists': hint['AlbumArtists'],
+        'SongCount': hint['SongCount'],
+        'AlbumCount': hint['AlbumCount'],
+        'ItemCount': hint['ItemCount'],
+      };
+
       if (type == 'Audio') {
+        await LogService.instance.then(
+            (log) => log.info('Search: Found Audio track: ${hint['Name']}'));
         tracks.add(
           MediaItem.fromJellyfin(
-            item,
+            normalized,
             serverUrl: session.serverUrl,
             token: session.accessToken,
             userId: session.userId,
@@ -1022,52 +1057,21 @@ class JellyfinClient {
         );
       } else if (type == 'MusicAlbum') {
         albums.add(
-          Album.fromJellyfin(item, serverUrl: session.serverUrl),
+          Album.fromJellyfin(normalized, serverUrl: session.serverUrl),
         );
-      } else if (type == 'MusicArtist') {
+      } else if (type == 'MusicArtist' || type == 'Artist') {
         artists.add(
-          Artist.fromJellyfin(item, serverUrl: session.serverUrl),
-        );
-      } else if (type == 'Artist') {
-        artists.add(
-          Artist.fromJellyfin(item, serverUrl: session.serverUrl),
+          Artist.fromJellyfin(normalized, serverUrl: session.serverUrl),
         );
       } else if (type == 'Genre') {
         genres.add(
-          Genre.fromJellyfin(item, serverUrl: session.serverUrl),
+          Genre.fromJellyfin(normalized, serverUrl: session.serverUrl),
         );
       } else if (type == 'Playlist') {
         playlists.add(
-          Playlist.fromJellyfin(item, serverUrl: session.serverUrl),
+          Playlist.fromJellyfin(normalized, serverUrl: session.serverUrl),
         );
       }
-    }
-    if (artists.isEmpty) {
-      try {
-        final artistUri = Uri.parse('${session.serverUrl}/Artists').replace(
-          queryParameters: {
-            'SearchTerm': query,
-            'UserId': session.userId,
-            'Limit': '40',
-            'Fields': 'ImageTags,SongCount,AlbumCount',
-            'api_key': session.accessToken,
-          },
-        );
-        final artistResponse = await _httpClient.get(artistUri);
-        if (artistResponse.statusCode == 200) {
-          final artistPayload =
-              jsonDecode(artistResponse.body) as Map<String, dynamic>;
-          final artistItems = artistPayload['Items'] as List<dynamic>? ?? [];
-          artists.addAll(
-            artistItems.map(
-              (item) => Artist.fromJellyfin(
-                item as Map<String, dynamic>,
-                serverUrl: session.serverUrl,
-              ),
-            ),
-          );
-        }
-      } catch (_) {}
     }
 
     final results = SearchResults(
@@ -1077,6 +1081,9 @@ class JellyfinClient {
       genres: genres,
       playlists: playlists,
     );
+
+    await LogService.instance.then((log) =>
+        log.info('Search: Type counts from hints: ${typeCounts.toString()}'));
 
     await LogService.instance
         .then((log) => log.info('Search: Results - ${tracks.length} tracks, '
