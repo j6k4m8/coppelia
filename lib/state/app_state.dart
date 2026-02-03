@@ -1484,7 +1484,38 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       final needle = trimmed.toLowerCase();
       bool matches(String value) => value.toLowerCase().contains(needle);
-      final tracks = _libraryTracks
+      
+      // Collect all available tracks from various sources
+      final allTracks = <String, MediaItem>{};
+      for (final track in _libraryTracks) {
+        allTracks[track.id] = track;
+      }
+      for (final track in _recentTracks) {
+        allTracks[track.id] = track;
+      }
+      for (final track in _featuredTracks) {
+        allTracks[track.id] = track;
+      }
+      for (final track in _favoriteTracks) {
+        allTracks[track.id] = track;
+      }
+      for (final track in _playlistTracks) {
+        allTracks[track.id] = track;
+      }
+      for (final track in _albumTracks) {
+        allTracks[track.id] = track;
+      }
+      for (final track in _artistTracks) {
+        allTracks[track.id] = track;
+      }
+      for (final track in _genreTracks) {
+        allTracks[track.id] = track;
+      }
+      for (final track in _smartListTracks) {
+        allTracks[track.id] = track;
+      }
+      
+      final tracks = allTracks.values
           .where(
             (track) =>
                 matches(track.title) ||

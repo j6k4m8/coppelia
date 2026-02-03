@@ -997,22 +997,58 @@ class JellyfinClient {
 
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
     final hints = payload['SearchHints'] as List<dynamic>? ?? [];
+
+    await LogService.instance.then(
+        (log) => log.info('Search: Received ${hints.length} hints total'));
+
     final tracks = <MediaItem>[];
     final albums = <Album>[];
     final artists = <Artist>[];
     final genres = <Genre>[];
     final playlists = <Playlist>[];
 
+    final typeCounts = <String, int>{};
+
     for (final entry in hints) {
       final hint = entry as Map<String, dynamic>;
       final type = hint['Type']?.toString();
       final itemId = hint['ItemId']?.toString();
+
+      if (type != null) {
+        typeCounts[type] = (typeCounts[type] ?? 0) + 1;
+      }
+
       if (itemId == null) continue;
 
+      // Normalize SearchHint to look like a regular Item
+      final normalized = <String, dynamic>{
+        'Id': itemId,
+        'Name': hint['Name'],
+        'Type': type,
+        'RunTimeTicks': hint['RunTimeTicks'],
+        'Album': hint['Album'],
+        'AlbumId': hint['AlbumId'],
+        'Artists': hint['Artists'],
+        'ArtistItems': hint['ArtistItems'],
+        'ImageTags':
+            hint['ImageTags'] != null ? {'Primary': hint['ImageTags']} : null,
+        'UserData': hint['UserData'],
+        'Genres': hint['Genres'],
+        'DateCreated': hint['DateCreated'],
+        'ChildCount': hint['ChildCount'] ?? hint['SongCount'],
+        'AlbumArtist': hint['AlbumArtist'],
+        'AlbumArtists': hint['AlbumArtists'],
+        'SongCount': hint['SongCount'],
+        'AlbumCount': hint['AlbumCount'],
+        'ItemCount': hint['ItemCount'],
+      };
+
       if (type == 'Audio') {
+        await LogService.instance.then(
+            (log) => log.info('Search: Found Audio track: ${hint['Name']}'));
         tracks.add(
           MediaItem.fromJellyfin(
-            hint,
+            normalized,
             serverUrl: session.serverUrl,
             token: session.accessToken,
             userId: session.userId,
@@ -1021,19 +1057,19 @@ class JellyfinClient {
         );
       } else if (type == 'MusicAlbum') {
         albums.add(
-          Album.fromJellyfin(hint, serverUrl: session.serverUrl),
+          Album.fromJellyfin(normalized, serverUrl: session.serverUrl),
         );
       } else if (type == 'MusicArtist' || type == 'Artist') {
         artists.add(
-          Artist.fromJellyfin(hint, serverUrl: session.serverUrl),
+          Artist.fromJellyfin(normalized, serverUrl: session.serverUrl),
         );
       } else if (type == 'Genre') {
         genres.add(
-          Genre.fromJellyfin(hint, serverUrl: session.serverUrl),
+          Genre.fromJellyfin(normalized, serverUrl: session.serverUrl),
         );
       } else if (type == 'Playlist') {
         playlists.add(
-          Playlist.fromJellyfin(hint, serverUrl: session.serverUrl),
+          Playlist.fromJellyfin(normalized, serverUrl: session.serverUrl),
         );
       }
     }
@@ -1045,6 +1081,9 @@ class JellyfinClient {
       genres: genres,
       playlists: playlists,
     );
+
+    await LogService.instance.then((log) =>
+        log.info('Search: Type counts from hints: ${typeCounts.toString()}'));
 
     await LogService.instance
         .then((log) => log.info('Search: Results - ${tracks.length} tracks, '
