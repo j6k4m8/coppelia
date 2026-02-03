@@ -3160,7 +3160,8 @@ class AppState extends ChangeNotifier {
           break;
         }
         DownloadTask? next;
-        for (final task in _downloadQueue) {
+        // Iterate over a copy to avoid concurrent modification
+        for (final task in List.from(_downloadQueue)) {
           if (task.status == DownloadStatus.queued) {
             final canDownload = await _canDownloadOverNetwork(
               requireWifi: task.requiresWifi,
