@@ -77,7 +77,11 @@ class TrackListSection extends StatelessWidget {
           ),
         ),
         SizedBox(height: resolvedHeaderBottomSpacing),
-        if (headerWidget != null) headerWidget!,
+        if (headerWidget != null)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: leftGutter),
+            child: headerWidget!,
+          ),
         Expanded(
           child: bodyBuilder != null
               ? bodyBuilder!(context, resolvedListPadding, resolvedGap)

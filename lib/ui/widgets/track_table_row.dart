@@ -61,22 +61,41 @@ class TrackTableRow extends StatelessWidget {
           height: 40,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
+              // Index
+              SizedBox(
+                width: 40,
+                child: Text(
+                  '${index + 1}',
+                  style: TextStyle(
+                    color: secondaryColor,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              SizedBox(width: 16),
               // Title
               if (visibleColumns.contains('title'))
                 Expanded(
                   flex: 3,
-                  child: Text(
-                    track.title,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 14,
-                      fontWeight:
-                          isActive ? FontWeight.w600 : FontWeight.normal,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      track.title,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 14,
+                        fontWeight:
+                            isActive ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+              if (visibleColumns.contains('title'))
+                SizedBox(width: 16),
               // Artist
               if (visibleColumns.contains('artist'))
                 Expanded(
@@ -90,6 +109,8 @@ class TrackTableRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+              if (visibleColumns.contains('artist'))
+                SizedBox(width: 16),
               // Album
               if (visibleColumns.contains('album'))
                 Expanded(
@@ -103,6 +124,8 @@ class TrackTableRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+              if (visibleColumns.contains('album'))
+                SizedBox(width: 16),
               // Genre
               if (visibleColumns.contains('genre'))
                 Expanded(
@@ -116,6 +139,8 @@ class TrackTableRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+              if (visibleColumns.contains('genre'))
+                SizedBox(width: 16),
               // Play count
               if (visibleColumns.contains('playCount'))
                 SizedBox(
@@ -129,6 +154,8 @@ class TrackTableRow extends StatelessWidget {
                     textAlign: TextAlign.right,
                   ),
                 ),
+              if (visibleColumns.contains('playCount'))
+                SizedBox(width: 16),
               // BPM
               if (visibleColumns.contains('bpm'))
                 SizedBox(
@@ -142,6 +169,8 @@ class TrackTableRow extends StatelessWidget {
                     textAlign: TextAlign.right,
                   ),
                 ),
+              if (visibleColumns.contains('bpm'))
+                SizedBox(width: 16),
               // Duration
               if (visibleColumns.contains('duration'))
                 SizedBox(
@@ -155,6 +184,8 @@ class TrackTableRow extends StatelessWidget {
                     textAlign: TextAlign.right,
                   ),
                 ),
+              if (visibleColumns.contains('duration'))
+                SizedBox(width: 16),
               // Favorite toggle
               if (visibleColumns.contains('favorite'))
                 SizedBox(

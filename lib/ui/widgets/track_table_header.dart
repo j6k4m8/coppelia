@@ -100,18 +100,48 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
+          // Column selector button
+          SizedBox(
+            width: 40,
+            child: Center(
+              child: IconButton(
+                icon: Icon(
+                  Icons.view_column,
+                  size: 16,
+                  color: ColorTokens.textSecondary(context, 0.7),
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 32,
+                  minHeight: 32,
+                ),
+                onPressed: _showColumnMenu,
+              ),
+            ),
+          ),
+          SizedBox(width: 16),
+          // Title
           if (_visibleColumns.contains('title'))
             Expanded(
               flex: 3,
-              child: Text(
-                'Title',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: ColorTokens.textSecondary(context, 0.7),
-                      fontWeight: FontWeight.w600,
-                    ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Title',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: ColorTokens.textSecondary(context, 0.7),
+                        fontWeight: FontWeight.w600,
+                      ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
+          if (_visibleColumns.contains('title'))
+            SizedBox(width: 16),
+          // Artist
           if (_visibleColumns.contains('artist'))
             Expanded(
               flex: 2,
@@ -123,6 +153,9 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                     ),
               ),
             ),
+          if (_visibleColumns.contains('artist'))
+            SizedBox(width: 16),
+          // Album
           if (_visibleColumns.contains('album'))
             Expanded(
               flex: 2,
@@ -134,6 +167,9 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                     ),
               ),
             ),
+          if (_visibleColumns.contains('album'))
+            SizedBox(width: 16),
+          // Genre
           if (_visibleColumns.contains('genre'))
             Expanded(
               flex: 2,
@@ -145,6 +181,9 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                     ),
               ),
             ),
+          if (_visibleColumns.contains('genre'))
+            SizedBox(width: 16),
+          // Play count
           if (_visibleColumns.contains('playCount'))
             SizedBox(
               width: 80,
@@ -157,6 +196,9 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                 textAlign: TextAlign.right,
               ),
             ),
+          if (_visibleColumns.contains('playCount'))
+            SizedBox(width: 16),
+          // BPM
           if (_visibleColumns.contains('bpm'))
             SizedBox(
               width: 70,
@@ -169,6 +211,9 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                 textAlign: TextAlign.right,
               ),
             ),
+          if (_visibleColumns.contains('bpm'))
+            SizedBox(width: 16),
+          // Duration
           if (_visibleColumns.contains('duration'))
             SizedBox(
               width: 80,
@@ -181,6 +226,9 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                 textAlign: TextAlign.right,
               ),
             ),
+          if (_visibleColumns.contains('duration'))
+            SizedBox(width: 16),
+          // Favorite
           if (_visibleColumns.contains('favorite'))
             SizedBox(
               width: 50,
@@ -190,19 +238,6 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                 color: ColorTokens.textSecondary(context, 0.5),
               ),
             ),
-          IconButton(
-            icon: Icon(
-              Icons.view_column,
-              size: 16,
-              color: ColorTokens.textSecondary(context, 0.7),
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(
-              minWidth: 32,
-              minHeight: 32,
-            ),
-            onPressed: _showColumnMenu,
-          ),
         ],
       ),
     );
