@@ -8,7 +8,7 @@ import '../../core/color_tokens.dart';
 import 'collection_header.dart';
 import 'corner_radius.dart';
 import 'smart_list_dialogs.dart';
-import 'track_row.dart';
+import 'track_list_item.dart';
 
 /// Smart List detail view with dynamic tracks.
 class SmartListDetailView extends StatelessWidget {
@@ -119,7 +119,7 @@ class SmartListDetailView extends StatelessWidget {
         }
         final trackIndex = index - 1;
         final track = tracks[trackIndex];
-        return TrackRow(
+        return TrackListItem(
           track: track,
           index: trackIndex,
           isActive: state.nowPlaying?.id == track.id,

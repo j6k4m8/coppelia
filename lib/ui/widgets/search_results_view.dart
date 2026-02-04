@@ -11,7 +11,7 @@ import 'adaptive_grid.dart';
 import 'library_card.dart';
 import 'playlist_tile.dart';
 import 'section_header.dart';
-import 'track_row.dart';
+import 'track_list_item.dart';
 
 /// Displays search results for the library.
 class SearchResultsView extends StatefulWidget {
@@ -94,7 +94,7 @@ class _SearchResultsViewState extends State<SearchResultsView> {
                           SizedBox(height: space(6).clamp(4.0, 10.0)),
                       itemBuilder: (context, index) {
                         final track = displayedTracks[index];
-                        return TrackRow(
+                        return TrackListItem(
                           track: track,
                           index: index,
                           isActive: state.nowPlaying?.id == track.id,

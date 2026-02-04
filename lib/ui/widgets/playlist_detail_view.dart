@@ -11,7 +11,7 @@ import '../../core/color_tokens.dart';
 import 'app_snack.dart';
 import 'collection_header.dart';
 import 'playlist_dialogs.dart';
-import 'track_row.dart';
+import 'track_list_item.dart';
 
 /// Playlist detail view with track listing.
 class PlaylistDetailView extends StatefulWidget {
@@ -107,7 +107,7 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
                       padding: EdgeInsets.only(
                         bottom: space(6).clamp(4.0, 10.0),
                       ),
-                      child: TrackRow(
+                      child: TrackListItem(
                         track: track,
                         index: trackIndex,
                         isActive: state.nowPlaying?.id == track.id,
@@ -168,7 +168,7 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
                     }
                     final trackIndex = index - 1;
                     final track = displayTracks[trackIndex];
-                    return TrackRow(
+                    return TrackListItem(
                       track: track,
                       index: trackIndex,
                       isActive: state.nowPlaying?.id == track.id,

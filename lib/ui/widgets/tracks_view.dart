@@ -11,7 +11,7 @@ import '../../state/layout_density.dart';
 import 'alphabet_scroller.dart';
 import 'header_action.dart';
 import 'track_list_section.dart';
-import 'track_row.dart';
+import 'track_list_item.dart';
 
 /// Displays the full library track list with pagination.
 class TracksView extends StatefulWidget {
@@ -253,7 +253,7 @@ class _TracksViewState extends State<TracksView> {
                   );
                 }
                 final track = state.libraryTracks[index];
-                return TrackRow(
+                return TrackListItem(
                   track: track,
                   index: index,
                   isActive: state.nowPlaying?.id == track.id,

@@ -48,20 +48,19 @@ class TrackTableRow extends StatelessWidget {
         ? Theme.of(context).colorScheme.primary.withOpacity(0.7)
         : ColorTokens.textSecondary(context);
 
-    return InkWell(
-      onTap: useSingleTap ? onTap : null,
-      onDoubleTap: useSingleTap ? null : onTap,
-      hoverColor: ColorTokens.hoverRow(context),
-      splashColor: ColorTokens.hoverRow(context),
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: isActive
-              ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-              : Colors.transparent,
-        ),
-        child: Row(
+    return Material(
+      color: isActive
+          ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+          : Colors.transparent,
+      child: InkWell(
+        onTap: useSingleTap ? onTap : null,
+        onDoubleTap: useSingleTap ? null : onTap,
+        hoverColor: ColorTokens.hoverRow(context),
+        splashColor: ColorTokens.hoverRow(context),
+        child: Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
           children: [
             // Title
             if (visibleColumns.contains('title'))
@@ -178,6 +177,7 @@ class TrackTableRow extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }

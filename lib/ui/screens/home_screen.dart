@@ -35,6 +35,7 @@ import '../widgets/artwork_image.dart';
 import '../widgets/search_results_view.dart';
 import '../widgets/settings_view.dart';
 import '../widgets/sidebar_navigation.dart';
+import '../widgets/track_list_item.dart';
 import '../widgets/sidebar_resize_handle.dart';
 import '../widgets/genre_detail_view.dart';
 import '../widgets/play_history_view.dart';
@@ -571,7 +572,7 @@ class _HomeFeaturedView extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 6),
       itemBuilder: (context, index) {
         final track = tracks[index];
-        return TrackRow(
+        return TrackListItem(
           track: track,
           index: index,
           isActive: false,
@@ -620,7 +621,7 @@ class _HomeRecentView extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 6),
       itemBuilder: (context, index) {
         final track = effectiveTracks[index];
-        return TrackRow(
+        return TrackListItem(
           track: track,
           index: index,
           isActive: false,

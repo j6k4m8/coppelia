@@ -9,7 +9,7 @@ import 'artwork_fallback.dart';
 import 'artwork_image.dart';
 import 'collection_header.dart';
 import 'corner_radius.dart';
-import 'track_row.dart';
+import 'track_list_item.dart';
 import 'header_controls.dart';
 
 /// Generic detail view for albums, artists, or genres.
@@ -126,7 +126,7 @@ class CollectionDetailView extends StatelessWidget {
               final canGoToAlbum = onAlbumTap != null && track.albumId != null;
               final canGoToArtist =
                   onArtistTap != null && track.artistIds.isNotEmpty;
-              return TrackRow(
+              return TrackListItem(
                 track: track,
                 index: trackIndex,
                 isActive: nowPlaying?.id == track.id,
