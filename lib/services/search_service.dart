@@ -18,7 +18,7 @@ class SearchService {
     required List<Genre> genres,
     required List<Playlist> playlists,
   }) {
-    const threshold = 20; // Minimum score to include in results
+    const threshold = 30; // Minimum score to include in results
 
     // Fuzzy search for tracks
     final matchedTracks = allTracks

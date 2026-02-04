@@ -449,8 +449,7 @@ class _SearchViewState extends State<_SearchView> {
   void _handleAppStateChange() {
     if (_state.searchQuery.isEmpty && _controller.text.isNotEmpty) {
       _controller.clear();
-    } else if (!_focusNode.hasFocus &&
-        _state.searchQuery != _controller.text) {
+    } else if (!_focusNode.hasFocus && _state.searchQuery != _controller.text) {
       _controller.text = _state.searchQuery;
     }
     if (_state.searchFocusRequest != _lastSearchFocusRequest) {
@@ -472,7 +471,8 @@ class _SearchViewState extends State<_SearchView> {
     _debounce?.cancel();
     final state = context.read<AppState>();
     if (value.trim().isEmpty) {
-      state.clearSearch();
+      // Clear search but don't exit search mode
+      state.searchLibrary('');
       return;
     }
     state.setSearchQuery(value);
@@ -483,7 +483,8 @@ class _SearchViewState extends State<_SearchView> {
 
   void _clear() {
     _controller.clear();
-    context.read<AppState>().clearSearch();
+    // Clear search but don't exit search mode
+    context.read<AppState>().searchLibrary('');
     _focusNode.requestFocus();
     setState(() {});
   }
@@ -538,7 +539,7 @@ class _SearchViewState extends State<_SearchView> {
         ),
         SizedBox(height: space(16)),
         Expanded(
-          child: state.searchQuery.isEmpty
+          child: !state.isSearching
               ? Center(
                   child: Text(
                     'Search your library',
@@ -700,8 +701,7 @@ class PlaylistListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final artSize = (52 * densityScale).clamp(28.0, 64.0);
     final titleStyle = Theme.of(context).textTheme.titleMedium;
@@ -718,8 +718,7 @@ class PlaylistListRow extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: ColorTokens.cardFill(context, 0.04),
-          borderRadius:
-              BorderRadius.circular(context.scaledRadius(space(16))),
+          borderRadius: BorderRadius.circular(context.scaledRadius(space(16))),
           border: Border.all(color: ColorTokens.border(context)),
         ),
         child: Row(
