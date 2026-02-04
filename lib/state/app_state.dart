@@ -1285,6 +1285,12 @@ class AppState extends ChangeNotifier {
 
   /// Navigates back to the previous library view.
   void goBack() {
+    // If in search mode, exit search first
+    if (_isSearching) {
+      clearSearch();
+      return;
+    }
+
     if (_viewHistory.isEmpty) {
       return;
     }
@@ -1467,8 +1473,17 @@ class AppState extends ChangeNotifier {
   /// Performs a search across the library.
   Future<void> searchLibrary(String query) async {
     final trimmed = query.trim();
+
+    // Always enter search mode when this is called
+    if (!_isSearching) {
+      _isSearching = true;
+    }
+
     if (trimmed.isEmpty) {
-      clearSearch();
+      // Clear results but stay in search view
+      _searchQuery = '';
+      _searchResults = null;
+      notifyListeners();
       return;
     }
     _searchQuery = query;
@@ -1477,8 +1492,6 @@ class AppState extends ChangeNotifier {
     if (_offlineMode || _preferLocalSearch) {
       await LogService.instance.then((log) => log.info(
           'Search: Local search for: "$trimmed" (offline=$_offlineMode, preferLocal=$_preferLocalSearch)'));
-
-      _isSearching = true;
 
       // Collect all available tracks from various sources
       final allTracks = SearchService.collectUniqueTracks([
@@ -1509,11 +1522,10 @@ class AppState extends ChangeNotifier {
           '${_searchResults?.genres.length ?? 0} genres, '
           '${_searchResults?.playlists.length ?? 0} playlists'));
 
-      _isSearching = false;
       notifyListeners();
       return;
     }
-    _isSearching = true;
+
     notifyListeners();
 
     await LogService.instance.then(
@@ -1529,7 +1541,6 @@ class AppState extends ChangeNotifier {
           .then((log) => log.error('Search: Failed', e, stackTrace));
       _searchResults = const SearchResults();
     } finally {
-      _isSearching = false;
       notifyListeners();
     }
   }
