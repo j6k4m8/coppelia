@@ -11,7 +11,7 @@
 -   **Playlists**: All playlists in your Jellyfin library in a grid/list view, with inline play controls.
 -   **Albums / Artists / Genres / Tracks**: Shared browse UI with the list/grid toggle plus alphanumeric scroller, search access, and quick play controls.
 -   **Favorites**: Separate grids for favorite albums, artists, and tracks for rapid access.
--   **Favorites / Tracks**: Track-focused favorites view
+-   **Favorite Tracks**: Track-focused favorites view
 -   **Offline**: Dedicated sections for cached albums, artists, playlists, and tracks when offline mode is enabled
 -   **History**: Session play history
 -   **Queue**: Full upcoming-tracks queue view

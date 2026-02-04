@@ -6,38 +6,34 @@ import '../../core/color_tokens.dart';
 class TrackTableHeader extends StatefulWidget {
   const TrackTableHeader({
     super.key,
-    required this.onColumnWidthsChanged,
-    this.initialWidths = const {
-      'index': 60.0,
-      'title': 300.0,
-      'artist': 200.0,
-      'album': 200.0,
-      'duration': 80.0,
-    },
+    required this.onVisibleColumnsChanged,
   });
 
-  final ValueChanged<Map<String, double>> onColumnWidthsChanged;
-  final Map<String, double> initialWidths;
+  final ValueChanged<Set<String>> onVisibleColumnsChanged;
 
   @override
   State<TrackTableHeader> createState() => _TrackTableHeaderState();
 }
 
 class _TrackTableHeaderState extends State<TrackTableHeader> {
-  late Map<String, double> _widths;
   final Set<String> _visibleColumns = {
-    'index',
     'title',
     'artist',
     'album',
     'duration',
+    'favorite',
   };
 
-  @override
-  void initState() {
-    super.initState();
-    _widths = Map.from(widget.initialWidths);
-  }
+  final List<String> _allColumns = [
+    'title',
+    'artist',
+    'album',
+    'genre',
+    'playCount',
+    'bpm',
+    'duration',
+    'favorite',
+  ];
 
   void _showColumnMenu() {
     // Show menu to toggle column visibility
@@ -45,20 +41,24 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
       context: context,
       position: RelativeRect.fromLTRB(1000, 100, 0, 0),
       items: [
-        for (final column in ['index', 'title', 'artist', 'album', 'duration'])
+        for (final column in _allColumns)
           CheckedPopupMenuItem<String>(
             value: column,
             checked: _visibleColumns.contains(column),
+            enabled: column != 'title', // Title always visible
+            onTap: column == 'title'
+                ? null
+                : () {
+                    setState(() {
+                      if (_visibleColumns.contains(column)) {
+                        _visibleColumns.remove(column);
+                      } else {
+                        _visibleColumns.add(column);
+                      }
+                      widget.onVisibleColumnsChanged(_visibleColumns);
+                    });
+                  },
             child: Text(_columnLabel(column)),
-            onTap: () {
-              setState(() {
-                if (_visibleColumns.contains(column)) {
-                  _visibleColumns.remove(column);
-                } else {
-                  _visibleColumns.add(column);
-                }
-              });
-            },
           ),
       ],
     );
@@ -66,16 +66,22 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
 
   String _columnLabel(String column) {
     switch (column) {
-      case 'index':
-        return '#';
       case 'title':
         return 'Title';
       case 'artist':
         return 'Artist';
       case 'album':
         return 'Album';
+      case 'genre':
+        return 'Genre';
+      case 'playCount':
+        return 'Plays';
+      case 'bpm':
+        return 'BPM';
       case 'duration':
         return 'Time';
+      case 'favorite':
+        return 'Favorite';
       default:
         return column;
     }
@@ -95,17 +101,6 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
       ),
       child: Row(
         children: [
-          if (_visibleColumns.contains('index'))
-            SizedBox(
-              width: _widths['index'],
-              child: Text(
-                '#',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: ColorTokens.textSecondary(context, 0.7),
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-            ),
           if (_visibleColumns.contains('title'))
             Expanded(
               flex: 3,
@@ -139,9 +134,44 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                     ),
               ),
             ),
+          if (_visibleColumns.contains('genre'))
+            Expanded(
+              flex: 2,
+              child: Text(
+                'Genre',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: ColorTokens.textSecondary(context, 0.7),
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ),
+          if (_visibleColumns.contains('playCount'))
+            SizedBox(
+              width: 80,
+              child: Text(
+                'Plays',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: ColorTokens.textSecondary(context, 0.7),
+                      fontWeight: FontWeight.w600,
+                    ),
+                textAlign: TextAlign.right,
+              ),
+            ),
+          if (_visibleColumns.contains('bpm'))
+            SizedBox(
+              width: 70,
+              child: Text(
+                'BPM',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: ColorTokens.textSecondary(context, 0.7),
+                      fontWeight: FontWeight.w600,
+                    ),
+                textAlign: TextAlign.right,
+              ),
+            ),
           if (_visibleColumns.contains('duration'))
             SizedBox(
-              width: _widths['duration'],
+              width: 80,
               child: Text(
                 'Time',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -149,6 +179,15 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                       fontWeight: FontWeight.w600,
                     ),
                 textAlign: TextAlign.right,
+              ),
+            ),
+          if (_visibleColumns.contains('favorite'))
+            SizedBox(
+              width: 50,
+              child: Icon(
+                Icons.favorite_border,
+                size: 16,
+                color: ColorTokens.textSecondary(context, 0.5),
               ),
             ),
           IconButton(

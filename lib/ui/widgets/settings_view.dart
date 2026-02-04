@@ -2442,16 +2442,16 @@ class _TrackListStyleDemo extends StatelessWidget {
 
     // Mock track data for demo
     final demoTrack1 = {
-      'title': 'Example Song',
-      'artist': 'Demo Artist',
-      'album': 'Sample Album',
-      'duration': '3:45',
+      'title': 'Carnegie Hall: 4\'33',
+      'artist': 'John Cage',
+      'album': 'Cage Plays Carnegie Hall',
+      'duration': '4:33',
     };
     final demoTrack2 = {
-      'title': 'Another Track',
-      'artist': 'Various Artists',
-      'album': 'Greatest Hits',
-      'duration': '4:12',
+      'title': 'Four-Thirty-Three (DUBSTEP REMIX) - Radio Edit',
+      'artist': 'DJ Tuchas',
+      'album': 'The Sound of Silence',
+      'duration': '4:32',
     };
 
     return Container(

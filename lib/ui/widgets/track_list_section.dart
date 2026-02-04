@@ -21,6 +21,7 @@ class TrackListSection extends StatelessWidget {
     this.headerBottomSpacing,
     this.gap,
     this.bodyBuilder,
+    this.headerWidget,
   });
 
   final String title;
@@ -39,6 +40,7 @@ class TrackListSection extends StatelessWidget {
     EdgeInsets listPadding,
     double gap,
   )? bodyBuilder;
+  final Widget? headerWidget;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +77,7 @@ class TrackListSection extends StatelessWidget {
           ),
         ),
         SizedBox(height: resolvedHeaderBottomSpacing),
+        if (headerWidget != null) headerWidget!,
         Expanded(
           child: bodyBuilder != null
               ? bodyBuilder!(context, resolvedListPadding, resolvedGap)

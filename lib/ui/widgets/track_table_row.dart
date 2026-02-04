@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/color_tokens.dart';
@@ -13,23 +16,30 @@ class TrackTableRow extends StatelessWidget {
     required this.index,
     required this.onTap,
     this.isActive = false,
-    this.columnWidths = const {
-      'index': 60.0,
-      'title': 300.0,
-      'artist': 200.0,
-      'album': 200.0,
-      'duration': 80.0,
+    this.visibleColumns = const {
+      'title',
+      'artist',
+      'album',
+      'duration',
+      'favorite'
     },
+    this.isFavorite = false,
+    this.onToggleFavorite,
   });
 
   final MediaItem track;
   final int index;
   final VoidCallback onTap;
   final bool isActive;
-  final Map<String, double> columnWidths;
+  final Set<String> visibleColumns;
+  final bool isFavorite;
+  final Future<String?> Function()? onToggleFavorite;
 
   @override
   Widget build(BuildContext context) {
+    final useSingleTap =
+        !kIsWeb && (Platform.isIOS || Platform.isAndroid || Platform.isFuchsia);
+
     final textColor = isActive
         ? Theme.of(context).colorScheme.primary
         : ColorTokens.textPrimary(context);
@@ -39,7 +49,10 @@ class TrackTableRow extends StatelessWidget {
         : ColorTokens.textSecondary(context);
 
     return InkWell(
-      onTap: onTap,
+      onTap: useSingleTap ? onTap : null,
+      onDoubleTap: useSingleTap ? null : onTap,
+      hoverColor: ColorTokens.hoverRow(context),
+      splashColor: ColorTokens.hoverRow(context),
       child: Container(
         height: 40,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -50,66 +63,118 @@ class TrackTableRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Index
-            SizedBox(
-              width: columnWidths['index'],
-              child: Text(
-                '${index + 1}',
-                style: TextStyle(
-                  color: secondaryColor,
-                  fontSize: 13,
-                ),
-              ),
-            ),
             // Title
-            SizedBox(
-              width: columnWidths['title'],
-              child: Text(
-                track.title,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 14,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+            if (visibleColumns.contains('title'))
+              Expanded(
+                flex: 3,
+                child: Text(
+                  track.title,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 14,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
             // Artist
-            SizedBox(
-              width: columnWidths['artist'],
-              child: Text(
-                track.artists.join(', '),
-                style: TextStyle(
-                  color: secondaryColor,
-                  fontSize: 13,
+            if (visibleColumns.contains('artist'))
+              Expanded(
+                flex: 2,
+                child: Text(
+                  track.artists.join(', '),
+                  style: TextStyle(
+                    color: secondaryColor,
+                    fontSize: 13,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
             // Album
-            SizedBox(
-              width: columnWidths['album'],
-              child: Text(
-                track.album,
-                style: TextStyle(
-                  color: secondaryColor,
-                  fontSize: 13,
+            if (visibleColumns.contains('album'))
+              Expanded(
+                flex: 2,
+                child: Text(
+                  track.album,
+                  style: TextStyle(
+                    color: secondaryColor,
+                    fontSize: 13,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
+            // Genre
+            if (visibleColumns.contains('genre'))
+              Expanded(
+                flex: 2,
+                child: Text(
+                  track.genres.join(', '),
+                  style: TextStyle(
+                    color: secondaryColor,
+                    fontSize: 13,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            // Play count
+            if (visibleColumns.contains('playCount'))
+              SizedBox(
+                width: 80,
+                child: Text(
+                  track.playCount?.toString() ?? '—',
+                  style: TextStyle(
+                    color: secondaryColor,
+                    fontSize: 13,
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+              ),
+            // BPM
+            if (visibleColumns.contains('bpm'))
+              SizedBox(
+                width: 70,
+                child: Text(
+                  track.bpm?.toString() ?? '—',
+                  style: TextStyle(
+                    color: secondaryColor,
+                    fontSize: 13,
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+              ),
             // Duration
-            SizedBox(
-              width: columnWidths['duration'],
-              child: Text(
-                formatDuration(track.duration),
-                style: TextStyle(
-                  color: secondaryColor,
-                  fontSize: 13,
+            if (visibleColumns.contains('duration'))
+              SizedBox(
+                width: 80,
+                child: Text(
+                  formatDuration(track.duration),
+                  style: TextStyle(
+                    color: secondaryColor,
+                    fontSize: 13,
+                  ),
+                  textAlign: TextAlign.right,
                 ),
-                textAlign: TextAlign.right,
               ),
-            ),
+            // Favorite toggle
+            if (visibleColumns.contains('favorite'))
+              SizedBox(
+                width: 50,
+                child: IconButton(
+                  icon: Icon(
+                    isFavorite ? Icons.favorite : Icons.favorite_border,
+                    size: 16,
+                    color: isFavorite
+                        ? Theme.of(context).colorScheme.primary
+                        : secondaryColor,
+                  ),
+                  onPressed: onToggleFavorite,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
