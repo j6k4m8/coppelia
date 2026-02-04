@@ -4,26 +4,39 @@ import 'package:provider/provider.dart';
 import '../../models/smart_list.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
+import '../../state/track_list_style.dart';
 import '../../core/color_tokens.dart';
 import 'collection_header.dart';
 import 'corner_radius.dart';
 import 'smart_list_dialogs.dart';
 import 'track_list_item.dart';
+import 'track_table_header.dart';
 
 /// Smart List detail view with dynamic tracks.
-class SmartListDetailView extends StatelessWidget {
+class SmartListDetailView extends StatefulWidget {
   /// Creates the smart list detail view.
   const SmartListDetailView({super.key});
+
+  @override
+  State<SmartListDetailView> createState() => _SmartListDetailViewState();
+}
+
+class _SmartListDetailViewState extends State<SmartListDetailView> {
+  Set<String> _visibleColumns = {
+    'title',
+    'artist',
+    'album',
+    'duration',
+    'favorite',
+  };
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
-    final leftGutter =
-        (32 * densityScale).clamp(16.0, 40.0).toDouble();
-    final rightGutter =
-        (24 * densityScale).clamp(12.0, 32.0).toDouble();
+    final leftGutter = (32 * densityScale).clamp(16.0, 40.0).toDouble();
+    final rightGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
     final smartList = state.selectedSmartList;
     if (smartList == null) {
       return const SizedBox.shrink();
@@ -31,12 +44,18 @@ class SmartListDetailView extends StatelessWidget {
     final tracks = state.smartListTracks;
     final isLoading = state.isLoadingSmartList;
     final showEmpty = tracks.isEmpty && !isLoading;
-    final itemCount = tracks.length + (showEmpty ? 2 : 1);
+
+    final hasTableHeader = state.trackListStyle == TrackListStyle.table;
+    final headerOffset = hasTableHeader ? 2 : 1;
+    final itemCount = tracks.length + headerOffset + (showEmpty ? 1 : 0);
+
     return ListView.separated(
       itemCount: itemCount,
       padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
       separatorBuilder: (_, index) => SizedBox(
-        height: index == 0 ? space(20) : space(6).clamp(4.0, 10.0),
+        height: index == 0 || (hasTableHeader && index == 1)
+            ? space(20)
+            : space(6).clamp(4.0, 10.0),
       ),
       itemBuilder: (context, index) {
         if (index == 0) {
@@ -111,13 +130,23 @@ class SmartListDetailView extends StatelessWidget {
             onSearch: state.requestSearchFocus,
           );
         }
-        if (showEmpty && index == 1) {
+        if (hasTableHeader && index == 1) {
+          return TrackTableHeader(
+            key: const ValueKey('smartlist-table-header'),
+            onVisibleColumnsChanged: (columns) {
+              setState(() {
+                _visibleColumns = columns;
+              });
+            },
+          );
+        }
+        if (showEmpty && index == headerOffset) {
           return _EmptySmartListView();
         }
-        if (index - 1 >= tracks.length) {
+        if (index - headerOffset >= tracks.length) {
           return const SizedBox.shrink();
         }
-        final trackIndex = index - 1;
+        final trackIndex = index - headerOffset;
         final track = tracks[trackIndex];
         return TrackListItem(
           track: track,
@@ -144,6 +173,7 @@ class SmartListDetailView extends StatelessWidget {
           onGoToArtist: track.artistIds.isEmpty
               ? null
               : () => state.selectArtistById(track.artistIds.first),
+          visibleColumns: _visibleColumns,
         );
       },
     );
@@ -253,8 +283,7 @@ class SmartListDetailView extends StatelessWidget {
 class _EmptySmartListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final densityScale =
-        context.watch<AppState>().layoutDensity.scaleDouble;
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     return Container(
       padding: EdgeInsets.all(space(24).clamp(16.0, 32.0)),

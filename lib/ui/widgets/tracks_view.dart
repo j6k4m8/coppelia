@@ -12,6 +12,8 @@ import 'alphabet_scroller.dart';
 import 'header_action.dart';
 import 'track_list_section.dart';
 import 'track_list_item.dart';
+import 'track_table_header.dart';
+import '../../state/track_list_style.dart';
 
 /// Displays the full library track list with pagination.
 class TracksView extends StatefulWidget {
@@ -54,6 +56,13 @@ class _TracksViewState extends State<TracksView> {
 
   late final ScrollController _controller;
   bool _isJumping = false;
+  Set<String> _visibleColumns = {
+    'title',
+    'artist',
+    'album',
+    'duration',
+    'favorite',
+  };
 
   @override
   void initState() {
@@ -223,6 +232,15 @@ class _TracksViewState extends State<TracksView> {
       headerPadding: headerPadding,
       listPadding: listPadding,
       gap: gap,
+      headerWidget: state.trackListStyle == TrackListStyle.table
+          ? TrackTableHeader(
+              onVisibleColumnsChanged: (columns) {
+                setState(() {
+                  _visibleColumns = columns;
+                });
+              },
+            )
+          : null,
       bodyBuilder: (context, resolvedListPadding, resolvedGap) {
         return Stack(
           children: [
@@ -257,8 +275,7 @@ class _TracksViewState extends State<TracksView> {
                   track: track,
                   index: index,
                   isActive: state.nowPlaying?.id == track.id,
-                  onTap: () =>
-                      state.playFromList(state.libraryTracks, track),
+                  onTap: () => state.playFromList(state.libraryTracks, track),
                   onPlayNext: () => state.playNext(track),
                   onAddToQueue: () => state.enqueueTrack(track),
                   isFavorite: state.isFavoriteTrack(track.id),
@@ -273,6 +290,7 @@ class _TracksViewState extends State<TracksView> {
                   onArtistTap: track.artistIds.isEmpty
                       ? null
                       : () => state.selectArtistById(track.artistIds.first),
+                  visibleColumns: _visibleColumns,
                   onGoToAlbum: track.albumId == null
                       ? null
                       : () => state.selectAlbumById(track.albumId!),
@@ -289,8 +307,7 @@ class _TracksViewState extends State<TracksView> {
               child: AlphabetScroller(
                 letters: _alphabet,
                 selected: activeLetter,
-                onSelected: (letter) =>
-                    _jumpToLetter(state, letter, rowStride),
+                onSelected: (letter) => _jumpToLetter(state, letter, rowStride),
                 scrollable: true,
                 baseWidth: 28,
                 minWidth: 22,

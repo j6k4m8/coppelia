@@ -53,19 +53,20 @@ class TrackListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    
+
     if (state.trackListStyle == TrackListStyle.table) {
       return TrackTableRow(
         track: track,
         index: index,
         onTap: onTap,
         isActive: isActive,
-        visibleColumns: visibleColumns ?? {'title', 'artist', 'album', 'duration', 'favorite'},
+        visibleColumns: visibleColumns ??
+            {'title', 'artist', 'album', 'duration', 'favorite'},
         isFavorite: isFavorite,
         onToggleFavorite: onToggleFavorite,
       );
     }
-    
+
     return TrackRow(
       track: track,
       index: index,
