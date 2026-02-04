@@ -20,6 +20,7 @@ import '../../state/corner_radius_style.dart';
 import '../../state/now_playing_layout.dart';
 import '../../state/sidebar_item.dart';
 import '../../state/theme_palette_source.dart';
+import '../../state/track_list_style.dart';
 import '../../core/color_tokens.dart';
 import '../../core/app_info.dart';
 import '../../services/log_service.dart';
@@ -495,6 +496,29 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
                         radius: space(18).clamp(10.0, 20.0) * style.scale,
                         selected: state.cornerRadiusStyle == style,
                         onTap: () => state.setCornerRadiusStyle(style),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: space(16)),
+        _SettingRow(
+          title: 'Default track lists to',
+          subtitle: 'Choose how track lists are displayed.',
+          trailing: SizedBox(
+            width: 200,
+            child: Row(
+              children: [
+                for (final style in TrackListStyle.values)
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: space(4)),
+                      child: _StyleButton(
+                        label: style.label,
+                        selected: state.trackListStyle == style,
+                        onTap: () => state.setTrackListStyle(style),
                       ),
                     ),
                   ),
@@ -2359,3 +2383,48 @@ const List<_FontScaleChoice> _fontScaleChoices = [
   _FontScaleChoice('L', 1.12),
   _FontScaleChoice('XL', 1.3),
 ];
+
+/// Simple style toggle button.
+class _StyleButton extends StatelessWidget {
+  const _StyleButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 36,
+        decoration: BoxDecoration(
+          color: selected
+              ? Theme.of(context).colorScheme.primary.withOpacity(0.12)
+              : ColorTokens.cardFill(context, 0.05),
+          border: Border.all(
+            color: selected
+                ? Theme.of(context).colorScheme.primary
+                : ColorTokens.border(context, 0.12),
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: selected ? Theme.of(context).colorScheme.primary : null,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              ),
+        ),
+      ),
+    );
+  }
+}
+

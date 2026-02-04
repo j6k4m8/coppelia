@@ -43,6 +43,7 @@ import 'corner_radius_style.dart';
 import 'now_playing_layout.dart';
 import 'sidebar_item.dart';
 import 'theme_palette_source.dart';
+import 'track_list_style.dart';
 
 const Set<ConnectivityResult> _networkConnectivityWhitelist = {
   ConnectivityResult.wifi,
@@ -185,6 +186,7 @@ class AppState extends ChangeNotifier {
   bool _preferLocalSearch = false;
   LayoutDensity _layoutDensity = LayoutDensity.comfortable;
   CornerRadiusStyle _cornerRadiusStyle = CornerRadiusStyle.babyProofed;
+  TrackListStyle _trackListStyle = TrackListStyle.card;
   NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.bottom;
   HomeShelfLayout _homeShelfLayout = HomeShelfLayout.whooshy;
   int _homeShelfGridRows = 2;
@@ -482,6 +484,9 @@ class AppState extends ChangeNotifier {
   /// Scalar for corner radius sizing.
   double get cornerRadiusScale => _cornerRadiusStyle.scale;
 
+  /// Preferred track list style.
+  TrackListStyle get trackListStyle => _trackListStyle;
+
   /// True when playback telemetry is enabled.
   bool get telemetryPlaybackEnabled => _telemetryPlayback;
 
@@ -680,6 +685,7 @@ class AppState extends ChangeNotifier {
     _preferLocalSearch = await _settingsStore.loadPreferLocalSearch();
     _layoutDensity = await _settingsStore.loadLayoutDensity();
     _cornerRadiusStyle = await _settingsStore.loadCornerRadiusStyle();
+    _trackListStyle = await _settingsStore.loadTrackListStyle();
     _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
     _homeShelfLayout = await _settingsStore.loadHomeShelfLayout();
     _homeShelfGridRows = await _settingsStore.loadHomeShelfGridRows();
@@ -1861,7 +1867,12 @@ class AppState extends ChangeNotifier {
   Future<void> _loadSmartListTracks(SmartList list) async {
     _isLoadingSmartList = true;
     notifyListeners();
-    await _ensureSmartListSourceLoaded();
+    
+    // Load at least some tracks if we don't have any
+    if (_libraryTracks.isEmpty && !_offlineMode) {
+      await loadLibraryTracks();
+    }
+    
     final results = _buildSmartListTracks(list);
     _smartListTracks = results;
     _isLoadingSmartList = false;
@@ -2893,6 +2904,13 @@ class AppState extends ChangeNotifier {
   Future<void> setCornerRadiusStyle(CornerRadiusStyle style) async {
     _cornerRadiusStyle = style;
     await _settingsStore.saveCornerRadiusStyle(style);
+    notifyListeners();
+  }
+
+  /// Updates the track list style preference.
+  Future<void> setTrackListStyle(TrackListStyle style) async {
+    _trackListStyle = style;
+    await _settingsStore.saveTrackListStyle(style);
     notifyListeners();
   }
 

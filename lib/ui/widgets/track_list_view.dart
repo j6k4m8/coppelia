@@ -5,8 +5,10 @@ import '../../core/color_tokens.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
+import '../../state/track_list_style.dart';
 import 'track_list_section.dart';
 import 'track_row.dart';
+import 'track_table_row.dart';
 
 typedef TrackTapCallback = void Function(MediaItem track, int index);
 
@@ -73,6 +75,18 @@ class TrackListView extends StatelessWidget {
     }) {
       final track = tracks[index];
       final isFavorite = state.isFavoriteTrack(track.id);
+      
+      // Use table row if table style is selected
+      if (state.trackListStyle == TrackListStyle.table) {
+        return TrackTableRow(
+          track: track,
+          index: index,
+          onTap: () => onTapTrack(track, index),
+          isActive: state.nowPlaying?.id == track.id,
+        );
+      }
+      
+      // Otherwise use card style
       return TrackRow(
         track: track,
         index: index,

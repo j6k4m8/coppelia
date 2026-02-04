@@ -14,6 +14,7 @@ import '../state/corner_radius_style.dart';
 import '../state/sidebar_item.dart';
 import '../state/accent_color_source.dart';
 import '../state/theme_palette_source.dart';
+import '../state/track_list_style.dart';
 import '../models/smart_list.dart';
 
 /// Persists user preferences for the app.
@@ -57,6 +58,7 @@ class SettingsStore {
   static const _searchShortcutKey = 'settings_shortcut_search';
   static const _layoutDensityKey = 'settings_layout_density';
   static const _cornerRadiusStyleKey = 'settings_corner_radius_style';
+  static const _trackListStyleKey = 'settings_track_list_style';
   static const _deviceIdKey = 'settings_device_id';
   static const _offlineModeKey = 'settings_offline_mode';
   static const _preferLocalSearchKey = 'settings_prefer_local_search';
@@ -486,6 +488,26 @@ class SettingsStore {
   Future<void> saveCornerRadiusStyle(CornerRadiusStyle style) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_cornerRadiusStyleKey, style.storageKey);
+  }
+
+  /// Loads the preferred track list style.
+  Future<TrackListStyle> loadTrackListStyle() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_trackListStyleKey);
+    switch (raw) {
+      case 'table':
+        return TrackListStyle.table;
+      case 'card':
+      default:
+        return TrackListStyle.card;
+    }
+  }
+
+  /// Saves the preferred track list style.
+  Future<void> saveTrackListStyle(TrackListStyle style) async {
+    final preferences = await SharedPreferences.getInstance();
+    final value = style == TrackListStyle.table ? 'table' : 'card';
+    await preferences.setString(_trackListStyleKey, value);
   }
 
   /// Loads the preferred accent color value.
