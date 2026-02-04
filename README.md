@@ -32,10 +32,10 @@ For more screenshots and info about themes, see [the wiki](https://github.com/j6
 
 ### Mobile (iOS + Android)
 
-|                             |                            |                              |   |
-| --------------------------- | -------------------------- | ---------------------------- |---|
-| ![](docs/iPhone-Auth.png)   | ![](docs/iPhone-Cache.png) | ![](https://github.com/user-attachments/assets/ca1209c1-5a98-4280-a71a-3f0618c2a234)    | ![](https://github.com/user-attachments/assets/201e392a-bb47-47a2-997b-29fc17a0fc06)
-| ![](docs/iPhone-Tracks.png) | ![](docs/Android-Home.png) | ![](docs/Android-Tracks.png) | ![](https://github.com/user-attachments/assets/c90fcac9-9b07-4de7-bbac-95a381fce5bf) |
+|                             |                            |                                                                                      |                                                                                      |
+| --------------------------- | -------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| ![](docs/iPhone-Auth.png)   | ![](docs/iPhone-Cache.png) | ![](https://github.com/user-attachments/assets/ca1209c1-5a98-4280-a71a-3f0618c2a234) | ![](https://github.com/user-attachments/assets/201e392a-bb47-47a2-997b-29fc17a0fc06) |
+| ![](docs/iPhone-Tracks.png) | ![](docs/Android-Home.png) | ![](docs/Android-Tracks.png)                                                         | ![](https://github.com/user-attachments/assets/c90fcac9-9b07-4de7-bbac-95a381fce5bf) |
 
 ## Features
 
@@ -117,7 +117,9 @@ All shortcuts are configurable in the Settings screen. `^` indicates the Cmd key
 ## Smart Lists
 
 Smart Lists are self-updating, local playlists powered by rules.
-See [`docs/Smart-Lists.md`](docs/Smart-Lists.md) for the full guide and query language, and [`docs/Pages.md`](docs/Pages.md) for a quick tour of every page in the app.
+See [`docs/Smart-Lists.md`](docs/Smart-Lists.md) for the full guide and query language.
+
+<img width="954" height="942" alt="image" src="https://github.com/user-attachments/assets/f7738de4-ce38-4c22-a4f4-2619ea1ecb49" />
 
 ---
 

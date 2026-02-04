@@ -86,6 +86,9 @@ enum SmartListField {
 
   /// Artist favorite state.
   artistIsFavorite,
+
+  /// Beats per minute (tempo).
+  bpm,
 }
 
 /// Operators supported by Smart List rules.
@@ -192,6 +195,8 @@ extension SmartListFieldMeta on SmartListField {
         return 'Album is favorite';
       case SmartListField.artistIsFavorite:
         return 'Artist is favorite';
+      case SmartListField.bpm:
+        return 'BPM';
     }
   }
 
@@ -207,6 +212,7 @@ extension SmartListFieldMeta on SmartListField {
       case SmartListField.lastPlayedAt:
         return SmartListValueType.date;
       case SmartListField.playCount:
+      case SmartListField.bpm:
         return SmartListValueType.number;
       case SmartListField.duration:
         return SmartListValueType.duration;

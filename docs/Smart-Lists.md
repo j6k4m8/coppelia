@@ -1,5 +1,7 @@
 # Smart Lists (Self-Updating Playlists)
 
+<img width="954" height="942" alt="image" src="https://github.com/user-attachments/assets/f7738de4-ce38-4c22-a4f4-2619ea1ecb49" />
+
 Smart Lists are local-only, rule-driven playlists that update automatically.
 They do not sync to Jellyfin and do not change your library. They live only
 inside Coppelia.
