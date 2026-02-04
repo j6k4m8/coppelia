@@ -39,7 +39,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
     // Show menu to toggle column visibility
     showMenu(
       context: context,
-      position: RelativeRect.fromLTRB(1000, 100, 0, 0),
+      position: const RelativeRect.fromLTRB(1000, 100, 0, 0),
       items: [
         for (final column in _allColumns)
           CheckedPopupMenuItem<String>(
@@ -122,7 +122,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
               ),
             ),
           ),
-          SizedBox(width: 16),
+          const SizedBox(width: 16),
           // Title
           if (_visibleColumns.contains('title'))
             Expanded(
@@ -139,7 +139,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                 ),
               ),
             ),
-          if (_visibleColumns.contains('title')) SizedBox(width: 16),
+          if (_visibleColumns.contains('title')) const SizedBox(width: 16),
           // Artist
           if (_visibleColumns.contains('artist'))
             Expanded(
@@ -152,7 +152,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                     ),
               ),
             ),
-          if (_visibleColumns.contains('artist')) SizedBox(width: 16),
+          if (_visibleColumns.contains('artist')) const SizedBox(width: 16),
           // Album
           if (_visibleColumns.contains('album'))
             Expanded(
@@ -165,7 +165,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                     ),
               ),
             ),
-          if (_visibleColumns.contains('album')) SizedBox(width: 16),
+          if (_visibleColumns.contains('album')) const SizedBox(width: 16),
           // Genre
           if (_visibleColumns.contains('genre'))
             Expanded(
@@ -178,7 +178,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                     ),
               ),
             ),
-          if (_visibleColumns.contains('genre')) SizedBox(width: 16),
+          if (_visibleColumns.contains('genre')) const SizedBox(width: 16),
           // Play count
           if (_visibleColumns.contains('playCount'))
             SizedBox(
@@ -192,7 +192,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                 textAlign: TextAlign.right,
               ),
             ),
-          if (_visibleColumns.contains('playCount')) SizedBox(width: 16),
+          if (_visibleColumns.contains('playCount')) const SizedBox(width: 16),
           // BPM
           if (_visibleColumns.contains('bpm'))
             SizedBox(
@@ -206,7 +206,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                 textAlign: TextAlign.right,
               ),
             ),
-          if (_visibleColumns.contains('bpm')) SizedBox(width: 16),
+          if (_visibleColumns.contains('bpm')) const SizedBox(width: 16),
           // Duration
           if (_visibleColumns.contains('duration'))
             SizedBox(
@@ -220,7 +220,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                 textAlign: TextAlign.right,
               ),
             ),
-          if (_visibleColumns.contains('duration')) SizedBox(width: 16),
+          if (_visibleColumns.contains('duration')) const SizedBox(width: 16),
           // Favorite
           if (_visibleColumns.contains('favorite'))
             SizedBox(

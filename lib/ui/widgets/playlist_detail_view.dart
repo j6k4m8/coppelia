@@ -11,8 +11,6 @@ import '../../state/track_list_style.dart';
 import '../../core/color_tokens.dart';
 import 'app_snack.dart';
 import 'collection_header.dart';
-import 'corner_radius.dart';
-import 'header_action.dart';
 import 'playlist_dialogs.dart';
 import 'track_list_item.dart';
 import 'track_table_header.dart';
@@ -167,6 +165,7 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
                         onRemoveFromPlaylist: () =>
                             state.removeTrackFromPlaylist(track, playlist),
                         leading: handle,
+                        visibleColumns: _visibleColumns,
                       ),
                     );
                   },
@@ -239,6 +238,7 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
                               ),
                       onRemoveFromPlaylist: () =>
                           state.removeTrackFromPlaylist(track, playlist),
+                      visibleColumns: _visibleColumns,
                     );
                   },
                 ),
