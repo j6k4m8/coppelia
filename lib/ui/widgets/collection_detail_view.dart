@@ -9,11 +9,13 @@ import 'artwork_fallback.dart';
 import 'artwork_image.dart';
 import 'collection_header.dart';
 import 'corner_radius.dart';
-import 'track_row.dart';
+import 'track_list_item.dart';
+import 'track_table_header.dart';
+import '../../state/track_list_style.dart';
 import 'header_controls.dart';
 
 /// Generic detail view for albums, artists, or genres.
-class CollectionDetailView extends StatelessWidget {
+class CollectionDetailView extends StatefulWidget {
   /// Creates a collection detail view.
   const CollectionDetailView({
     super.key,
@@ -86,21 +88,41 @@ class CollectionDetailView extends StatelessWidget {
   final List<HeaderActionSpec> headerActionSpecs;
 
   @override
+  State<CollectionDetailView> createState() => _CollectionDetailViewState();
+}
+
+class _CollectionDetailViewState extends State<CollectionDetailView> {
+  Set<String> _visibleColumns = {
+    'title',
+    'artist',
+    'album',
+    'duration',
+    'favorite',
+  };
+
+  @override
   Widget build(BuildContext context) {
-    final state = context.read<AppState>();
-    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final leftGutter = (32 * densityScale).clamp(16.0, 40.0).toDouble();
     final rightGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
+
+    final hasTableHeader = state.trackListStyle == TrackListStyle.table;
+    final headerOffset =
+        (widget.headerFooter == null ? 1 : 2) + (hasTableHeader ? 1 : 0);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: ListView.separated(
-            itemCount: tracks.length + 1 + (headerFooter == null ? 0 : 1),
+            itemCount: widget.tracks.length + headerOffset,
             padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
             separatorBuilder: (_, index) {
-              if (index == 0 || (headerFooter != null && index == 1)) {
+              if (index == 0 ||
+                  (widget.headerFooter != null && index == 1) ||
+                  (hasTableHeader && index == headerOffset - 1)) {
                 return SizedBox(height: space(24));
               }
               return SizedBox(height: space(6).clamp(4.0, 10.0));
@@ -108,47 +130,63 @@ class CollectionDetailView extends StatelessWidget {
             itemBuilder: (context, index) {
               if (index == 0) {
                 return _Header(
-                  title: title,
-                  subtitle: subtitle,
-                  subtitleWidget: subtitleWidget,
-                  imageUrl: imageUrl,
-                  onPlayAll: onPlayAll,
-                  onShuffle: onShuffle,
-                  actions: headerActions,
-                  actionSpecs: headerActionSpecs,
+                  title: widget.title,
+                  subtitle: widget.subtitle,
+                  subtitleWidget: widget.subtitleWidget,
+                  imageUrl: widget.imageUrl,
+                  onPlayAll: widget.onPlayAll,
+                  onShuffle: widget.onShuffle,
+                  actions: widget.headerActions,
+                  actionSpecs: widget.headerActionSpecs,
                 );
               }
-              if (headerFooter != null && index == 1) {
-                return headerFooter!;
+              if (widget.headerFooter != null && index == 1) {
+                return widget.headerFooter!;
               }
-              final trackIndex = index - (headerFooter == null ? 1 : 2);
-              final track = tracks[trackIndex];
-              final canGoToAlbum = onAlbumTap != null && track.albumId != null;
+              if (hasTableHeader && index == headerOffset - 1) {
+                return TrackTableHeader(
+                  key: const ValueKey('collection-table-header'),
+                  onVisibleColumnsChanged: (columns) {
+                    setState(() {
+                      _visibleColumns = columns;
+                    });
+                  },
+                );
+              }
+              final trackIndex = index - headerOffset;
+              final track = widget.tracks[trackIndex];
+              final canGoToAlbum =
+                  widget.onAlbumTap != null && track.albumId != null;
               final canGoToArtist =
-                  onArtistTap != null && track.artistIds.isNotEmpty;
-              return TrackRow(
+                  widget.onArtistTap != null && track.artistIds.isNotEmpty;
+              return TrackListItem(
                 track: track,
                 index: trackIndex,
-                isActive: nowPlaying?.id == track.id,
-                onTap: () => onTrackTap(track),
-                onPlayNext:
-                    onPlayNext == null ? null : () => onPlayNext!.call(track),
-                onAddToQueue: onAddToQueue == null
+                isActive: widget.nowPlaying?.id == track.id,
+                onTap: () => widget.onTrackTap(track),
+                onPlayNext: widget.onPlayNext == null
                     ? null
-                    : () => onAddToQueue!.call(track),
+                    : () => widget.onPlayNext!.call(track),
+                onAddToQueue: widget.onAddToQueue == null
+                    ? null
+                    : () => widget.onAddToQueue!.call(track),
                 isFavorite: state.isFavoriteTrack(track.id),
                 isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
                 onToggleFavorite: () => state.setTrackFavorite(
                   track,
                   !state.isFavoriteTrack(track.id),
                 ),
-                onAlbumTap: canGoToAlbum ? () => onAlbumTap!.call(track) : null,
-                onArtistTap:
-                    canGoToArtist ? () => onArtistTap!.call(track) : null,
+                onAlbumTap:
+                    canGoToAlbum ? () => widget.onAlbumTap!.call(track) : null,
+                onArtistTap: canGoToArtist
+                    ? () => widget.onArtistTap!.call(track)
+                    : null,
+                visibleColumns: _visibleColumns,
                 onGoToAlbum:
-                    canGoToAlbum ? () => onAlbumTap!.call(track) : null,
-                onGoToArtist:
-                    canGoToArtist ? () => onArtistTap!.call(track) : null,
+                    canGoToAlbum ? () => widget.onAlbumTap!.call(track) : null,
+                onGoToArtist: canGoToArtist
+                    ? () => widget.onArtistTap!.call(track)
+                    : null,
               );
             },
           ),
@@ -185,8 +223,7 @@ class _Header extends StatelessWidget {
     double space(double value) => value * densityScale;
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
-    final cardRadius =
-        context.scaledRadius(clamped(26, min: 16, max: 30));
+    final cardRadius = context.scaledRadius(clamped(26, min: 16, max: 30));
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 720;

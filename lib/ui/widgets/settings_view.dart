@@ -20,6 +20,7 @@ import '../../state/corner_radius_style.dart';
 import '../../state/now_playing_layout.dart';
 import '../../state/sidebar_item.dart';
 import '../../state/theme_palette_source.dart';
+import '../../state/track_list_style.dart';
 import '../../core/color_tokens.dart';
 import '../../core/app_info.dart';
 import '../../services/log_service.dart';
@@ -699,6 +700,33 @@ class _LayoutSettings extends StatelessWidget {
             state.setNowPlayingLayout(layout);
           },
         ),
+        Divider(height: space(32), color: ColorTokens.border(context, 0.12)),
+        sectionHeader('Track Lists'),
+        SizedBox(height: space(12)),
+        _SettingRow(
+          title: 'Default track lists to',
+          subtitle: 'Choose how track lists are displayed.',
+          trailing: SizedBox(
+            width: 200,
+            child: Row(
+              children: [
+                for (final style in TrackListStyle.values)
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: space(4)),
+                      child: _StyleButton(
+                        label: style.label,
+                        selected: state.trackListStyle == style,
+                        onTap: () => state.setTrackListStyle(style),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: space(16)),
+        _TrackListStyleDemo(),
         Divider(height: space(32), color: ColorTokens.border(context, 0.12)),
         sectionHeader('Home'),
         SizedBox(height: space(12)),
@@ -2359,3 +2387,296 @@ const List<_FontScaleChoice> _fontScaleChoices = [
   _FontScaleChoice('L', 1.12),
   _FontScaleChoice('XL', 1.3),
 ];
+
+/// Simple style toggle button.
+class _StyleButton extends StatelessWidget {
+  const _StyleButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 36,
+        decoration: BoxDecoration(
+          color: selected
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
+              : ColorTokens.cardFill(context, 0.05),
+          border: Border.all(
+            color: selected
+                ? Theme.of(context).colorScheme.primary
+                : ColorTokens.border(context, 0.12),
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: selected ? Theme.of(context).colorScheme.primary : null,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Demo showing card vs table track list styles.
+class _TrackListStyleDemo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+
+    // Mock track data for demo
+    final demoTrack1 = {
+      'title': 'Carnegie Hall: 4\'33',
+      'artist': 'John Cage',
+      'album': 'Cage Plays Carnegie Hall',
+      'duration': '4:33',
+    };
+    final demoTrack2 = {
+      'title': 'Four-Thirty-Three (DUBSTEP REMIX) - Radio Edit',
+      'artist': 'DJ Tuchas',
+      'album': 'The Sound of Silence',
+      'duration': '4:32',
+    };
+
+    return Container(
+      padding: EdgeInsets.all(space(16)),
+      decoration: BoxDecoration(
+        color: ColorTokens.cardFill(context, 0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: ColorTokens.border(context, 0.12),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Preview',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: ColorTokens.textSecondary(context),
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+          SizedBox(height: space(12)),
+          if (state.trackListStyle == TrackListStyle.card) ...[
+            _DemoTrackCard(track: demoTrack1),
+            SizedBox(height: space(6)),
+            _DemoTrackCard(track: demoTrack2),
+          ] else ...[
+            // Table header
+            Container(
+              height: 32,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 40,
+                    child: Text(
+                      '#',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: ColorTokens.textSecondary(context, 0.7),
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      'Title',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: ColorTokens.textSecondary(context, 0.7),
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      'Artist',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: ColorTokens.textSecondary(context, 0.7),
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      'Album',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: ColorTokens.textSecondary(context, 0.7),
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 60,
+                    child: Text(
+                      'Time',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: ColorTokens.textSecondary(context, 0.7),
+                            fontWeight: FontWeight.w600,
+                          ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _DemoTrackTableRow(index: 1, track: demoTrack1),
+            _DemoTrackTableRow(index: 2, track: demoTrack2),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DemoTrackCard extends StatelessWidget {
+  const _DemoTrackCard({required this.track});
+
+  final Map<String, String> track;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final densityScale = state.layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+
+    return Container(
+      height: space(56).clamp(48.0, 64.0),
+      padding: EdgeInsets.symmetric(horizontal: space(12)),
+      decoration: BoxDecoration(
+        color: ColorTokens.cardFill(context, 0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: space(40).clamp(32.0, 48.0),
+            height: space(40).clamp(32.0, 48.0),
+            decoration: BoxDecoration(
+              color: ColorTokens.cardFillStrong(context),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Icon(
+              Icons.music_note,
+              size: space(20).clamp(16.0, 24.0),
+              color: ColorTokens.textSecondary(context, 0.5),
+            ),
+          ),
+          SizedBox(width: space(12)),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  track['title']!,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: space(2)),
+                Text(
+                  track['artist']!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: ColorTokens.textSecondary(context),
+                      ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Text(
+            track['duration']!,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: ColorTokens.textSecondary(context),
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DemoTrackTableRow extends StatelessWidget {
+  const _DemoTrackTableRow({required this.index, required this.track});
+
+  final int index;
+  final Map<String, String> track;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 40,
+            child: Text(
+              '$index',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: ColorTokens.textSecondary(context),
+                  ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              track['title']!,
+              style: Theme.of(context).textTheme.bodySmall,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              track['artist']!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: ColorTokens.textSecondary(context),
+                  ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              track['album']!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: ColorTokens.textSecondary(context),
+                  ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          SizedBox(
+            width: 60,
+            child: Text(
+              track['duration']!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: ColorTokens.textSecondary(context),
+                  ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

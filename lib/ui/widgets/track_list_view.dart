@@ -5,13 +5,16 @@ import '../../core/color_tokens.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
+import '../../state/track_list_style.dart';
 import 'track_list_section.dart';
 import 'track_row.dart';
+import 'track_table_row.dart';
+import 'track_table_header.dart';
 
 typedef TrackTapCallback = void Function(MediaItem track, int index);
 
 /// Configurable track list page for simple track collections.
-class TrackListView extends StatelessWidget {
+class TrackListView extends StatefulWidget {
   const TrackListView({
     super.key,
     required this.title,
@@ -46,16 +49,29 @@ class TrackListView extends StatelessWidget {
   final bool showDragHandle;
 
   @override
+  State<TrackListView> createState() => _TrackListViewState();
+}
+
+class _TrackListViewState extends State<TrackListView> {
+  Set<String> _visibleColumns = {
+    'title',
+    'artist',
+    'album',
+    'duration',
+    'favorite',
+  };
+
+  @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final gap = space(6).clamp(4.0, 10.0);
 
-    if (tracks.isEmpty && emptyMessage != null) {
+    if (widget.tracks.isEmpty && widget.emptyMessage != null) {
       return Center(
         child: Text(
-          emptyMessage!,
+          widget.emptyMessage!,
           style: Theme.of(context)
               .textTheme
               .titleMedium
@@ -64,59 +80,86 @@ class TrackListView extends StatelessWidget {
       );
     }
 
-    final albumNavEnabled = enableAlbumArtistNav && !state.offlineOnlyFilter;
+    final albumNavEnabled =
+        widget.enableAlbumArtistNav && !state.offlineOnlyFilter;
 
     Widget buildRow(
       BuildContext context,
       int index, {
       Widget? leading,
     }) {
-      final track = tracks[index];
+      final track = widget.tracks[index];
       final isFavorite = state.isFavoriteTrack(track.id);
+
+      // Use table row if table style is selected
+      if (state.trackListStyle == TrackListStyle.table) {
+        return TrackTableRow(
+          track: track,
+          index: index,
+          onTap: () => widget.onTapTrack(track, index),
+          isActive: state.nowPlaying?.id == track.id,
+          visibleColumns: _visibleColumns,
+          isFavorite: isFavorite,
+          onToggleFavorite: () => state.setTrackFavorite(track, !isFavorite),
+        );
+      }
+
+      // Otherwise use card style
       return TrackRow(
         track: track,
         index: index,
         isActive: state.nowPlaying?.id == track.id,
-        onTap: () => onTapTrack(track, index),
+        onTap: () => widget.onTapTrack(track, index),
         onPlayNext: () => state.playNext(track),
         onAddToQueue: () => state.enqueueTrack(track),
         isFavorite: isFavorite,
         isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
-        onToggleFavorite: () =>
-            state.setTrackFavorite(track, !isFavorite),
+        onToggleFavorite: () => state.setTrackFavorite(track, !isFavorite),
         onAlbumTap: albumNavEnabled && track.albumId != null
             ? () => state.selectAlbumById(track.albumId!)
             : null,
         onArtistTap: albumNavEnabled && track.artistIds.isNotEmpty
             ? () => state.selectArtistById(track.artistIds.first)
             : null,
-        onGoToAlbum: enableGoToActions && track.albumId != null
+        onGoToAlbum: widget.enableGoToActions && track.albumId != null
             ? () => state.selectAlbumById(track.albumId!)
             : null,
-        onGoToArtist: enableGoToActions && track.artistIds.isNotEmpty
+        onGoToArtist: widget.enableGoToActions && track.artistIds.isNotEmpty
             ? () => state.selectArtistById(track.artistIds.first)
             : null,
-        enableContextMenu: enableContextMenu,
+        enableContextMenu: widget.enableContextMenu,
         leading: leading,
       );
     }
 
+    // Add table header when in table mode
+    final tableHeader = state.trackListStyle == TrackListStyle.table
+        ? TrackTableHeader(
+            onVisibleColumnsChanged: (columns) {
+              setState(() {
+                _visibleColumns = columns;
+              });
+            },
+          )
+        : null;
+
     return TrackListSection(
-      title: title,
-      subtitle: subtitle,
-      trailing: trailing,
-      listBottomPadding: listBottomPadding,
-      controller: controller,
-      bodyBuilder: reorderable
+      title: widget.title,
+      subtitle: widget.subtitle,
+      trailing: widget.trailing,
+      listBottomPadding: widget.listBottomPadding,
+      controller: widget.controller,
+      headerWidget: tableHeader,
+      bodyBuilder: widget.reorderable
           ? (context, listPadding, _) {
               return ReorderableListView.builder(
                 padding: listPadding,
                 buildDefaultDragHandles: false,
-                itemCount: tracks.length,
-                onReorder: onReorder ?? (_, __) {},
+                itemCount: widget.tracks.length,
+                onReorder: widget.onReorder ?? (_, __) {},
                 itemBuilder: (context, index) {
                   Widget? handle;
-                  if (showDragHandle) {
+                  if (widget.showDragHandle) {
                     handle = ReorderableDragStartListener(
                       index: index,
                       child: Icon(
@@ -128,7 +171,7 @@ class TrackListView extends StatelessWidget {
                   }
                   final row = buildRow(context, index, leading: handle);
                   return Padding(
-                    key: ObjectKey(tracks[index]),
+                    key: ObjectKey(widget.tracks[index]),
                     padding: EdgeInsets.only(bottom: gap),
                     child: row,
                   );
@@ -136,8 +179,8 @@ class TrackListView extends StatelessWidget {
               );
             }
           : null,
-      itemCount: reorderable ? null : tracks.length,
-      itemBuilder: reorderable ? null : buildRow,
+      itemCount: widget.reorderable ? null : widget.tracks.length,
+      itemBuilder: widget.reorderable ? null : buildRow,
     );
   }
 }

@@ -14,7 +14,7 @@ class FavoriteTracksView extends StatelessWidget {
     final state = context.watch<AppState>();
     final favorites = state.favoriteTracks;
     return TrackListView(
-      title: 'Favorites / Tracks',
+      title: 'Favorite Tracks',
       subtitle: '${favorites.length} tracks',
       tracks: favorites,
       onTapTrack: (track, _) => state.playFromFavorites(track),

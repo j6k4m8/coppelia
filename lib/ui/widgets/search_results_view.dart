@@ -11,7 +11,9 @@ import 'adaptive_grid.dart';
 import 'library_card.dart';
 import 'playlist_tile.dart';
 import 'section_header.dart';
-import 'track_row.dart';
+import 'track_list_item.dart';
+import 'track_table_header.dart';
+import '../../state/track_list_style.dart';
 
 /// Displays search results for the library.
 class SearchResultsView extends StatefulWidget {
@@ -25,6 +27,13 @@ class SearchResultsView extends StatefulWidget {
 class _SearchResultsViewState extends State<SearchResultsView> {
   bool _showAllTracks = false;
   String _lastSearchQuery = '';
+  Set<String> _visibleColumns = {
+    'title',
+    'artist',
+    'album',
+    'duration',
+    'favorite',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +84,14 @@ class _SearchResultsViewState extends State<SearchResultsView> {
           if (results.tracks.isNotEmpty) ...[
             const SectionHeader(title: 'Tracks'),
             SizedBox(height: space(12)),
+            if (state.trackListStyle == TrackListStyle.table)
+              TrackTableHeader(
+                onVisibleColumnsChanged: (columns) {
+                  setState(() {
+                    _visibleColumns = columns;
+                  });
+                },
+              ),
             Builder(
               builder: (context) {
                 const maxInitialTracks = 20;
@@ -94,7 +111,7 @@ class _SearchResultsViewState extends State<SearchResultsView> {
                           SizedBox(height: space(6).clamp(4.0, 10.0)),
                       itemBuilder: (context, index) {
                         final track = displayedTracks[index];
-                        return TrackRow(
+                        return TrackListItem(
                           track: track,
                           index: index,
                           isActive: state.nowPlaying?.id == track.id,
@@ -115,6 +132,7 @@ class _SearchResultsViewState extends State<SearchResultsView> {
                               ? null
                               : () =>
                                   state.selectArtistById(track.artistIds.first),
+                          visibleColumns: _visibleColumns,
                           onGoToAlbum: track.albumId == null
                               ? null
                               : () => state.selectAlbumById(track.albumId!),

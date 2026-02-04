@@ -121,6 +121,12 @@ See [`docs/Smart-Lists.md`](docs/Smart-Lists.md) for the full guide and query la
 
 <img width="954" height="942" alt="image" src="https://github.com/user-attachments/assets/f7738de4-ce38-4c22-a4f4-2619ea1ecb49" />
 
+## Track List Styles
+
+| Default Track Card                                                                   | Table Row Item                                                                       |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| ![](https://github.com/user-attachments/assets/387a5e10-0a83-474e-a5b5-84cfdd580c83) | ![](https://github.com/user-attachments/assets/2a121f2a-ad77-4c11-8459-d351d1a6f3e7) |
+
 ---
 
 ## Developing

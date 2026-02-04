@@ -7,11 +7,13 @@ import '../../models/playlist.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
+import '../../state/track_list_style.dart';
 import '../../core/color_tokens.dart';
 import 'app_snack.dart';
 import 'collection_header.dart';
 import 'playlist_dialogs.dart';
-import 'track_row.dart';
+import 'track_list_item.dart';
+import 'track_table_header.dart';
 
 /// Playlist detail view with track listing.
 class PlaylistDetailView extends StatefulWidget {
@@ -24,6 +26,13 @@ class PlaylistDetailView extends StatefulWidget {
 
 class _PlaylistDetailViewState extends State<PlaylistDetailView> {
   String? _activePlaylistId;
+  Set<String> _visibleColumns = {
+    'title',
+    'artist',
+    'album',
+    'duration',
+    'favorite',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -56,16 +65,19 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
         Expanded(
           child: canReorder
               ? ReorderableListView.builder(
-                  itemCount: displayTracks.length + 1,
+                  itemCount: displayTracks.length +
+                      (state.trackListStyle == TrackListStyle.table ? 2 : 1),
                   padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
                   buildDefaultDragHandles: false,
                   onReorder: (oldIndex, newIndex) {
-                    if (oldIndex == 0 || newIndex == 0) {
+                    final headerCount =
+                        state.trackListStyle == TrackListStyle.table ? 2 : 1;
+                    if (oldIndex < headerCount || newIndex < headerCount) {
                       return;
                     }
                     final tracks = List<MediaItem>.from(displayTracks);
-                    final oldTrackIndex = oldIndex - 1;
-                    var newTrackIndex = newIndex - 1;
+                    final oldTrackIndex = oldIndex - headerCount;
+                    var newTrackIndex = newIndex - headerCount;
                     if (newTrackIndex > oldTrackIndex) {
                       newTrackIndex -= 1;
                     }
@@ -90,7 +102,20 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
                         ),
                       );
                     }
-                    final trackIndex = index - 1;
+                    if (state.trackListStyle == TrackListStyle.table &&
+                        index == 1) {
+                      return TrackTableHeader(
+                        key: const ValueKey('playlist-table-header'),
+                        onVisibleColumnsChanged: (columns) {
+                          setState(() {
+                            _visibleColumns = columns;
+                          });
+                        },
+                      );
+                    }
+                    final headerCount =
+                        state.trackListStyle == TrackListStyle.table ? 2 : 1;
+                    final trackIndex = index - headerCount;
                     final track = displayTracks[trackIndex];
                     final handle = ReorderableDragStartListener(
                       index: index,
@@ -107,7 +132,7 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
                       padding: EdgeInsets.only(
                         bottom: space(6).clamp(4.0, 10.0),
                       ),
-                      child: TrackRow(
+                      child: TrackListItem(
                         track: track,
                         index: trackIndex,
                         isActive: state.nowPlaying?.id == track.id,
@@ -140,12 +165,14 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
                         onRemoveFromPlaylist: () =>
                             state.removeTrackFromPlaylist(track, playlist),
                         leading: handle,
+                        visibleColumns: _visibleColumns,
                       ),
                     );
                   },
                 )
               : ListView.separated(
-                  itemCount: displayTracks.length + 1,
+                  itemCount: displayTracks.length +
+                      (state.trackListStyle == TrackListStyle.table ? 2 : 1),
                   padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
                   separatorBuilder: (_, index) {
                     return SizedBox(
@@ -166,9 +193,22 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
                         onDelete: () => _handleDelete(context, playlist),
                       );
                     }
-                    final trackIndex = index - 1;
+                    if (state.trackListStyle == TrackListStyle.table &&
+                        index == 1) {
+                      return TrackTableHeader(
+                        key: const ValueKey('playlist-table-header'),
+                        onVisibleColumnsChanged: (columns) {
+                          setState(() {
+                            _visibleColumns = columns;
+                          });
+                        },
+                      );
+                    }
+                    final headerCount =
+                        state.trackListStyle == TrackListStyle.table ? 2 : 1;
+                    final trackIndex = index - headerCount;
                     final track = displayTracks[trackIndex];
-                    return TrackRow(
+                    return TrackListItem(
                       track: track,
                       index: trackIndex,
                       isActive: state.nowPlaying?.id == track.id,
@@ -198,6 +238,7 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
                               ),
                       onRemoveFromPlaylist: () =>
                           state.removeTrackFromPlaylist(track, playlist),
+                      visibleColumns: _visibleColumns,
                     );
                   },
                 ),
