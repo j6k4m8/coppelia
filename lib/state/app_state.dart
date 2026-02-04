@@ -1942,6 +1942,8 @@ class AppState extends ChangeNotifier {
           a.artistIds.any(isFavoriteArtist),
           b.artistIds.any(isFavoriteArtist),
         );
+      case SmartListField.bpm:
+        return (a.bpm ?? 0).compareTo(b.bpm ?? 0);
     }
   }
 
@@ -2003,7 +2005,9 @@ class AppState extends ChangeNotifier {
       case SmartListValueType.number:
         final value = rule.field == SmartListField.playCount
             ? (track.playCount ?? 0).toDouble()
-            : 0.0;
+            : rule.field == SmartListField.bpm
+                ? (track.bpm ?? 0).toDouble()
+                : 0.0;
         return _evaluateNumberRule(rule, value);
       case SmartListValueType.duration:
         final seconds = track.duration.inSeconds.toDouble();

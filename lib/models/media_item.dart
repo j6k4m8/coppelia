@@ -20,6 +20,7 @@ class MediaItem {
     this.codec,
     this.bitrate,
     this.sampleRate,
+    this.bpm,
   });
 
   /// Jellyfin item identifier.
@@ -75,6 +76,9 @@ class MediaItem {
 
   /// Sample rate in Hz.
   final int? sampleRate;
+
+  /// Beats per minute (tempo).
+  final int? bpm;
 
   /// User-friendly subtitle.
   String get subtitle => artists.isEmpty ? album : artists.join(', ');
@@ -155,6 +159,7 @@ class MediaItem {
       }
     }
     container = json['Container']?.toString();
+    final bpm = (json['BPM'] as num?)?.toInt();
 
     return MediaItem(
       id: id,
@@ -177,6 +182,7 @@ class MediaItem {
       codec: codec,
       bitrate: bitrate,
       sampleRate: sampleRate,
+      bpm: bpm,
     );
   }
 
