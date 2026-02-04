@@ -139,8 +139,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                 ),
               ),
             ),
-          if (_visibleColumns.contains('title'))
-            SizedBox(width: 16),
+          if (_visibleColumns.contains('title')) SizedBox(width: 16),
           // Artist
           if (_visibleColumns.contains('artist'))
             Expanded(
@@ -153,8 +152,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                     ),
               ),
             ),
-          if (_visibleColumns.contains('artist'))
-            SizedBox(width: 16),
+          if (_visibleColumns.contains('artist')) SizedBox(width: 16),
           // Album
           if (_visibleColumns.contains('album'))
             Expanded(
@@ -167,8 +165,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                     ),
               ),
             ),
-          if (_visibleColumns.contains('album'))
-            SizedBox(width: 16),
+          if (_visibleColumns.contains('album')) SizedBox(width: 16),
           // Genre
           if (_visibleColumns.contains('genre'))
             Expanded(
@@ -181,8 +178,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                     ),
               ),
             ),
-          if (_visibleColumns.contains('genre'))
-            SizedBox(width: 16),
+          if (_visibleColumns.contains('genre')) SizedBox(width: 16),
           // Play count
           if (_visibleColumns.contains('playCount'))
             SizedBox(
@@ -196,8 +192,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                 textAlign: TextAlign.right,
               ),
             ),
-          if (_visibleColumns.contains('playCount'))
-            SizedBox(width: 16),
+          if (_visibleColumns.contains('playCount')) SizedBox(width: 16),
           // BPM
           if (_visibleColumns.contains('bpm'))
             SizedBox(
@@ -211,8 +206,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                 textAlign: TextAlign.right,
               ),
             ),
-          if (_visibleColumns.contains('bpm'))
-            SizedBox(width: 16),
+          if (_visibleColumns.contains('bpm')) SizedBox(width: 16),
           // Duration
           if (_visibleColumns.contains('duration'))
             SizedBox(
@@ -226,8 +220,7 @@ class _TrackTableHeaderState extends State<TrackTableHeader> {
                 textAlign: TextAlign.right,
               ),
             ),
-          if (_visibleColumns.contains('duration'))
-            SizedBox(width: 16),
+          if (_visibleColumns.contains('duration')) SizedBox(width: 16),
           // Favorite
           if (_visibleColumns.contains('favorite'))
             SizedBox(
