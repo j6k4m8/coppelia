@@ -14,13 +14,28 @@ import 'section_header.dart';
 import 'track_row.dart';
 
 /// Displays search results for the library.
-class SearchResultsView extends StatelessWidget {
+class SearchResultsView extends StatefulWidget {
   /// Creates the search results view.
   const SearchResultsView({super.key});
 
   @override
+  State<SearchResultsView> createState() => _SearchResultsViewState();
+}
+
+class _SearchResultsViewState extends State<SearchResultsView> {
+  bool _showAllTracks = false;
+  String _lastSearchQuery = '';
+
+  @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+
+    // Reset show all when search query changes
+    if (state.searchQuery != _lastSearchQuery) {
+      _lastSearchQuery = state.searchQuery;
+      _showAllTracks = false;
+    }
+
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final leftGutter = (32 * densityScale).clamp(16.0, 40.0).toDouble();
@@ -60,39 +75,72 @@ class SearchResultsView extends StatelessWidget {
           if (results.tracks.isNotEmpty) ...[
             const SectionHeader(title: 'Tracks'),
             SizedBox(height: space(12)),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: results.tracks.length,
-              separatorBuilder: (_, __) =>
-                  SizedBox(height: space(6).clamp(4.0, 10.0)),
-              itemBuilder: (context, index) {
-                final track = results.tracks[index];
-                return TrackRow(
-                  track: track,
-                  index: index,
-                  isActive: state.nowPlaying?.id == track.id,
-                  onTap: () => state.playFromSearch(track),
-                  onPlayNext: () => state.playNext(track),
-                  onAddToQueue: () => state.enqueueTrack(track),
-                  isFavorite: state.isFavoriteTrack(track.id),
-                  isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
-                  onToggleFavorite: () => state.setTrackFavorite(
-                    track,
-                    !state.isFavoriteTrack(track.id),
-                  ),
-                  onAlbumTap: track.albumId == null
-                      ? null
-                      : () => state.selectAlbumById(track.albumId!),
-                  onArtistTap: track.artistIds.isEmpty
-                      ? null
-                      : () => state.selectArtistById(track.artistIds.first),
-                  onGoToAlbum: track.albumId == null
-                      ? null
-                      : () => state.selectAlbumById(track.albumId!),
-                  onGoToArtist: track.artistIds.isEmpty
-                      ? null
-                      : () => state.selectArtistById(track.artistIds.first),
+            Builder(
+              builder: (context) {
+                const maxInitialTracks = 20;
+                final displayedTracks = _showAllTracks
+                    ? results.tracks
+                    : results.tracks.take(maxInitialTracks).toList();
+                final hasMore = results.tracks.length > maxInitialTracks;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: displayedTracks.length,
+                      separatorBuilder: (_, __) =>
+                          SizedBox(height: space(6).clamp(4.0, 10.0)),
+                      itemBuilder: (context, index) {
+                        final track = displayedTracks[index];
+                        return TrackRow(
+                          track: track,
+                          index: index,
+                          isActive: state.nowPlaying?.id == track.id,
+                          onTap: () => state.playFromSearch(track),
+                          onPlayNext: () => state.playNext(track),
+                          onAddToQueue: () => state.enqueueTrack(track),
+                          isFavorite: state.isFavoriteTrack(track.id),
+                          isFavoriteUpdating:
+                              state.isFavoriteTrackUpdating(track.id),
+                          onToggleFavorite: () => state.setTrackFavorite(
+                            track,
+                            !state.isFavoriteTrack(track.id),
+                          ),
+                          onAlbumTap: track.albumId == null
+                              ? null
+                              : () => state.selectAlbumById(track.albumId!),
+                          onArtistTap: track.artistIds.isEmpty
+                              ? null
+                              : () =>
+                                  state.selectArtistById(track.artistIds.first),
+                          onGoToAlbum: track.albumId == null
+                              ? null
+                              : () => state.selectAlbumById(track.albumId!),
+                          onGoToArtist: track.artistIds.isEmpty
+                              ? null
+                              : () =>
+                                  state.selectArtistById(track.artistIds.first),
+                        );
+                      },
+                    ),
+                    if (hasMore && !_showAllTracks) ...[
+                      SizedBox(height: space(12)),
+                      Center(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _showAllTracks = true;
+                            });
+                          },
+                          child: Text(
+                            'Show ${results.tracks.length - maxInitialTracks} more tracks',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 );
               },
             ),
