@@ -2409,7 +2409,7 @@ class _StyleButton extends StatelessWidget {
         height: 36,
         decoration: BoxDecoration(
           color: selected
-              ? Theme.of(context).colorScheme.primary.withOpacity(0.12)
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
               : ColorTokens.cardFill(context, 0.05),
           border: Border.all(
             color: selected
