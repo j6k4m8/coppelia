@@ -2427,4 +2427,3 @@ class _StyleButton extends StatelessWidget {
     );
   }
 }
-

@@ -33,7 +33,7 @@ class TrackTableRow extends StatelessWidget {
     final textColor = isActive
         ? Theme.of(context).colorScheme.primary
         : ColorTokens.textPrimary(context);
-    
+
     final secondaryColor = isActive
         ? Theme.of(context).colorScheme.primary.withOpacity(0.7)
         : ColorTokens.textSecondary(context);

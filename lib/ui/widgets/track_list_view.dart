@@ -75,7 +75,7 @@ class TrackListView extends StatelessWidget {
     }) {
       final track = tracks[index];
       final isFavorite = state.isFavoriteTrack(track.id);
-      
+
       // Use table row if table style is selected
       if (state.trackListStyle == TrackListStyle.table) {
         return TrackTableRow(
@@ -85,7 +85,7 @@ class TrackListView extends StatelessWidget {
           isActive: state.nowPlaying?.id == track.id,
         );
       }
-      
+
       // Otherwise use card style
       return TrackRow(
         track: track,
@@ -96,8 +96,7 @@ class TrackListView extends StatelessWidget {
         onAddToQueue: () => state.enqueueTrack(track),
         isFavorite: isFavorite,
         isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
-        onToggleFavorite: () =>
-            state.setTrackFavorite(track, !isFavorite),
+        onToggleFavorite: () => state.setTrackFavorite(track, !isFavorite),
         onAlbumTap: albumNavEnabled && track.albumId != null
             ? () => state.selectAlbumById(track.albumId!)
             : null,

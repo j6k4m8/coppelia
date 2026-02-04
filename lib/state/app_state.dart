@@ -1867,12 +1867,12 @@ class AppState extends ChangeNotifier {
   Future<void> _loadSmartListTracks(SmartList list) async {
     _isLoadingSmartList = true;
     notifyListeners();
-    
+
     // Load at least some tracks if we don't have any
     if (_libraryTracks.isEmpty && !_offlineMode) {
       await loadLibraryTracks();
     }
-    
+
     final results = _buildSmartListTracks(list);
     _smartListTracks = results;
     _isLoadingSmartList = false;
