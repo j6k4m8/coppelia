@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 /// Lightweight artwork loader with a simple error fallback.
@@ -33,12 +34,13 @@ class ArtworkImage extends StatelessWidget {
     if (url == null || url.isEmpty) {
       return placeholder;
     }
-    return Image.network(
-      url,
+    return CachedNetworkImage(
+      imageUrl: url,
       width: width,
       height: height,
       fit: fit,
-      errorBuilder: (_, __, ___) => placeholder,
+      placeholder: (_, __) => placeholder,
+      errorWidget: (_, __, ___) => placeholder,
     );
   }
 }
