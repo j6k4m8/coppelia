@@ -39,7 +39,7 @@ class FeaturedTrackCard extends StatelessWidget {
 
   /// Optional handler for tapping the artist label.
   final VoidCallback? onArtistTap;
-  
+
   /// Optional handler to navigate to the album.
   final VoidCallback? onAlbumTap;
 
@@ -72,8 +72,8 @@ class FeaturedTrackCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final useSingleTap = !kIsWeb &&
-        (Platform.isIOS || Platform.isAndroid || Platform.isFuchsia);
+    final useSingleTap =
+        !kIsWeb && (Platform.isIOS || Platform.isAndroid || Platform.isFuchsia);
     final densityScale =
         context.select((AppState state) => state.layoutDensity.scaleDouble);
     double clamped(double value, {double min = 0, double max = 999}) =>
