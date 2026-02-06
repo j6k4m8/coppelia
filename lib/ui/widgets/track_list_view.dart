@@ -90,6 +90,7 @@ class _TrackListViewState extends State<TrackListView> {
     }) {
       final track = widget.tracks[index];
       final isFavorite = state.isFavoriteTrack(track.id);
+      final albumNavEnabled = widget.enableAlbumArtistNav;
 
       // Use table row if table style is selected
       if (state.trackListStyle == TrackListStyle.table) {
@@ -101,6 +102,20 @@ class _TrackListViewState extends State<TrackListView> {
           visibleColumns: _visibleColumns,
           isFavorite: isFavorite,
           onToggleFavorite: () => state.setTrackFavorite(track, !isFavorite),
+          onAlbumTap: albumNavEnabled && track.albumId != null
+              ? () => state.selectAlbumById(track.albumId!)
+              : null,
+          onArtistTap: albumNavEnabled && track.artistIds.isNotEmpty
+              ? () => state.selectArtistById(track.artistIds.first)
+              : null,
+          onPlayNext: () => state.playNext(track),
+          onAddToQueue: () => state.enqueueTrack(track),
+          onGoToAlbum: widget.enableGoToActions && track.albumId != null
+              ? () => state.selectAlbumById(track.albumId!)
+              : null,
+          onGoToArtist: widget.enableGoToActions && track.artistIds.isNotEmpty
+              ? () => state.selectArtistById(track.artistIds.first)
+              : null,
         );
       }
 

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
 import '../../models/media_item.dart';
+import 'track_context_menu.dart';
 
 /// Table-style row for track listings.
 class TrackTableRow extends StatelessWidget {
@@ -25,6 +26,13 @@ class TrackTableRow extends StatelessWidget {
     },
     this.isFavorite = false,
     this.onToggleFavorite,
+    this.onAlbumTap,
+    this.onArtistTap,
+    this.onPlayNext,
+    this.onAddToQueue,
+    this.onGoToAlbum,
+    this.onGoToArtist,
+    this.onRemoveFromPlaylist,
   });
 
   final MediaItem track;
@@ -34,6 +42,13 @@ class TrackTableRow extends StatelessWidget {
   final Set<String> visibleColumns;
   final bool isFavorite;
   final Future<String?> Function()? onToggleFavorite;
+  final VoidCallback? onAlbumTap;
+  final VoidCallback? onArtistTap;
+  final VoidCallback? onPlayNext;
+  final VoidCallback? onAddToQueue;
+  final VoidCallback? onGoToAlbum;
+  final VoidCallback? onGoToArtist;
+  final Future<String?> Function()? onRemoveFromPlaylist;
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +70,39 @@ class TrackTableRow extends StatelessWidget {
       child: InkWell(
         onTap: useSingleTap ? onTap : null,
         onDoubleTap: useSingleTap ? null : onTap,
+        onLongPress: () async {
+          final box = context.findRenderObject() as RenderBox?;
+          if (box == null) return;
+          final position = box.localToGlobal(box.size.center(Offset.zero));
+          await showTrackContextMenu(
+            context: context,
+            position: position,
+            track: track,
+            onTap: onTap,
+            onPlayNext: onPlayNext,
+            onAddToQueue: onAddToQueue,
+            onToggleFavorite: onToggleFavorite,
+            isFavorite: isFavorite,
+            onGoToAlbum: onGoToAlbum,
+            onGoToArtist: onGoToArtist,
+            onRemoveFromPlaylist: onRemoveFromPlaylist,
+          );
+        },
+        onSecondaryTapDown: (details) async {
+          await showTrackContextMenu(
+            context: context,
+            position: details.globalPosition,
+            track: track,
+            onTap: onTap,
+            onPlayNext: onPlayNext,
+            onAddToQueue: onAddToQueue,
+            onToggleFavorite: onToggleFavorite,
+            isFavorite: isFavorite,
+            onGoToAlbum: onGoToAlbum,
+            onGoToArtist: onGoToArtist,
+            onRemoveFromPlaylist: onRemoveFromPlaylist,
+          );
+        },
         hoverColor: ColorTokens.hoverRow(context),
         splashColor: ColorTokens.hoverRow(context),
         child: Container(
@@ -99,13 +147,26 @@ class TrackTableRow extends StatelessWidget {
               if (visibleColumns.contains('artist'))
                 Expanded(
                   flex: 2,
-                  child: Text(
-                    track.artists.join(', '),
-                    style: TextStyle(
-                      color: secondaryColor,
-                      fontSize: 13,
+                  child: GestureDetector(
+                    onTap: onArtistTap,
+                    child: MouseRegion(
+                      cursor: onArtistTap != null
+                          ? SystemMouseCursors.click
+                          : SystemMouseCursors.basic,
+                      child: Text(
+                        track.artists.join(', '),
+                        style: TextStyle(
+                          color: onArtistTap != null
+                              ? Theme.of(context).colorScheme.primary
+                              : secondaryColor,
+                          fontSize: 13,
+                          fontWeight: onArtistTap != null
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               if (visibleColumns.contains('artist')) const SizedBox(width: 16),
@@ -113,13 +174,26 @@ class TrackTableRow extends StatelessWidget {
               if (visibleColumns.contains('album'))
                 Expanded(
                   flex: 2,
-                  child: Text(
-                    track.album,
-                    style: TextStyle(
-                      color: secondaryColor,
-                      fontSize: 13,
+                  child: GestureDetector(
+                    onTap: onAlbumTap,
+                    child: MouseRegion(
+                      cursor: onAlbumTap != null
+                          ? SystemMouseCursors.click
+                          : SystemMouseCursors.basic,
+                      child: Text(
+                        track.album,
+                        style: TextStyle(
+                          color: onAlbumTap != null
+                              ? Theme.of(context).colorScheme.primary
+                              : secondaryColor,
+                          fontSize: 13,
+                          fontWeight: onAlbumTap != null
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               if (visibleColumns.contains('album')) const SizedBox(width: 16),
