@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -28,6 +29,7 @@ Future<void> main() async {
   }
   if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
     logService.info('Initializing MediaKit for desktop platforms');
+    JustAudioMediaKit.ensureInitialized();
     MediaKit.ensureInitialized();
     logService.info('MediaKit initialized for desktop platforms');
   }
