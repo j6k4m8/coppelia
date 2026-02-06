@@ -64,10 +64,20 @@ class PlaybackController {
     CacheStore? cacheStore,
     Map<String, String>? headers,
   }) async {
+    // Build sources in parallel batches - checks cache for all tracks
+    // without sequential blocking
+    const batchSize = 20;
     final sources = <AudioSource>[];
-    for (final item in items) {
-      sources.add(await _buildSource(item, cacheStore, headers));
+
+    for (var i = 0; i < items.length; i += batchSize) {
+      final end = (i + batchSize).clamp(0, items.length);
+      final batch = items.sublist(i, end);
+      final batchSources = await Future.wait(
+        batch.map((item) => _buildSource(item, cacheStore, headers)),
+      );
+      sources.addAll(batchSources);
     }
+
     if (sources.isEmpty) {
       await _player.stop();
       await _player.clearAudioSources();
@@ -196,9 +206,8 @@ class PlaybackController {
       id: item.id,
       title: item.title,
       album: item.album,
-      artist: item.artists.isNotEmpty
-          ? item.artists.join(', ')
-          : 'Unknown Artist',
+      artist:
+          item.artists.isNotEmpty ? item.artists.join(', ') : 'Unknown Artist',
       duration: item.duration,
       artUri: item.imageUrl == null ? null : Uri.parse(item.imageUrl!),
       extras: <String, dynamic>{
