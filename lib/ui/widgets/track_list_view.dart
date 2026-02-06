@@ -80,8 +80,8 @@ class _TrackListViewState extends State<TrackListView> {
       );
     }
 
-    final albumNavEnabled =
-        widget.enableAlbumArtistNav && !state.offlineOnlyFilter;
+    // final albumNavEnabled =
+    //     widget.enableAlbumArtistNav && !state.offlineOnlyFilter;
 
     Widget buildRow(
       BuildContext context,
