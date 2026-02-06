@@ -2270,6 +2270,9 @@ class AppState extends ChangeNotifier {
 
   /// Selects an album and loads its tracks.
   Future<void> selectAlbum(Album album, {bool offlineOnly = false}) async {
+    if (_selectedView != LibraryView.home) {
+      _recordViewHistory(_selectedView);
+    }
     _selectedAlbum = album;
     _selectedSmartList = null;
     _selectedArtist = null;
@@ -2318,6 +2321,9 @@ class AppState extends ChangeNotifier {
 
   /// Selects an artist and loads their tracks.
   Future<void> selectArtist(Artist artist, {bool offlineOnly = false}) async {
+    if (_selectedView != LibraryView.home) {
+      _recordViewHistory(_selectedView);
+    }
     _selectedArtist = artist;
     _selectedSmartList = null;
     _selectedAlbum = null;
@@ -2360,6 +2366,9 @@ class AppState extends ChangeNotifier {
 
   /// Selects a genre and loads its tracks.
   Future<void> selectGenre(Genre genre) async {
+    if (_selectedView != LibraryView.home) {
+      _recordViewHistory(_selectedView);
+    }
     _selectedGenre = genre;
     _selectedSmartList = null;
     _selectedAlbum = null;
