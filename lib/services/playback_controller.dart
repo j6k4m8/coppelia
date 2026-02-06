@@ -64,55 +64,32 @@ class PlaybackController {
     CacheStore? cacheStore,
     Map<String, String>? headers,
   }) async {
-    if (items.isEmpty) {
+    // Build all sources in parallel batches to avoid sequential I/O blocking
+    // while still respecting cache. Batch size limits concurrent disk ops.
+    const batchSize = 20;
+    final sources = <AudioSource>[];
+
+    for (var i = 0; i < items.length; i += batchSize) {
+      final end = (i + batchSize).clamp(0, items.length);
+      final batch = items.sublist(i, end);
+      final batchSources = await Future.wait(
+        batch.map((item) => _buildSource(item, cacheStore, headers)),
+      );
+      sources.addAll(batchSources);
+    }
+
+    if (sources.isEmpty) {
       await _player.stop();
       await _player.clearAudioSources();
       return;
     }
-
-    final targetIndex = startIndex.clamp(0, items.length - 1);
-
-    // Build initial sources for immediate playback (current + next 2)
-    final immediateCount = (targetIndex + 3).clamp(0, items.length);
-    final immediateSources = <AudioSource>[];
-    for (var i = 0; i < immediateCount; i++) {
-      immediateSources.add(await _buildSource(items[i], cacheStore, headers));
-    }
-
-    // Start playback immediately with initial batch
+    final targetIndex = startIndex.clamp(0, sources.length - 1);
     await _player.setAudioSources(
-      immediateSources,
+      sources,
       initialIndex: targetIndex,
       initialPosition: startPosition,
       preload: _gaplessPlayback,
     );
-
-    // Build and append remaining tracks in background batches
-    if (immediateCount < items.length) {
-      _buildRemainingQueue(
-        items.sublist(immediateCount),
-        cacheStore,
-        headers,
-      );
-    }
-  }
-
-  Future<void> _buildRemainingQueue(
-    List<MediaItem> remaining,
-    CacheStore? cacheStore,
-    Map<String, String>? headers,
-  ) async {
-    const batchSize = 20;
-    for (var i = 0; i < remaining.length; i += batchSize) {
-      final end = (i + batchSize).clamp(0, remaining.length);
-      final batch = remaining.sublist(i, end);
-      final batchSources = await Future.wait(
-        batch.map((item) => _buildSource(item, cacheStore, headers)),
-      );
-      for (final source in batchSources) {
-        await _player.addAudioSource(source);
-      }
-    }
   }
 
   /// Enables or disables gapless playback behavior.
