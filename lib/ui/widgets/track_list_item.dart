@@ -64,6 +64,13 @@ class TrackListItem extends StatelessWidget {
             {'title', 'artist', 'album', 'duration', 'favorite'},
         isFavorite: isFavorite,
         onToggleFavorite: onToggleFavorite,
+        onAlbumTap: onAlbumTap,
+        onArtistTap: onArtistTap,
+        onPlayNext: onPlayNext,
+        onAddToQueue: onAddToQueue,
+        onGoToAlbum: onGoToAlbum,
+        onGoToArtist: onGoToArtist,
+        onRemoveFromPlaylist: onRemoveFromPlaylist,
       );
     }
 
