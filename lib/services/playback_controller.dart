@@ -3,6 +3,7 @@ import 'package:just_audio/just_audio.dart';
 
 import '../models/media_item.dart';
 import 'cache_store.dart';
+import 'log_service.dart';
 
 /// Wraps audio playback with queue and state helpers.
 class PlaybackController {
@@ -64,19 +65,29 @@ class PlaybackController {
     CacheStore? cacheStore,
     Map<String, String>? headers,
   }) async {
+    final logService = await LogService.instance;
     // Build all sources in parallel batches to avoid sequential I/O blocking
     // while still respecting cache. Batch size limits concurrent disk ops.
     const batchSize = 20;
     final sources = <AudioSource>[];
+    final startTime = DateTime.now();
 
     for (var i = 0; i < items.length; i += batchSize) {
+      final batchStart = DateTime.now();
       final end = (i + batchSize).clamp(0, items.length);
       final batch = items.sublist(i, end);
       final batchSources = await Future.wait(
         batch.map((item) => _buildSource(item, cacheStore, headers)),
       );
       sources.addAll(batchSources);
+      final batchTime = DateTime.now().difference(batchStart).inMilliseconds;
+      await logService.info(
+          'Queue batch ${i ~/ batchSize + 1}: ${batch.length} tracks in ${batchTime}ms');
     }
+
+    final totalTime = DateTime.now().difference(startTime).inMilliseconds;
+    await logService
+        .info('Total queue build: ${items.length} tracks in ${totalTime}ms');
 
     if (sources.isEmpty) {
       await _player.stop();
