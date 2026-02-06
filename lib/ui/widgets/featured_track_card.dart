@@ -9,6 +9,7 @@ import '../../core/color_tokens.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'media_card.dart';
+import 'track_context_menu.dart';
 
 /// Prominent card for spotlight tracks.
 class FeaturedTrackCard extends StatelessWidget {
@@ -18,6 +19,13 @@ class FeaturedTrackCard extends StatelessWidget {
     required this.track,
     required this.onTap,
     this.onArtistTap,
+    this.onAlbumTap,
+    this.onPlayNext,
+    this.onAddToQueue,
+    this.onToggleFavorite,
+    this.isFavorite = false,
+    this.onGoToAlbum,
+    this.onGoToArtist,
     this.layout = MediaCardLayout.horizontal,
     this.artAspectRatio,
     this.expand = false,
@@ -31,6 +39,27 @@ class FeaturedTrackCard extends StatelessWidget {
 
   /// Optional handler for tapping the artist label.
   final VoidCallback? onArtistTap;
+  
+  /// Optional handler to navigate to the album.
+  final VoidCallback? onAlbumTap;
+
+  /// Optional handler for play next.
+  final VoidCallback? onPlayNext;
+
+  /// Optional handler to add to queue.
+  final VoidCallback? onAddToQueue;
+
+  /// Optional handler to toggle favorite.
+  final Future<String?> Function()? onToggleFavorite;
+
+  /// Whether this track is favorited.
+  final bool isFavorite;
+
+  /// Optional handler for context menu navigation to album.
+  final VoidCallback? onGoToAlbum;
+
+  /// Optional handler for context menu navigation to artist.
+  final VoidCallback? onGoToArtist;
 
   /// Card layout style.
   final MediaCardLayout layout;
@@ -61,6 +90,20 @@ class FeaturedTrackCard extends StatelessWidget {
       onTap: useSingleTap ? onTap : null,
       onDoubleTap: useSingleTap ? null : onTap,
       onSubtitleTap: onArtistTap,
+      onContextMenu: (position) async {
+        await showTrackContextMenu(
+          context: context,
+          position: position,
+          track: track,
+          onTap: onTap,
+          onPlayNext: onPlayNext,
+          onAddToQueue: onAddToQueue,
+          onToggleFavorite: onToggleFavorite,
+          isFavorite: isFavorite,
+          onGoToAlbum: onGoToAlbum,
+          onGoToArtist: onGoToArtist,
+        );
+      },
       width: cardWidth,
       artAspectRatio:
           layout == MediaCardLayout.vertical ? artAspectRatio : null,

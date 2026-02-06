@@ -146,6 +146,7 @@ class LibraryOverview extends StatelessWidget {
       required List<MediaItem> tracks,
       required void Function(MediaItem track) onTap,
       VoidCallback? Function(MediaItem track)? onArtistTap,
+      VoidCallback? Function(MediaItem track)? onAlbumTap,
     }) {
       if (state.homeShelfLayout == HomeShelfLayout.grid) {
         return Padding(
@@ -178,6 +179,20 @@ class LibraryOverview extends StatelessWidget {
                     track: track,
                     onTap: () => onTap(track),
                     onArtistTap: onArtistTap?.call(track),
+                    onAlbumTap: onAlbumTap?.call(track),
+                    onPlayNext: () => state.playNext(track),
+                    onAddToQueue: () => state.enqueueTrack(track),
+                    onToggleFavorite: () => state.setTrackFavorite(
+                      track,
+                      !state.isFavoriteTrack(track.id),
+                    ),
+                    isFavorite: state.isFavoriteTrack(track.id),
+                    onGoToAlbum: track.albumId == null
+                        ? null
+                        : () => state.selectAlbumById(track.albumId!),
+                    onGoToArtist: track.artistIds.isEmpty
+                        ? null
+                        : () => state.selectArtistById(track.artistIds.first),
                     expand: true,
                     layout: MediaCardLayout.vertical,
                     artAspectRatio: 2.6,
@@ -204,6 +219,20 @@ class LibraryOverview extends StatelessWidget {
                 track: track,
                 onTap: () => onTap(track),
                 onArtistTap: onArtistTap?.call(track),
+                onAlbumTap: onAlbumTap?.call(track),
+                onPlayNext: () => state.playNext(track),
+                onAddToQueue: () => state.enqueueTrack(track),
+                onToggleFavorite: () => state.setTrackFavorite(
+                  track,
+                  !state.isFavoriteTrack(track.id),
+                ),
+                isFavorite: state.isFavoriteTrack(track.id),
+                onGoToAlbum: track.albumId == null
+                    ? null
+                    : () => state.selectAlbumById(track.albumId!),
+                onGoToArtist: track.artistIds.isEmpty
+                    ? null
+                    : () => state.selectArtistById(track.artistIds.first),
               );
             },
           ),
@@ -244,6 +273,12 @@ class LibraryOverview extends StatelessWidget {
           buildShelf(
             tracks: state.featuredTracks,
             onTap: state.playFeatured,
+            onArtistTap: (track) => track.artistIds.isEmpty
+                ? null
+                : () => state.selectArtistById(track.artistIds.first),
+            onAlbumTap: (track) => track.albumId == null
+                ? null
+                : () => state.selectAlbumById(track.albumId!),
           ),
         ]);
       },
@@ -282,6 +317,9 @@ class LibraryOverview extends StatelessWidget {
             onArtistTap: (track) => track.artistIds.isEmpty
                 ? null
                 : () => state.selectArtistById(track.artistIds.first),
+            onAlbumTap: (track) => track.albumId == null
+                ? null
+                : () => state.selectAlbumById(track.albumId!),
           ),
         ]);
       },
