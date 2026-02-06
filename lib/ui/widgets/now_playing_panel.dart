@@ -955,16 +955,18 @@ class _Controls extends StatelessWidget {
                 ),
               ),
               if (isPreparingPlayback)
-                SizedBox(
-                  width: clamped(52, min: 42, max: 62),
-                  height: clamped(52, min: 42, max: 62),
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withValues(alpha: 0.6),
+                IgnorePointer(
+                  child: SizedBox(
+                    width: clamped(52, min: 42, max: 62),
+                    height: clamped(52, min: 42, max: 62),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.6),
+                      ),
                     ),
                   ),
                 ),
