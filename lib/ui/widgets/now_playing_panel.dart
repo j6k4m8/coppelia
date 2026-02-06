@@ -145,6 +145,7 @@ class _SidePanel extends StatelessWidget {
           Center(
             child: _Controls(
               isPlaying: state.isPlaying,
+              isPreparingPlayback: state.isPreparingPlayback,
               onPlayPause: state.togglePlayback,
               onNext: state.nextTrack,
               onPrevious: state.previousTrack,
@@ -265,6 +266,7 @@ class _BottomBar extends StatelessWidget {
                       ),
                       _Controls(
                         isPlaying: state.isPlaying,
+                        isPreparingPlayback: state.isPreparingPlayback,
                         onPlayPause: state.togglePlayback,
                         onNext: state.nextTrack,
                         onPrevious: state.previousTrack,
@@ -339,6 +341,7 @@ class _BottomBar extends StatelessWidget {
                     ),
                     _Controls(
                       isPlaying: state.isPlaying,
+                      isPreparingPlayback: state.isPreparingPlayback,
                       onPlayPause: state.togglePlayback,
                       onNext: state.nextTrack,
                       onPrevious: state.previousTrack,
@@ -874,8 +877,7 @@ class _Artwork extends StatelessWidget {
     final imageUrl = track?.imageUrl;
     return _NowPlayingArtworkImage(
       imageUrl: imageUrl,
-      borderRadius:
-          context.scaledRadius(clamped(24, min: 14, max: 30)),
+      borderRadius: context.scaledRadius(clamped(24, min: 14, max: 30)),
       iconSize: clamped(48, min: 34, max: 60),
       useAspectRatio: true,
     );
@@ -897,8 +899,7 @@ class _MiniArtwork extends StatelessWidget {
     return _NowPlayingArtworkImage(
       imageUrl: imageUrl,
       size: artSize,
-      borderRadius:
-          context.scaledRadius(clamped(14, min: 10, max: 18)),
+      borderRadius: context.scaledRadius(clamped(14, min: 10, max: 18)),
       iconSize: clamped(24, min: 16, max: 28),
     );
   }
@@ -907,12 +908,14 @@ class _MiniArtwork extends StatelessWidget {
 class _Controls extends StatelessWidget {
   const _Controls({
     required this.isPlaying,
+    required this.isPreparingPlayback,
     required this.onPlayPause,
     required this.onNext,
     required this.onPrevious,
   });
 
   final bool isPlaying;
+  final bool isPreparingPlayback;
   final VoidCallback onPlayPause;
   final VoidCallback onNext;
   final VoidCallback onPrevious;
@@ -932,17 +935,42 @@ class _Controls extends StatelessWidget {
           icon: const Icon(Icons.skip_previous),
           onPressed: onPrevious,
         ),
-        FilledButton(
-          onPressed: onPlayPause,
-          style: FilledButton.styleFrom(
-            shape: const CircleBorder(),
-            padding: EdgeInsets.all(
-              clamped(14, min: 10, max: 18),
-            ),
-          ),
-          child: Icon(
-            isPlaying ? Icons.pause : Icons.play_arrow,
-            size: clamped(22, min: 16, max: 26),
+        SizedBox(
+          width: clamped(52, min: 42, max: 62),
+          height: clamped(52, min: 42, max: 62),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              FilledButton(
+                onPressed: onPlayPause,
+                style: FilledButton.styleFrom(
+                  shape: const CircleBorder(),
+                  padding: EdgeInsets.all(
+                    clamped(14, min: 10, max: 18),
+                  ),
+                ),
+                child: Icon(
+                  isPlaying ? Icons.pause : Icons.play_arrow,
+                  size: clamped(22, min: 16, max: 26),
+                ),
+              ),
+              if (isPreparingPlayback)
+                IgnorePointer(
+                  child: SizedBox(
+                    width: clamped(52, min: 42, max: 62),
+                    height: clamped(52, min: 42, max: 62),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         IconButton(
@@ -1134,6 +1162,7 @@ class _NowPlayingExpandedView extends StatelessWidget {
                       alignment: Alignment.center,
                       child: _Controls(
                         isPlaying: state.isPlaying,
+                        isPreparingPlayback: state.isPreparingPlayback,
                         onPlayPause: state.togglePlayback,
                         onNext: state.nextTrack,
                         onPrevious: state.previousTrack,
@@ -1185,8 +1214,7 @@ class _ExpandedArtwork extends StatelessWidget {
     double clamped(double value, {double min = 0, double max = 999}) =>
         (value * densityScale).clamp(min, max);
     final imageUrl = track?.imageUrl;
-    final radius =
-        context.scaledRadius(clamped(28, min: 18, max: 34));
+    final radius = context.scaledRadius(clamped(28, min: 18, max: 34));
     return _NowPlayingArtworkImage(
       imageUrl: imageUrl,
       size: size,
