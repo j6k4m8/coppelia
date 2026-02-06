@@ -3715,16 +3715,18 @@ class AppState extends ChangeNotifier {
       }
     });
     _currentIndexSubscription = _playback.currentIndexStream.listen((index) {
-      LogService.instance.then((log) => log.info(
-          'Current index changed to $index (queue size: ${_queue.length})'));
-
       if (index != null && index >= 0 && index < _queue.length) {
         final next = _queue[index];
-        final formatInfo = next.container != null || next.codec != null
-            ? ' [${next.container ?? "unknown"}/${next.codec ?? "unknown"}]'
-            : '';
-        LogService.instance.then((log) => log.info(
-            'Now playing: "${next.title}" by ${next.artists.join(", ")}$formatInfo'));
+        // Only log if the track actually changed
+        if (_nowPlaying?.id != next.id) {
+          final formatInfo = next.container != null || next.codec != null
+              ? ' [${next.container ?? "unknown"}/${next.codec ?? "unknown"}]'
+              : '';
+          LogService.instance.then((log) => log.info(
+              'Current index changed to $index (queue size: ${_queue.length})'));
+          LogService.instance.then((log) => log.info(
+              'Now playing: "${next.title}" by ${next.artists.join(", ")}$formatInfo'));
+        }
         _setNowPlaying(next, notify: false);
         unawaited(_cacheStore.handlePlaybackAdvance(_queue, index));
       }
