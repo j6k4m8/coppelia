@@ -12,6 +12,7 @@ import '../models/playlist.dart';
 import '../models/search_results.dart';
 import '../core/app_info.dart';
 import 'log_service.dart';
+import 'search_service.dart';
 
 /// Client wrapper for Jellyfin REST APIs.
 class JellyfinClient {
@@ -1075,11 +1076,12 @@ class JellyfinClient {
     }
 
     final results = SearchResults(
-      tracks: tracks,
-      albums: albums,
-      artists: artists,
-      genres: genres,
-      playlists: playlists,
+      tracks: SearchService.rankTracks(query: query, tracks: tracks),
+      albums: SearchService.rankAlbums(query: query, albums: albums),
+      artists: SearchService.rankArtists(query: query, artists: artists),
+      genres: SearchService.rankGenres(query: query, genres: genres),
+      playlists:
+          SearchService.rankPlaylists(query: query, playlists: playlists),
     );
 
     await LogService.instance.then((log) =>

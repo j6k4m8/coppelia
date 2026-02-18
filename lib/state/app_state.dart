@@ -107,6 +107,7 @@ class AppState extends ChangeNotifier {
   bool _isLoadingTracks = false;
   bool _hasMoreTracks = true;
   int _tracksOffset = 0;
+  bool _libraryTracksFromOfflineSnapshot = false;
   List<MediaItem> _albumTracks = [];
   List<MediaItem> _artistTracks = [];
   List<MediaItem> _genreTracks = [];
@@ -776,6 +777,7 @@ class AppState extends ChangeNotifier {
     _isLoadingTracks = false;
     _hasMoreTracks = true;
     _tracksOffset = 0;
+    _libraryTracksFromOfflineSnapshot = false;
     _albumTracks = [];
     _artistTracks = [];
     _genreTracks = [];
@@ -1499,22 +1501,11 @@ class AppState extends ChangeNotifier {
       await LogService.instance.then((log) => log.info(
           'Search: Local search for: "$trimmed" (offline=$_offlineMode, preferLocal=$_preferLocalSearch)'));
 
-      // Collect all available tracks from various sources
-      final allTracks = SearchService.collectUniqueTracks([
-        _libraryTracks,
-        _recentTracks,
-        _featuredTracks,
-        _favoriteTracks,
-        _playlistTracks,
-        _albumTracks,
-        _artistTracks,
-        _genreTracks,
-        _smartListTracks,
-      ]);
+      await _ensureLocalSearchSourceLoaded();
 
       _searchResults = SearchService.searchLocal(
         query: trimmed,
-        allTracks: allTracks,
+        allTracks: _libraryTracks,
         albums: _albums,
         artists: _artists,
         genres: _genres,
@@ -1548,6 +1539,44 @@ class AppState extends ChangeNotifier {
       _searchResults = const SearchResults();
     } finally {
       notifyListeners();
+    }
+  }
+
+  Future<void> _ensureLocalSearchSourceLoaded() async {
+    if (_offlineMode || _session == null) {
+      return;
+    }
+
+    if (_albums.isEmpty) {
+      await loadAlbums();
+    }
+    if (_artists.isEmpty) {
+      await loadArtists();
+    }
+    if (_genres.isEmpty) {
+      await loadGenres();
+    }
+    if (_playlists.isEmpty) {
+      try {
+        final playlists = await _client.fetchPlaylists();
+        _playlists = playlists;
+        await _cacheStore.savePlaylists(playlists);
+      } catch (_) {
+        // Keep cached playlists if refresh fails.
+      }
+    }
+
+    if (_libraryTracksFromOfflineSnapshot || _libraryTracks.isEmpty) {
+      await loadLibraryTracks(reset: true);
+    }
+
+    while (_hasMoreTracks) {
+      final beforeOffset = _tracksOffset;
+      final beforeCount = _libraryTracks.length;
+      await loadLibraryTracks();
+      if (_tracksOffset == beforeOffset && _libraryTracks.length == beforeCount) {
+        break;
+      }
     }
   }
 
@@ -1659,6 +1688,7 @@ class AppState extends ChangeNotifier {
       _tracksOffset = offlineTracks.length;
       _hasMoreTracks = false;
       _isLoadingTracks = false;
+      _libraryTracksFromOfflineSnapshot = true;
       notifyListeners();
       return;
     }
@@ -1673,6 +1703,7 @@ class AppState extends ChangeNotifier {
       _libraryTracks = [];
       _tracksOffset = 0;
       _hasMoreTracks = true;
+      _libraryTracksFromOfflineSnapshot = false;
       notifyListeners();
     }
     _isLoadingTracks = true;
@@ -1688,6 +1719,7 @@ class AppState extends ChangeNotifier {
       } else {
         _libraryTracks = [..._libraryTracks, ...tracks];
       }
+      _libraryTracksFromOfflineSnapshot = false;
       _tracksOffset += tracks.length;
       if (tracks.length < _tracksPageSize) {
         _hasMoreTracks = false;
@@ -2809,6 +2841,12 @@ class AppState extends ChangeNotifier {
       return;
     }
     _offlineOnlyFilter = false;
+    _libraryTracks = [];
+    _tracksOffset = 0;
+    _hasMoreTracks = true;
+    _isLoadingTracks = false;
+    _tracksLoadCompleter = null;
+    _libraryTracksFromOfflineSnapshot = false;
     notifyListeners();
     if (_session != null) {
       unawaited(refreshLibrary());
@@ -3605,6 +3643,7 @@ class AppState extends ChangeNotifier {
     _tracksOffset = offlineTracks.length;
     _hasMoreTracks = false;
     _isLoadingTracks = false;
+    _libraryTracksFromOfflineSnapshot = true;
     _featuredTracks = offlineTracks;
     _recentTracks = offlineTracks;
     _albums = offlineAlbums;
