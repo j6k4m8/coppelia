@@ -25,7 +25,14 @@ class SearchResultsView extends StatefulWidget {
 }
 
 class _SearchResultsViewState extends State<SearchResultsView> {
+  static const _maxInitialTracks = 20;
+  static const _maxInitialGridItems = 24;
+
   bool _showAllTracks = false;
+  bool _showAllAlbums = false;
+  bool _showAllArtists = false;
+  bool _showAllGenres = false;
+  bool _showAllPlaylists = false;
   String _lastSearchQuery = '';
   Set<String> _visibleColumns = {
     'title',
@@ -43,20 +50,38 @@ class _SearchResultsViewState extends State<SearchResultsView> {
     if (state.searchQuery != _lastSearchQuery) {
       _lastSearchQuery = state.searchQuery;
       _showAllTracks = false;
+      _showAllAlbums = false;
+      _showAllArtists = false;
+      _showAllGenres = false;
+      _showAllPlaylists = false;
     }
 
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     final leftGutter = (32 * densityScale).clamp(16.0, 40.0).toDouble();
     final rightGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
-    if (state.isSearching && state.searchResults == null) {
+    final results = state.searchResults;
+    final isLoading = state.isSearchLoading;
+    if (isLoading && results == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    final results = state.searchResults;
+    if (state.searchQuery.trim().isEmpty && !isLoading) {
+      return Center(
+        child: Text(
+          'Search your library',
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(color: ColorTokens.textSecondary(context)),
+        ),
+      );
+    }
     if (results == null || results.isEmpty) {
       return Center(
         child: Text(
-          'No results for "${state.searchQuery}"',
+          isLoading
+              ? 'Searching for "${state.searchQuery}"...'
+              : 'No results for "${state.searchQuery}"',
           style: Theme.of(context)
               .textTheme
               .titleMedium
@@ -80,6 +105,25 @@ class _SearchResultsViewState extends State<SearchResultsView> {
                   ?.copyWith(color: ColorTokens.textSecondary(context)),
             ),
           ),
+          if (isLoading) ...[
+            SizedBox(height: space(8)),
+            Row(
+              children: [
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: space(8)),
+                Text(
+                  'Loading full library results...',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: ColorTokens.textSecondary(context),
+                      ),
+                ),
+              ],
+            ),
+          ],
           SizedBox(height: space(16)),
           if (results.tracks.isNotEmpty) ...[
             const SectionHeader(title: 'Tracks'),
@@ -94,11 +138,10 @@ class _SearchResultsViewState extends State<SearchResultsView> {
               ),
             Builder(
               builder: (context) {
-                const maxInitialTracks = 20;
                 final displayedTracks = _showAllTracks
                     ? results.tracks
-                    : results.tracks.take(maxInitialTracks).toList();
-                final hasMore = results.tracks.length > maxInitialTracks;
+                    : results.tracks.take(_maxInitialTracks).toList();
+                final hasMore = results.tracks.length > _maxInitialTracks;
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,7 +196,7 @@ class _SearchResultsViewState extends State<SearchResultsView> {
                             });
                           },
                           child: Text(
-                            'Show ${results.tracks.length - maxInitialTracks} more tracks',
+                            'Show ${results.tracks.length - _maxInitialTracks} more tracks',
                           ),
                         ),
                       ),
@@ -167,28 +210,57 @@ class _SearchResultsViewState extends State<SearchResultsView> {
           if (results.albums.isNotEmpty) ...[
             const SectionHeader(title: 'Albums'),
             SizedBox(height: space(12)),
-            AdaptiveGrid(
-              itemCount: results.albums.length,
-              aspectRatio: 1.05,
-              spacing: space(16),
-              targetMinWidth: space(190).clamp(150.0, 240.0),
-              itemBuilder: (context, index) {
-                final album = results.albums[index];
-                return LibraryCard(
-                  title: album.name,
-                  subtitle: album.artistName,
-                  imageUrl: album.imageUrl,
-                  icon: Icons.album,
-                  onTap: () => state.selectAlbum(album),
-                  onSubtitleTap: canLinkArtist(album)
-                      ? () => state.selectArtistByName(album.artistName)
-                      : null,
-                  onContextMenu: (position) => showAlbumContextMenu(
-                    context,
-                    position,
-                    album,
-                    state,
-                  ),
+            Builder(
+              builder: (context) {
+                final displayedAlbums = _showAllAlbums
+                    ? results.albums
+                    : results.albums.take(_maxInitialGridItems).toList();
+                final hasMore = results.albums.length > _maxInitialGridItems;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AdaptiveGrid(
+                      itemCount: displayedAlbums.length,
+                      aspectRatio: 1.05,
+                      spacing: space(16),
+                      targetMinWidth: space(190).clamp(150.0, 240.0),
+                      itemBuilder: (context, index) {
+                        final album = displayedAlbums[index];
+                        return LibraryCard(
+                          title: album.name,
+                          subtitle: album.artistName,
+                          imageUrl: album.imageUrl,
+                          icon: Icons.album,
+                          onTap: () => state.selectAlbum(album),
+                          onSubtitleTap: canLinkArtist(album)
+                              ? () => state.selectArtistByName(album.artistName)
+                              : null,
+                          onContextMenu: (position) => showAlbumContextMenu(
+                            context,
+                            position,
+                            album,
+                            state,
+                          ),
+                        );
+                      },
+                    ),
+                    if (hasMore && !_showAllAlbums) ...[
+                      SizedBox(height: space(12)),
+                      Center(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _showAllAlbums = true;
+                            });
+                          },
+                          child: Text(
+                            'Show ${results.albums.length - _maxInitialGridItems} more albums',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 );
               },
             ),
@@ -197,25 +269,54 @@ class _SearchResultsViewState extends State<SearchResultsView> {
           if (results.artists.isNotEmpty) ...[
             const SectionHeader(title: 'Artists'),
             SizedBox(height: space(12)),
-            AdaptiveGrid(
-              itemCount: results.artists.length,
-              aspectRatio: 1.05,
-              spacing: space(16),
-              targetMinWidth: space(190).clamp(150.0, 240.0),
-              itemBuilder: (context, index) {
-                final artist = results.artists[index];
-                return LibraryCard(
-                  title: artist.name,
-                  subtitle: formatArtistSubtitle(artist),
-                  imageUrl: artist.imageUrl,
-                  icon: Icons.people_alt,
-                  onTap: () => state.selectArtist(artist),
-                  onContextMenu: (position) => showArtistContextMenu(
-                    context,
-                    position,
-                    artist,
-                    state,
-                  ),
+            Builder(
+              builder: (context) {
+                final displayedArtists = _showAllArtists
+                    ? results.artists
+                    : results.artists.take(_maxInitialGridItems).toList();
+                final hasMore = results.artists.length > _maxInitialGridItems;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AdaptiveGrid(
+                      itemCount: displayedArtists.length,
+                      aspectRatio: 1.05,
+                      spacing: space(16),
+                      targetMinWidth: space(190).clamp(150.0, 240.0),
+                      itemBuilder: (context, index) {
+                        final artist = displayedArtists[index];
+                        return LibraryCard(
+                          title: artist.name,
+                          subtitle: formatArtistSubtitle(artist),
+                          imageUrl: artist.imageUrl,
+                          icon: Icons.people_alt,
+                          onTap: () => state.selectArtist(artist),
+                          onContextMenu: (position) => showArtistContextMenu(
+                            context,
+                            position,
+                            artist,
+                            state,
+                          ),
+                        );
+                      },
+                    ),
+                    if (hasMore && !_showAllArtists) ...[
+                      SizedBox(height: space(12)),
+                      Center(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _showAllArtists = true;
+                            });
+                          },
+                          child: Text(
+                            'Show ${results.artists.length - _maxInitialGridItems} more artists',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 );
               },
             ),
@@ -224,19 +325,48 @@ class _SearchResultsViewState extends State<SearchResultsView> {
           if (results.genres.isNotEmpty) ...[
             const SectionHeader(title: 'Genres'),
             SizedBox(height: space(12)),
-            AdaptiveGrid(
-              itemCount: results.genres.length,
-              aspectRatio: 1.05,
-              spacing: space(16),
-              targetMinWidth: space(190).clamp(150.0, 240.0),
-              itemBuilder: (context, index) {
-                final genre = results.genres[index];
-                return LibraryCard(
-                  title: genre.name,
-                  subtitle: '${genre.trackCount} tracks',
-                  imageUrl: genre.imageUrl,
-                  icon: Icons.auto_awesome_motion,
-                  onTap: () => state.selectGenre(genre),
+            Builder(
+              builder: (context) {
+                final displayedGenres = _showAllGenres
+                    ? results.genres
+                    : results.genres.take(_maxInitialGridItems).toList();
+                final hasMore = results.genres.length > _maxInitialGridItems;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AdaptiveGrid(
+                      itemCount: displayedGenres.length,
+                      aspectRatio: 1.05,
+                      spacing: space(16),
+                      targetMinWidth: space(190).clamp(150.0, 240.0),
+                      itemBuilder: (context, index) {
+                        final genre = displayedGenres[index];
+                        return LibraryCard(
+                          title: genre.name,
+                          subtitle: '${genre.trackCount} tracks',
+                          imageUrl: genre.imageUrl,
+                          icon: Icons.auto_awesome_motion,
+                          onTap: () => state.selectGenre(genre),
+                        );
+                      },
+                    ),
+                    if (hasMore && !_showAllGenres) ...[
+                      SizedBox(height: space(12)),
+                      Center(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _showAllGenres = true;
+                            });
+                          },
+                          child: Text(
+                            'Show ${results.genres.length - _maxInitialGridItems} more genres',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 );
               },
             ),
@@ -245,16 +375,46 @@ class _SearchResultsViewState extends State<SearchResultsView> {
           if (results.playlists.isNotEmpty) ...[
             const SectionHeader(title: 'Playlists'),
             SizedBox(height: space(12)),
-            AdaptiveGrid(
-              itemCount: results.playlists.length,
-              aspectRatio: 1.05,
-              spacing: space(16),
-              targetMinWidth: space(190).clamp(150.0, 240.0),
-              itemBuilder: (context, index) {
-                final playlist = results.playlists[index];
-                return PlaylistTile(
-                  playlist: playlist,
-                  onTap: () => state.selectPlaylist(playlist),
+            Builder(
+              builder: (context) {
+                final displayedPlaylists = _showAllPlaylists
+                    ? results.playlists
+                    : results.playlists.take(_maxInitialGridItems).toList();
+                final hasMore =
+                    results.playlists.length > _maxInitialGridItems;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AdaptiveGrid(
+                      itemCount: displayedPlaylists.length,
+                      aspectRatio: 1.05,
+                      spacing: space(16),
+                      targetMinWidth: space(190).clamp(150.0, 240.0),
+                      itemBuilder: (context, index) {
+                        final playlist = displayedPlaylists[index];
+                        return PlaylistTile(
+                          playlist: playlist,
+                          onTap: () => state.selectPlaylist(playlist),
+                        );
+                      },
+                    ),
+                    if (hasMore && !_showAllPlaylists) ...[
+                      SizedBox(height: space(12)),
+                      Center(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _showAllPlaylists = true;
+                            });
+                          },
+                          child: Text(
+                            'Show ${results.playlists.length - _maxInitialGridItems} more playlists',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 );
               },
             ),
