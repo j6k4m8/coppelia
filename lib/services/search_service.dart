@@ -21,6 +21,8 @@ class SearchService {
   static const _prefixMatchBonus = 80;
   static const _wordMatchBonus = 45;
   static const _containsMatchBonus = 25;
+  static const _combinedPhraseMatchBonus = 90;
+  static const _combinedPrefixMatchBonus = 130;
 
   /// Searches across all provided library data using fuzzy matching.
   static SearchResults searchLocal({
@@ -184,18 +186,97 @@ class SearchService {
     required String query,
     required List<_SearchField> fields,
   }) {
-    var best = 0;
-    for (final field in fields) {
+    final preparedFields = fields
+        .map((field) {
+          final text = _normalize(field.value);
+          return (
+            text: text,
+            tokens: _tokenize(text),
+            priority: field.priorityBonus,
+          );
+        })
+        .where((field) => field.text.isNotEmpty)
+        .toList();
+    if (preparedFields.isEmpty) {
+      return 0;
+    }
+
+    var bestFieldScore = 0;
+    for (final field in preparedFields) {
       final score = _scoreField(
         query: query,
-        field: _normalize(field.value),
-        priorityBonus: field.priorityBonus,
+        field: field.text,
+        priorityBonus: field.priority,
       );
-      if (score > best) {
-        best = score;
+      if (score > bestFieldScore) {
+        bestFieldScore = score;
       }
     }
-    return best;
+
+    final queryTokens = _tokenize(query);
+    if (queryTokens.isEmpty) {
+      return bestFieldScore;
+    }
+
+    final combinedText = preparedFields.map((field) => field.text).join(' ');
+    final combinedTokens = _tokenize(combinedText);
+
+    var exactTokenMatches = 0;
+    var prefixTokenMatches = 0;
+    var priorityCoverageBonus = 0;
+    for (final queryToken in queryTokens) {
+      if (combinedTokens.contains(queryToken)) {
+        exactTokenMatches += 1;
+      } else if (combinedTokens.any((token) => token.startsWith(queryToken))) {
+        prefixTokenMatches += 1;
+      }
+
+      var tokenBestPriority = 0;
+      for (final field in preparedFields) {
+        if (field.tokens.contains(queryToken) ||
+            field.tokens.any((token) => token.startsWith(queryToken))) {
+          if (field.priority > tokenBestPriority) {
+            tokenBestPriority = field.priority;
+          }
+        }
+      }
+      priorityCoverageBonus += tokenBestPriority;
+    }
+    priorityCoverageBonus = (priorityCoverageBonus * 6).clamp(0, 240);
+
+    final tokenCoverageBonus =
+        (exactTokenMatches * 24) + (prefixTokenMatches * 10);
+    final orderedTokenMatches =
+        _countOrderedTokenMatches(queryTokens, combinedTokens);
+    var orderedTokenBonus = orderedTokenMatches * 12;
+    if (orderedTokenMatches == queryTokens.length) {
+      orderedTokenBonus += 60;
+    }
+
+    var phraseBonus = 0;
+    if (combinedText.startsWith(query)) {
+      phraseBonus = _combinedPrefixMatchBonus;
+    } else if (_containsWord(combinedText, query)) {
+      phraseBonus = _combinedPhraseMatchBonus;
+    } else if (combinedText.contains(query)) {
+      phraseBonus = _containsMatchBonus;
+    }
+
+    final combinedFuzzyScore = ratio(query, combinedText);
+    final hasLexicalSignal =
+        exactTokenMatches > 0 || prefixTokenMatches > 0 || phraseBonus > 0;
+    final combinedFuzzyContribution =
+        hasLexicalSignal ? (combinedFuzzyScore ~/ 2) : 0;
+    if (!hasLexicalSignal && bestFieldScore < 60) {
+      return 0;
+    }
+
+    return bestFieldScore +
+        combinedFuzzyContribution +
+        tokenCoverageBonus +
+        orderedTokenBonus +
+        priorityCoverageBonus +
+        phraseBonus;
   }
 
   static int _scoreField({
@@ -217,18 +298,49 @@ class SearchService {
       matchBonus = _wordMatchBonus;
     } else if (field.contains(query)) {
       matchBonus = _containsMatchBonus;
+    } else if (query.contains(field) && field.length >= 4) {
+      matchBonus = _containsMatchBonus;
     }
 
-    final effectivePriorityBonus = matchBonus > 0 ? priorityBonus : 0;
+    final effectivePriorityBonus = matchBonus > 0 ? (priorityBonus * 4) : 0;
     return fuzzyScore + matchBonus + effectivePriorityBonus;
   }
 
   static bool _containsWord(String field, String query) {
-    final pattern =
-        '(^|[^a-z0-9])${RegExp.escape(query)}([^a-z0-9]|\$)';
+    final pattern = '(^| )${RegExp.escape(query)}( |\$)';
     return RegExp(pattern).hasMatch(field);
   }
 
+  static int _countOrderedTokenMatches(
+    List<String> queryTokens,
+    List<String> fieldTokens,
+  ) {
+    if (queryTokens.isEmpty || fieldTokens.isEmpty) {
+      return 0;
+    }
+    var queryIndex = 0;
+    for (final fieldToken in fieldTokens) {
+      if (queryIndex >= queryTokens.length) {
+        break;
+      }
+      final queryToken = queryTokens[queryIndex];
+      if (fieldToken == queryToken || fieldToken.startsWith(queryToken)) {
+        queryIndex += 1;
+      }
+    }
+    return queryIndex;
+  }
+
+  static List<String> _tokenize(String value) =>
+      value.split(' ').where((token) => token.isNotEmpty).toList();
+
   static String _normalize(String value) =>
-      value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+      value
+          .trim()
+          .toLowerCase()
+          .replaceAll('&', ' and ')
+          .replaceAll('+', ' and ')
+          .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
 }

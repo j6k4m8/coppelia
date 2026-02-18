@@ -86,8 +86,10 @@ class AppState extends ChangeNotifier {
   Genre? _selectedGenre;
   String _searchQuery = '';
   bool _isSearching = false;
+  bool _isSearchLoading = false;
   SearchResults? _searchResults;
   int _searchFocusRequest = 0;
+  int _searchRequestId = 0;
   LoopMode _repeatMode = LoopMode.off;
 
   void _notifyListenersLater() {
@@ -379,6 +381,9 @@ class AppState extends ChangeNotifier {
 
   /// True while search results are loading.
   bool get isSearching => _isSearching;
+
+  /// True while a search request is actively loading data.
+  bool get isSearchLoading => _isSearchLoading;
 
   /// Search results, when available.
   SearchResults? get searchResults => _searchResults;
@@ -764,6 +769,7 @@ class AppState extends ChangeNotifier {
     _searchQuery = '';
     _searchResults = null;
     _isSearching = false;
+    _isSearchLoading = false;
     _playlistTracks = [];
     _smartListTracks = [];
     _featuredTracks = [];
@@ -1481,6 +1487,7 @@ class AppState extends ChangeNotifier {
   /// Performs a search across the library.
   Future<void> searchLibrary(String query) async {
     final trimmed = query.trim();
+    final requestId = ++_searchRequestId;
 
     // Always enter search mode when this is called
     if (!_isSearching) {
@@ -1491,26 +1498,24 @@ class AppState extends ChangeNotifier {
       // Clear results but stay in search view
       _searchQuery = '';
       _searchResults = null;
+      _isSearchLoading = false;
       notifyListeners();
       return;
     }
     _searchQuery = query;
+    _isSearchLoading = true;
+    notifyListeners();
 
     // Use local search if offline OR if prefer local search is enabled
     if (_offlineMode || _preferLocalSearch) {
       await LogService.instance.then((log) => log.info(
           'Search: Local search for: "$trimmed" (offline=$_offlineMode, preferLocal=$_preferLocalSearch)'));
 
-      await _ensureLocalSearchSourceLoaded();
-
-      _searchResults = SearchService.searchLocal(
-        query: trimmed,
-        allTracks: _libraryTracks,
-        albums: _albums,
-        artists: _artists,
-        genres: _genres,
-        playlists: _playlists,
-      );
+      _publishLocalSearchResults(trimmed, requestId);
+      await _ensureLocalSearchSourceLoaded(trimmed, requestId);
+      if (!_isSearchRequestActive(requestId, trimmed)) {
+        return;
+      }
 
       await LogService.instance.then((log) => log.info(
           'Search: Local results - ${_searchResults?.tracks.length ?? 0} tracks, '
@@ -1519,48 +1524,112 @@ class AppState extends ChangeNotifier {
           '${_searchResults?.genres.length ?? 0} genres, '
           '${_searchResults?.playlists.length ?? 0} playlists'));
 
+      _isSearchLoading = false;
       notifyListeners();
       return;
     }
-
-    notifyListeners();
 
     await LogService.instance.then(
         (log) => log.info('Search: User initiated search for: "$trimmed"'));
 
     try {
-      _searchResults = await _client.searchLibrary(trimmed);
+      final results = await _client.searchLibrary(trimmed);
+      if (!_isSearchRequestActive(requestId, trimmed)) {
+        return;
+      }
+      _searchResults = results;
 
       await LogService.instance.then((log) => log.info(
           'Search: Completed successfully, isEmpty=${_searchResults?.isEmpty}'));
     } catch (e, stackTrace) {
+      if (!_isSearchRequestActive(requestId, trimmed)) {
+        return;
+      }
       await LogService.instance
           .then((log) => log.error('Search: Failed', e, stackTrace));
       _searchResults = const SearchResults();
     } finally {
-      notifyListeners();
+      if (_isSearchRequestActive(requestId, trimmed)) {
+        _isSearchLoading = false;
+        notifyListeners();
+      }
     }
   }
 
-  Future<void> _ensureLocalSearchSourceLoaded() async {
+  bool _isSearchRequestActive(int requestId, String trimmedQuery) {
+    if (requestId != _searchRequestId) {
+      return false;
+    }
+    if (!_isSearching) {
+      return false;
+    }
+    return _searchQuery.trim() == trimmedQuery;
+  }
+
+  List<MediaItem> _localSearchTrackSource() {
+    if (!_offlineMode && _libraryTracksFromOfflineSnapshot) {
+      return const <MediaItem>[];
+    }
+    return _libraryTracks;
+  }
+
+  void _publishLocalSearchResults(String query, int requestId) {
+    if (!_isSearchRequestActive(requestId, query)) {
+      return;
+    }
+
+    _searchResults = SearchService.searchLocal(
+      query: query,
+      allTracks: _localSearchTrackSource(),
+      albums: _albums,
+      artists: _artists,
+      genres: _genres,
+      playlists: _playlists,
+    );
+    notifyListeners();
+  }
+
+  Future<void> _ensureLocalSearchSourceLoaded(
+    String query,
+    int requestId,
+  ) async {
     if (_offlineMode || _session == null) {
+      return;
+    }
+    if (!_isSearchRequestActive(requestId, query)) {
       return;
     }
 
     if (_albums.isEmpty) {
       await loadAlbums();
+      if (!_isSearchRequestActive(requestId, query)) {
+        return;
+      }
+      _publishLocalSearchResults(query, requestId);
     }
     if (_artists.isEmpty) {
       await loadArtists();
+      if (!_isSearchRequestActive(requestId, query)) {
+        return;
+      }
+      _publishLocalSearchResults(query, requestId);
     }
     if (_genres.isEmpty) {
       await loadGenres();
+      if (!_isSearchRequestActive(requestId, query)) {
+        return;
+      }
+      _publishLocalSearchResults(query, requestId);
     }
     if (_playlists.isEmpty) {
       try {
         final playlists = await _client.fetchPlaylists();
         _playlists = playlists;
         await _cacheStore.savePlaylists(playlists);
+        if (!_isSearchRequestActive(requestId, query)) {
+          return;
+        }
+        _publishLocalSearchResults(query, requestId);
       } catch (_) {
         // Keep cached playlists if refresh fails.
       }
@@ -1568,15 +1637,23 @@ class AppState extends ChangeNotifier {
 
     if (_libraryTracksFromOfflineSnapshot || _libraryTracks.isEmpty) {
       await loadLibraryTracks(reset: true);
+      if (!_isSearchRequestActive(requestId, query)) {
+        return;
+      }
+      _publishLocalSearchResults(query, requestId);
     }
 
-    while (_hasMoreTracks) {
+    while (_hasMoreTracks && _isSearchRequestActive(requestId, query)) {
       final beforeOffset = _tracksOffset;
       final beforeCount = _libraryTracks.length;
       await loadLibraryTracks();
+      if (!_isSearchRequestActive(requestId, query)) {
+        return;
+      }
       if (_tracksOffset == beforeOffset && _libraryTracks.length == beforeCount) {
         break;
       }
+      _publishLocalSearchResults(query, requestId);
     }
   }
 
@@ -1593,6 +1670,7 @@ class AppState extends ChangeNotifier {
     _searchQuery = '';
     _searchResults = null;
     _isSearching = false;
+    _isSearchLoading = false;
     if (notify) {
       notifyListeners();
     }

@@ -35,6 +35,36 @@ void main() {
     expect(ranked.first.id, 'title-match');
   });
 
+  test('rankTracks combines title and artist terms and treats & as and', () {
+    const tracks = [
+      MediaItem(
+        id: 'partial-title-only',
+        title: 'An Arrow in the Side of Final Fantasy',
+        album: 'Has a Good Home',
+        artists: ['Owen Pallett'],
+        duration: Duration(minutes: 2),
+        imageUrl: null,
+        streamUrl: 'https://example.com/partial-title-only',
+      ),
+      MediaItem(
+        id: 'expected-best',
+        title: 'This is the Dream of Win & Regine',
+        album: 'Has a Good Home',
+        artists: ['Final Fantasy'],
+        duration: Duration(minutes: 3),
+        imageUrl: null,
+        streamUrl: 'https://example.com/expected-best',
+      ),
+    ];
+
+    final ranked = SearchService.rankTracks(
+      query: 'dream of win regine final fantasy',
+      tracks: tracks,
+    );
+
+    expect(ranked.first.id, 'expected-best');
+  });
+
   test('rankArtists orders exact, prefix, then contains-style matches', () {
     const artists = [
       Artist(

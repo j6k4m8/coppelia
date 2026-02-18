@@ -60,14 +60,28 @@ class _SearchResultsViewState extends State<SearchResultsView> {
     double space(double value) => value * densityScale;
     final leftGutter = (32 * densityScale).clamp(16.0, 40.0).toDouble();
     final rightGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
-    if (state.isSearching && state.searchResults == null) {
+    final results = state.searchResults;
+    final isLoading = state.isSearchLoading;
+    if (isLoading && results == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    final results = state.searchResults;
+    if (state.searchQuery.trim().isEmpty && !isLoading) {
+      return Center(
+        child: Text(
+          'Search your library',
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(color: ColorTokens.textSecondary(context)),
+        ),
+      );
+    }
     if (results == null || results.isEmpty) {
       return Center(
         child: Text(
-          'No results for "${state.searchQuery}"',
+          isLoading
+              ? 'Searching for "${state.searchQuery}"...'
+              : 'No results for "${state.searchQuery}"',
           style: Theme.of(context)
               .textTheme
               .titleMedium
@@ -91,6 +105,25 @@ class _SearchResultsViewState extends State<SearchResultsView> {
                   ?.copyWith(color: ColorTokens.textSecondary(context)),
             ),
           ),
+          if (isLoading) ...[
+            SizedBox(height: space(8)),
+            Row(
+              children: [
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: space(8)),
+                Text(
+                  'Loading full library results...',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: ColorTokens.textSecondary(context),
+                      ),
+                ),
+              ],
+            ),
+          ],
           SizedBox(height: space(16)),
           if (results.tracks.isNotEmpty) ...[
             const SectionHeader(title: 'Tracks'),
