@@ -1969,8 +1969,23 @@ class _AppSettingsState extends State<_AppSettings> {
   bool get _isUpToDate {
     final tag = _latestTag;
     if (tag == null) return false;
-    final normalized = tag.startsWith('v') ? tag.substring(1) : tag;
-    return normalized == AppInfo.version;
+    return _normalizeVersionForComparison(tag) ==
+        _normalizeVersionForComparison(AppInfo.version);
+  }
+
+  String _normalizeVersionForComparison(String raw) {
+    var input = raw.trim().toLowerCase();
+    if (input.startsWith('refs/tags/')) {
+      input = input.substring('refs/tags/'.length);
+    }
+    if (input.startsWith('v')) {
+      input = input.substring(1);
+    }
+    final semverCore = RegExp(r'(\d+)\.(\d+)\.(\d+)').firstMatch(input);
+    if (semverCore != null) {
+      return '${semverCore.group(1)}.${semverCore.group(2)}.${semverCore.group(3)}';
+    }
+    return input.split(RegExp(r'[-+]')).first;
   }
 
   String? _downloadUrlForPlatform() {
