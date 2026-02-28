@@ -63,6 +63,7 @@ class _SidePanel extends StatelessWidget {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final bottomSafePadding = MediaQuery.of(context).viewPadding.bottom;
     final isTouch = !kIsWeb &&
         (defaultTargetPlatform == TargetPlatform.android ||
             defaultTargetPlatform == TargetPlatform.iOS ||
@@ -181,6 +182,7 @@ class _BottomBar extends StatelessWidget {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
+    final bottomSafePadding = MediaQuery.of(context).viewPadding.bottom;
     final isTouch = !kIsWeb &&
         (defaultTargetPlatform == TargetPlatform.android ||
             defaultTargetPlatform == TargetPlatform.iOS ||
@@ -191,7 +193,9 @@ class _BottomBar extends StatelessWidget {
         track == null ? false : state.isFavoriteTrackUpdating(track.id);
     final neighbors = _adjacentTracks(state.queue, track);
     final panel = Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 16).scale(densityScale),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 16)
+          .scale(densityScale)
+          .add(EdgeInsets.only(bottom: bottomSafePadding)),
       decoration: BoxDecoration(
         color: ColorTokens.panelBackground(context),
         border: Border(
