@@ -204,6 +204,7 @@ class AppState extends ChangeNotifier {
   };
   double _sidebarWidth = 240;
   bool _sidebarCollapsed = false;
+  bool _sidebarOverlayOpen = false;
   final List<LibraryView> _viewHistory = [];
   final Map<LibraryView, BrowseLayout> _browseLayouts = {};
   final Map<String, double> _scrollOffsets = {};
@@ -576,6 +577,9 @@ class AppState extends ChangeNotifier {
 
   /// True when the sidebar is collapsed.
   bool get isSidebarCollapsed => _sidebarCollapsed;
+
+  /// True when the sidebar overlay is open.
+  bool get isSidebarOverlayOpen => _sidebarOverlayOpen;
 
   /// True when there is a previous view in history.
   bool get canGoBack => _viewHistory.isNotEmpty;
@@ -3082,6 +3086,20 @@ class AppState extends ChangeNotifier {
       await _settingsStore.saveSidebarCollapsed(collapsed);
     }
     notifyListeners();
+  }
+
+  /// Updates the sidebar overlay open state.
+  void setSidebarOverlayOpen(bool open) {
+    if (_sidebarOverlayOpen == open) {
+      return;
+    }
+    _sidebarOverlayOpen = open;
+    notifyListeners();
+  }
+
+  /// Toggles the sidebar overlay open state.
+  void toggleSidebarOverlayOpen() {
+    setSidebarOverlayOpen(!_sidebarOverlayOpen);
   }
 
   /// Clears cached metadata entries.

@@ -36,6 +36,7 @@ class PageHeader extends StatelessWidget {
       children: [
         Row(
           children: [
+            SidebarMenuButton(gap: space(8)),
             HeaderControlButton(
               icon: Icons.arrow_back_ios_new,
               tooltip: 'Go back',

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/color_tokens.dart';
+import '../../state/app_state.dart';
 import 'corner_radius.dart';
 
 /// Circular button used in headers for navigation controls and search.
@@ -54,6 +56,48 @@ class HeaderControlButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Hamburger menu button that toggles the sidebar on compact layouts.
+class SidebarMenuButton extends StatelessWidget {
+  const SidebarMenuButton({
+    super.key,
+    this.size = 36,
+    this.gap = 8,
+  });
+
+  final double size;
+  final double gap;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    const autoCollapseWidth = 640.0;
+    final autoCollapsed = MediaQuery.of(context).size.width < autoCollapseWidth;
+    final shouldShow = autoCollapsed || state.isSidebarCollapsed;
+    if (!shouldShow) {
+      return const SizedBox.shrink();
+    }
+    final isOverlayOpen = autoCollapsed && state.isSidebarOverlayOpen;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        HeaderControlButton(
+          icon: Icons.menu,
+          tooltip: isOverlayOpen ? 'Close menu' : 'Open menu',
+          onTap: () {
+            if (autoCollapsed) {
+              state.toggleSidebarOverlayOpen();
+              return;
+            }
+            state.setSidebarCollapsed(false);
+          },
+          size: size,
+        ),
+        SizedBox(width: gap),
+      ],
     );
   }
 }

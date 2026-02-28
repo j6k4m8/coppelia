@@ -293,7 +293,7 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
           SizedBox(height: space(32)),
           if (settingsVisible) ...[
             _NavTile(
-              icon: Icons.menu,
+              icon: Icons.settings,
               label: 'Settings',
               selected: selectedPlaylistId == null &&
                   selectedView == LibraryView.settings,
