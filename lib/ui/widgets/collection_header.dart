@@ -183,6 +183,7 @@ class CollectionHeader extends StatelessWidget {
             right: space(12).clamp(6.0, 18.0),
             child: Row(
               children: [
+                SidebarMenuButton(gap: space(8)),
                 HeaderControlButton(
                   icon: Icons.arrow_back_ios_new,
                   onTap: onBack ??

@@ -69,17 +69,15 @@ class _MainContent extends StatefulWidget {
 }
 
 class _MainContentState extends State<_MainContent> {
-  bool _sidebarOverlayOpen = false;
   double _sidebarOpenDrag = 0;
   double _sidebarCloseDrag = 0;
 
   void _setSidebarOverlayOpen(bool value) {
-    if (_sidebarOverlayOpen == value) {
+    final state = widget.state;
+    if (state.isSidebarOverlayOpen == value) {
       return;
     }
-    setState(() {
-      _sidebarOverlayOpen = value;
-    });
+    state.setSidebarOverlayOpen(value);
   }
 
   @override
@@ -90,8 +88,7 @@ class _MainContentState extends State<_MainContent> {
     final chromeInset = (14 * densityScale).clamp(12.0, 20.0).toDouble();
     final topInset = safeTop + chromeInset;
     final topGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
-    final overlayButtonTop =
-        (28 * densityScale).clamp(20.0, 34.0).toDouble() + topInset;
+    final overlayOpen = state.isSidebarOverlayOpen;
     final bodyContent = LayoutBuilder(
       builder: (context, constraints) {
         const autoCollapseWidth = 640.0;
@@ -102,7 +99,7 @@ class _MainContentState extends State<_MainContent> {
         final currentWidth = effectiveCollapsed ? 0.0 : state.sidebarWidth;
         final overlayWidth = state.sidebarWidth.clamp(220.0, 320.0);
 
-        if (!autoCollapsed && _sidebarOverlayOpen) {
+        if (!autoCollapsed && overlayOpen) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               _setSidebarOverlayOpen(false);
@@ -181,7 +178,7 @@ class _MainContentState extends State<_MainContent> {
         final overlayPanel = AnimatedPositioned(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
-          left: _sidebarOverlayOpen ? 0 : -overlayWidth - 12,
+          left: overlayOpen ? 0 : -overlayWidth - 12,
           top: 0,
           bottom: 0,
           child: Material(
@@ -218,9 +215,9 @@ class _MainContentState extends State<_MainContent> {
             if (autoCollapsed) ...[
               Positioned.fill(
                 child: IgnorePointer(
-                  ignoring: !_sidebarOverlayOpen,
+                  ignoring: !overlayOpen,
                   child: AnimatedOpacity(
-                    opacity: _sidebarOverlayOpen ? 1 : 0,
+                    opacity: overlayOpen ? 1 : 0,
                     duration: const Duration(milliseconds: 180),
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
@@ -245,7 +242,7 @@ class _MainContentState extends State<_MainContent> {
                 ),
               ),
               overlayPanel,
-              if (!_sidebarOverlayOpen)
+              if (!overlayOpen)
                 Positioned(
                   top: 0,
                   bottom: 0,
@@ -268,46 +265,6 @@ class _MainContentState extends State<_MainContent> {
                   ),
                 ),
             ],
-            if (allowManual && effectiveCollapsed)
-              Positioned(
-                top: overlayButtonTop,
-                left: -10,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => state.setSidebarCollapsed(false),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: ColorTokens.cardFill(context, 0.08),
-                      borderRadius: BorderRadius.circular(
-                        context.scaledRadius(12),
-                      ),
-                      border: Border.all(color: ColorTokens.border(context)),
-                    ),
-                    child: const Icon(Icons.chevron_right, size: 18),
-                  ),
-                ),
-              ),
-            if (autoCollapsed && !_sidebarOverlayOpen)
-              Positioned(
-                top: overlayButtonTop,
-                left: -10,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => _setSidebarOverlayOpen(true),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: ColorTokens.cardFill(context, 0.08),
-                      borderRadius: BorderRadius.circular(
-                        context.scaledRadius(12),
-                      ),
-                      border: Border.all(color: ColorTokens.border(context)),
-                    ),
-                    child: const Icon(Icons.chevron_right, size: 18),
-                  ),
-                ),
-              ),
           ],
         );
       },
@@ -526,6 +483,7 @@ class _SearchViewState extends State<_SearchView> {
           padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
           child: Row(
             children: [
+              SidebarMenuButton(gap: space(8)),
               HeaderControlButton(
                 icon: Icons.arrow_back_ios_new,
                 onTap: state.goBack,
