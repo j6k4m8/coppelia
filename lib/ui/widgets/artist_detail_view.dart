@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/color_tokens.dart';
 import '../../models/album.dart';
 import '../../core/formatters.dart';
+import '../../models/download_task.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'album_context_menu.dart';
@@ -51,6 +52,10 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
     final pinned = state.pinnedAudio;
     final offlineTracks =
         tracks.where((track) => pinned.contains(track.streamUrl)).toList();
+    final artistTrackUrls = tracks.map((track) => track.streamUrl).toSet();
+    final relatedDownloads = state.downloadQueue
+        .where((task) => artistTrackUrls.contains(task.track.streamUrl))
+        .toList();
     final displayTracks = state.offlineOnlyFilter ? offlineTracks : tracks;
     final subtitle = formatArtistSubtitle(
       artist,
@@ -61,127 +66,141 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
         (albums.isNotEmpty ? albums.first.imageUrl : null) ??
         (tracks.isNotEmpty ? tracks.first.imageUrl : null);
 
-    return FutureBuilder<bool>(
-      future: state.isArtistPinned(artist),
-      builder: (context, snapshot) {
-        final isPinned = snapshot.data ?? false;
-        final isLoading = snapshot.connectionState == ConnectionState.waiting;
-        final offlineLabel =
-            isPinned ? 'Remove from Offline' : 'Make Available Offline';
-        final offlineIcon =
-            isPinned ? Icons.download_done_rounded : Icons.download_rounded;
-        final offlineOnPressed = tracks.isNotEmpty && !isLoading
-            ? () => isPinned
-                ? state.unpinArtistOffline(artist)
-                : state.makeArtistAvailableOffline(artist)
-            : null;
+    final allTracksPinned = tracks.isNotEmpty &&
+        tracks.every((track) => pinned.contains(track.streamUrl));
+    final isOfflineReady = allTracksPinned && relatedDownloads.isEmpty;
+    final isOfflinePending = relatedDownloads.any(
+      (task) => task.status != DownloadStatus.failed,
+    );
+    final hasFailedDownloads = relatedDownloads.any(
+      (task) => task.status == DownloadStatus.failed,
+    );
+    final offlineLabel = isOfflinePending
+        ? 'Making Available Offline...'
+        : isOfflineReady
+            ? 'Remove from Offline'
+            : hasFailedDownloads
+                ? 'Retry Offline Download'
+                : 'Make Available Offline';
+    final offlineTooltip = isOfflinePending
+        ? 'Cancel Offline Request'
+        : isOfflineReady
+            ? 'Remove from Offline'
+            : hasFailedDownloads
+                ? 'Retry Offline Download'
+                : 'Make Available Offline';
+    final offlineIcon =
+        isOfflineReady ? Icons.download_done_rounded : Icons.download_rounded;
+    final offlineOnPressed = tracks.isNotEmpty
+        ? () => (isOfflineReady || isOfflinePending)
+            ? state.unpinArtistOffline(artist)
+            : state.makeArtistAvailableOffline(artist)
+        : null;
 
-        return CollectionDetailView(
-          title: artist.name,
-          subtitle: subtitle,
-          imageUrl: headerImageUrl,
-          tracks: displayTracks,
-          nowPlaying: state.nowPlaying,
-          onPlayAll: displayTracks.isEmpty
-              ? null
-              : () => state.playFromList(displayTracks, displayTracks.first),
-          onShuffle: displayTracks.isEmpty
-              ? null
-              : () => state.playShuffledList(displayTracks),
-          onTrackTap: (track) => state.playFromList(displayTracks, track),
-          onPlayNext: state.playNext,
-          onAddToQueue: state.enqueueTrack,
-          onAlbumTap: (track) {
-            if (track.albumId != null) {
-              state.selectAlbumById(track.albumId!);
-            }
-          },
-          onArtistTap: (track) {
-            if (track.artistIds.isNotEmpty) {
-              state.selectArtistById(track.artistIds.first);
-            }
-          },
-          headerFooter: hasAlbums
-              ? _ArtistAlbumsSection(
-                  albums: albums,
-                  onSelect: state.selectAlbum,
-                  state: state,
-                )
-              : null,
-          headerActionSpecs: [
-            HeaderActionSpec(
-              icon: state.isFavoriteArtist(artist.id)
-                  ? Icons.favorite
-                  : Icons.favorite_border,
-              label:
-                  state.isFavoriteArtist(artist.id) ? 'Unfavorite' : 'Favorite',
-              tooltip:
-                  state.isFavoriteArtist(artist.id) ? 'Unfavorite' : 'Favorite',
-              outlined: true,
-              onPressed: state.isFavoriteArtistUpdating(artist.id)
-                  ? null
-                  : () => runWithSnack(
-                        context,
-                        () => state.setArtistFavorite(
-                          artist,
-                          !state.isFavoriteArtist(artist.id),
-                        ),
-                      ),
-            ),
-            HeaderActionSpec(
-              icon: offlineIcon,
-              label: offlineLabel,
-              tooltip: offlineLabel,
-              outlined: true,
-              onPressed: offlineOnPressed,
-            ),
-          ],
-          headerActions: [
-            OutlinedButton.icon(
-              onPressed: state.isFavoriteArtistUpdating(artist.id)
-                  ? null
-                  : () => runWithSnack(
-                        context,
-                        () => state.setArtistFavorite(
-                          artist,
-                          !state.isFavoriteArtist(artist.id),
-                        ),
-                      ),
-              icon: state.isFavoriteArtistUpdating(artist.id)
-                  ? SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    )
-                  : Icon(
-                      state.isFavoriteArtist(artist.id)
-                          ? Icons.favorite
-                          : Icons.favorite_border,
-                    ),
-              label: Text(
-                state.isFavoriteArtist(artist.id) ? 'Unfavorite' : 'Favorite',
-              ),
-            ),
-            OutlinedButton.icon(
-              onPressed: offlineOnPressed,
-              icon: isLoading
-                  ? SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    )
-                  : Icon(offlineIcon),
-              label: Text(offlineLabel),
-            ),
-          ],
-        );
+    return CollectionDetailView(
+      title: artist.name,
+      subtitle: subtitle,
+      imageUrl: headerImageUrl,
+      tracks: displayTracks,
+      nowPlaying: state.nowPlaying,
+      onPlayAll: displayTracks.isEmpty
+          ? null
+          : () => state.playFromList(displayTracks, displayTracks.first),
+      onShuffle: displayTracks.isEmpty
+          ? null
+          : () => state.playShuffledList(displayTracks),
+      onTrackTap: (track) => state.playFromList(displayTracks, track),
+      onPlayNext: state.playNext,
+      onAddToQueue: state.enqueueTrack,
+      onAlbumTap: (track) {
+        if (track.albumId != null) {
+          state.selectAlbumById(track.albumId!);
+        }
       },
+      onArtistTap: (track) {
+        if (track.artistIds.isNotEmpty) {
+          state.selectArtistById(track.artistIds.first);
+        }
+      },
+      headerFooter: hasAlbums
+          ? _ArtistAlbumsSection(
+              albums: albums,
+              onSelect: state.selectAlbum,
+              state: state,
+            )
+          : null,
+      headerActionSpecs: [
+        HeaderActionSpec(
+          icon: state.isFavoriteArtist(artist.id)
+              ? Icons.favorite
+              : Icons.favorite_border,
+          label: state.isFavoriteArtist(artist.id) ? 'Unfavorite' : 'Favorite',
+          tooltip:
+              state.isFavoriteArtist(artist.id) ? 'Unfavorite' : 'Favorite',
+          outlined: true,
+          onPressed: state.isFavoriteArtistUpdating(artist.id)
+              ? null
+              : () => runWithSnack(
+                    context,
+                    () => state.setArtistFavorite(
+                      artist,
+                      !state.isFavoriteArtist(artist.id),
+                    ),
+                  ),
+        ),
+        HeaderActionSpec(
+          icon: offlineIcon,
+          label: offlineLabel,
+          tooltip: offlineTooltip,
+          isLoading: isOfflinePending,
+          outlined: true,
+          onPressed: offlineOnPressed,
+        ),
+      ],
+      headerActions: [
+        OutlinedButton.icon(
+          onPressed: state.isFavoriteArtistUpdating(artist.id)
+              ? null
+              : () => runWithSnack(
+                    context,
+                    () => state.setArtistFavorite(
+                      artist,
+                      !state.isFavoriteArtist(artist.id),
+                    ),
+                  ),
+          icon: state.isFavoriteArtistUpdating(artist.id)
+              ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                )
+              : Icon(
+                  state.isFavoriteArtist(artist.id)
+                      ? Icons.favorite
+                      : Icons.favorite_border,
+                ),
+          label: Text(
+            state.isFavoriteArtist(artist.id) ? 'Unfavorite' : 'Favorite',
+          ),
+        ),
+        OutlinedButton.icon(
+          onPressed: offlineOnPressed,
+          icon: isOfflinePending
+              ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                )
+              : Icon(offlineIcon),
+          label: Text(offlineLabel),
+        ),
+      ],
     );
   }
 }
