@@ -139,6 +139,11 @@ class AppState extends ChangeNotifier {
   bool _isBuffering = false;
   bool _isNowPlayingCached = false;
   bool _isPreparingPlayback = false;
+  bool _isApplyingQueueUpdate = false;
+  int? _lastHandledCurrentIndex;
+  String? _lastHandledCurrentTrackId;
+  DateTime? _lastSeekRequestedAt;
+  Duration? _lastRequestedSeekPosition;
   final ValueNotifier<Duration> _positionNotifier =
       ValueNotifier(Duration.zero);
   final ValueNotifier<Duration> _durationNotifier =
@@ -163,7 +168,72 @@ class AppState extends ChangeNotifier {
     _positionNotifier.value = _position;
   }
 
+  bool _shouldUseRawPosition(Duration rawPosition) {
+    final seekRequestedAt = _lastSeekRequestedAt;
+    if (seekRequestedAt != null) {
+      final elapsed = DateTime.now().difference(seekRequestedAt);
+      if (elapsed > const Duration(seconds: 2)) {
+        _lastSeekRequestedAt = null;
+        _lastRequestedSeekPosition = null;
+      } else {
+        final requested = _lastRequestedSeekPosition;
+        if (requested != null) {
+          final deltaFromRequested = (rawPosition - requested).abs();
+          // Ignore stale callbacks immediately after manual seek.
+          if (deltaFromRequested > const Duration(milliseconds: 1500)) {
+            return false;
+          }
+          if (deltaFromRequested <= const Duration(milliseconds: 500)) {
+            _lastSeekRequestedAt = null;
+            _lastRequestedSeekPosition = null;
+          }
+        }
+      }
+    }
+    if (_isPlaying && rawPosition < _position) {
+      final isWrapAroundNearBoundary = _duration > Duration.zero &&
+          _position >= _duration - const Duration(seconds: 1) &&
+          rawPosition <= const Duration(seconds: 1);
+      if (!isWrapAroundNearBoundary) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   bool _isPlayRequestStale(int requestId) => requestId != _playRequestId;
+
+  void _rememberCurrentIndexEvent(int index, MediaItem track) {
+    _lastHandledCurrentIndex = index;
+    _lastHandledCurrentTrackId = track.id;
+  }
+
+  bool _isDuplicateCurrentIndexEvent(int index, MediaItem track) {
+    return _lastHandledCurrentIndex == index &&
+        _lastHandledCurrentTrackId == track.id &&
+        _nowPlaying?.id == track.id;
+  }
+
+  bool _syncNowPlayingFromCurrentIndex({bool notify = true}) {
+    final index = _playback.currentIndex;
+    if (index == null || index < 0 || index >= _queue.length) {
+      return false;
+    }
+    final next = _queue[index];
+    _rememberCurrentIndexEvent(index, next);
+    if (_nowPlaying?.id != next.id) {
+      _setNowPlaying(next, notify: notify);
+      return true;
+    }
+    if (_duration == Duration.zero && next.duration > Duration.zero) {
+      _updatePlaybackProgress(duration: next.duration);
+      _updateNowPlayingInfo(force: true);
+      if (notify) {
+        notifyListeners();
+      }
+    }
+    return true;
+  }
 
   ThemeMode _themeMode = ThemeMode.dark;
   String? _fontFamily = 'SF Pro Display';
@@ -2763,6 +2833,8 @@ class AppState extends ChangeNotifier {
 
   /// Seeks to a specific playback position.
   Future<void> seek(Duration position) async {
+    _lastSeekRequestedAt = DateTime.now();
+    _lastRequestedSeekPosition = position;
     await _performPlaybackAction(
       () => _playback.seek(position),
       'seek',
@@ -3794,7 +3866,9 @@ class AppState extends ChangeNotifier {
 
   void _bindPlayback() {
     _positionSubscription = _playback.positionStream.listen((position) {
-      _updatePlaybackProgress(position: position);
+      if (_shouldUseRawPosition(position)) {
+        _updatePlaybackProgress(position: position);
+      }
       if (_duration == Duration.zero) {
         final liveDuration = _playback.duration;
         if (liveDuration != null && liveDuration > Duration.zero) {
@@ -3850,8 +3924,16 @@ class AppState extends ChangeNotifier {
       }
     });
     _currentIndexSubscription = _playback.currentIndexStream.listen((index) {
+      if (_isApplyingQueueUpdate) {
+        return;
+      }
       if (index != null && index >= 0 && index < _queue.length) {
         final next = _queue[index];
+        if (_isDuplicateCurrentIndexEvent(index, next)) {
+          return;
+        }
+        _rememberCurrentIndexEvent(index, next);
+        var didMutatePlaybackState = false;
         // Only log if the track actually changed
         if (_nowPlaying?.id != next.id) {
           final formatInfo = next.container != null || next.codec != null
@@ -3862,10 +3944,19 @@ class AppState extends ChangeNotifier {
           LogService.instance.then((log) => log.info(
               'Now playing: "${next.title}" by ${next.artists.join(", ")}$formatInfo'));
         }
-        _setNowPlaying(next, notify: false);
+        if (_nowPlaying?.id != next.id) {
+          _setNowPlaying(next, notify: false);
+          didMutatePlaybackState = true;
+        } else if (_duration == Duration.zero && next.duration > Duration.zero) {
+          _updatePlaybackProgress(duration: next.duration);
+          _updateNowPlayingInfo(force: true);
+          didMutatePlaybackState = true;
+        }
         unawaited(_cacheStore.handlePlaybackAdvance(_queue, index));
+        if (didMutatePlaybackState) {
+          notifyListeners();
+        }
       }
-      notifyListeners();
     });
   }
 
@@ -3888,13 +3979,11 @@ class AppState extends ChangeNotifier {
     _playbackPollTimer = Timer.periodic(pollInterval, (_) {
       final position = _playback.position;
       var didUpdatePosition = false;
-      if (position != _position) {
+      if (position != _position && _shouldUseRawPosition(position)) {
         _updatePlaybackProgress(position: position);
         didUpdatePosition = true;
       } else if (_isPlaying &&
-          !_isBuffering &&
-          _duration > Duration.zero &&
-          _position < _duration) {
+          (_duration == Duration.zero || _position < _duration)) {
         // Desktop backends can occasionally stall position updates while audio
         // is still playing. Keep the scrubber advancing between real samples.
         _updatePlaybackProgress(position: _position + pollInterval);
@@ -3997,6 +4086,8 @@ class AppState extends ChangeNotifier {
       }
       return;
     }
+    _lastSeekRequestedAt = null;
+    _lastRequestedSeekPosition = null;
     final previousTrack = _nowPlaying;
     final previousSession = _playSessionId;
     if (_activeSessionHasPlayed) {
@@ -4737,6 +4828,9 @@ class AppState extends ChangeNotifier {
 
     final previousQueue = List<MediaItem>.from(_queue);
     _queue = normalized;
+    _isApplyingQueueUpdate = true;
+    _lastHandledCurrentIndex = null;
+    _lastHandledCurrentTrackId = null;
 
     await logService.info(
         '_playFromList[$requestId]: Setting queue with ${_queue.length} tracks at index $index');
@@ -4749,6 +4843,7 @@ class AppState extends ChangeNotifier {
       ),
       'set queue',
     );
+    _isApplyingQueueUpdate = false;
     await logService.info(
         '_playFromList[$requestId]: Queue setup ${didSetQueue ? "successful" : "failed"}');
     if (_isPlayRequestStale(requestId)) {
@@ -4769,11 +4864,15 @@ class AppState extends ChangeNotifier {
 
     await logService
         .info('_playFromList[$requestId]: Setting now playing track');
-    if (_nowPlaying?.id != playbackTrack.id) {
-      _setNowPlaying(playbackTrack);
-    } else if (playbackTrack.duration > Duration.zero &&
-        _duration == Duration.zero) {
-      _updatePlaybackProgress(duration: playbackTrack.duration);
+    final syncedFromPlayer = _syncNowPlayingFromCurrentIndex();
+    if (!syncedFromPlayer) {
+      if (_nowPlaying?.id != playbackTrack.id) {
+        _setNowPlaying(playbackTrack);
+      } else if (playbackTrack.duration > Duration.zero &&
+          _duration == Duration.zero) {
+        _updatePlaybackProgress(duration: playbackTrack.duration);
+      }
+      _rememberCurrentIndexEvent(index, playbackTrack);
     }
 
     await logService
