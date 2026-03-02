@@ -3884,16 +3884,32 @@ class AppState extends ChangeNotifier {
     if (_playbackPollTimer != null) {
       return;
     }
-    _playbackPollTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+    const pollInterval = Duration(milliseconds: 500);
+    _playbackPollTimer = Timer.periodic(pollInterval, (_) {
       final position = _playback.position;
+      var didUpdatePosition = false;
       if (position != _position) {
         _updatePlaybackProgress(position: position);
+        didUpdatePosition = true;
+      } else if (_isPlaying &&
+          !_isBuffering &&
+          _duration > Duration.zero &&
+          _position < _duration) {
+        // Desktop backends can occasionally stall position updates while audio
+        // is still playing. Keep the scrubber advancing between real samples.
+        _updatePlaybackProgress(position: _position + pollInterval);
+        didUpdatePosition = true;
       }
       final liveDuration = _playback.duration;
       if (liveDuration != null &&
           liveDuration > Duration.zero &&
           liveDuration != _duration) {
         _updatePlaybackProgress(duration: liveDuration);
+      }
+      if (didUpdatePosition) {
+        _maybeReportProgress();
+        _persistPlaybackResumeState();
+        _updateNowPlayingInfo();
       }
     });
   }
