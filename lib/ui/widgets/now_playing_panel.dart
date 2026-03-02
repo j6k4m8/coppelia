@@ -63,7 +63,6 @@ class _SidePanel extends StatelessWidget {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
-    final bottomSafePadding = MediaQuery.of(context).viewPadding.bottom;
     final isTouch = !kIsWeb &&
         (defaultTargetPlatform == TargetPlatform.android ||
             defaultTargetPlatform == TargetPlatform.iOS ||
