@@ -126,6 +126,7 @@ class AppState extends ChangeNotifier {
   Set<String> _pinnedAudio = {};
   final List<DownloadTask> _downloadQueue = [];
   final Map<String, DateTime> _downloadProgressTimestamps = {};
+  final Set<String> _cancelledOfflineRequests = {};
   bool _isProcessingDownloads = false;
   List<MediaItem> _recentTracks = [];
   List<MediaItem> _playHistory = [];
@@ -874,6 +875,7 @@ class AppState extends ChangeNotifier {
     _lastJumpInRefreshAt = null;
     _queue = [];
     _downloadQueue.clear();
+    _cancelledOfflineRequests.clear();
     _isProcessingDownloads = false;
     _nowPlaying = null;
     unawaited(_maybeUpdateNowPlayingPalette(null));
@@ -3309,9 +3311,13 @@ class AppState extends ChangeNotifier {
     bool requiresWifi = false,
   }) async {
     final normalized = _normalizeTrackForPlayback(track);
-    if (_downloadQueue.any(
-      (task) => task.track.streamUrl == normalized.streamUrl,
-    )) {
+    _cancelledOfflineRequests.remove(normalized.streamUrl);
+    final existingIndex = _indexOfDownload(normalized.streamUrl);
+    if (existingIndex != null) {
+      final existing = _downloadQueue[existingIndex];
+      if (existing.status == DownloadStatus.failed) {
+        retryDownload(existing);
+      }
       return;
     }
     final cached = await _cacheStore.isAudioCached(normalized);
@@ -3452,6 +3458,11 @@ class AppState extends ChangeNotifier {
         task.track,
         headers: _playbackHeaders(),
       )) {
+        if (_cancelledOfflineRequests.contains(streamUrl)) {
+          _cancelledOfflineRequests.remove(streamUrl);
+          _removeDownload(streamUrl);
+          return;
+        }
         if (response is DownloadProgress) {
           _updateDownloadTask(
             streamUrl,
@@ -3465,6 +3476,11 @@ class AppState extends ChangeNotifier {
         }
       }
     } catch (error) {
+      if (_cancelledOfflineRequests.contains(streamUrl)) {
+        _cancelledOfflineRequests.remove(streamUrl);
+        _removeDownload(streamUrl);
+        return;
+      }
       _updateDownloadTask(
         streamUrl,
         status: DownloadStatus.failed,
@@ -3478,6 +3494,7 @@ class AppState extends ChangeNotifier {
     MediaItem track, {
     bool requiresWifi = false,
   }) async {
+    _cancelledOfflineRequests.remove(track.streamUrl);
     await _cacheStore.setPinnedAudio(track.streamUrl, true);
     _pinnedAudio.add(track.streamUrl);
     await _queueDownload(track, requiresWifi: requiresWifi);
@@ -3490,6 +3507,7 @@ class AppState extends ChangeNotifier {
 
   /// Removes a track from offline pinning.
   Future<void> unpinTrackOffline(MediaItem track) async {
+    _cancelledOfflineRequests.add(track.streamUrl);
     await _cacheStore.setPinnedAudio(track.streamUrl, false);
     _pinnedAudio.remove(track.streamUrl);
     _removeDownload(track.streamUrl);
@@ -3541,6 +3559,7 @@ class AppState extends ChangeNotifier {
   }) async {
     final tracks = await _loadAlbumTracksForOffline(album);
     for (final track in tracks) {
+      _cancelledOfflineRequests.remove(track.streamUrl);
       await _cacheStore.setPinnedAudio(track.streamUrl, true);
       _pinnedAudio.add(track.streamUrl);
       await _queueDownload(track, requiresWifi: requiresWifi);
@@ -3556,6 +3575,7 @@ class AppState extends ChangeNotifier {
   Future<void> unpinAlbumOffline(Album album) async {
     final tracks = await _loadAlbumTracksForOffline(album);
     for (final track in tracks) {
+      _cancelledOfflineRequests.add(track.streamUrl);
       await _cacheStore.setPinnedAudio(track.streamUrl, false);
       _pinnedAudio.remove(track.streamUrl);
       _removeDownload(track.streamUrl);
@@ -3574,6 +3594,7 @@ class AppState extends ChangeNotifier {
   }) async {
     final tracks = await _loadArtistTracksForOffline(artist);
     for (final track in tracks) {
+      _cancelledOfflineRequests.remove(track.streamUrl);
       await _cacheStore.setPinnedAudio(track.streamUrl, true);
       _pinnedAudio.add(track.streamUrl);
       await _queueDownload(track, requiresWifi: requiresWifi);
@@ -3589,6 +3610,7 @@ class AppState extends ChangeNotifier {
   Future<void> unpinArtistOffline(Artist artist) async {
     final tracks = await _loadArtistTracksForOffline(artist);
     for (final track in tracks) {
+      _cancelledOfflineRequests.add(track.streamUrl);
       await _cacheStore.setPinnedAudio(track.streamUrl, false);
       _pinnedAudio.remove(track.streamUrl);
       _removeDownload(track.streamUrl);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/color_tokens.dart';
+import '../../models/download_task.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'app_snack.dart';
@@ -37,134 +38,133 @@ class AlbumDetailView extends StatelessWidget {
     final isFavorite = state.isFavoriteAlbum(album.id);
     final isFavoriteUpdating = state.isFavoriteAlbumUpdating(album.id);
     final canDownload = state.albumTracks.isNotEmpty;
-    final pinnedFuture = state.isAlbumPinned(album);
     final pinned = state.pinnedAudio;
     final offlineTracks = state.albumTracks
         .where((track) => pinned.contains(track.streamUrl))
         .toList();
+    final albumTrackUrls =
+        state.albumTracks.map((track) => track.streamUrl).toSet();
+    final relatedDownloads = state.downloadQueue
+        .where((task) => albumTrackUrls.contains(task.track.streamUrl))
+        .toList();
     final displayTracks =
         state.offlineOnlyFilter ? offlineTracks : state.albumTracks;
+    final allTracksPinned = canDownload &&
+        state.albumTracks.every((track) => pinned.contains(track.streamUrl));
+    final isOfflineReady = allTracksPinned && relatedDownloads.isEmpty;
+    final isOfflinePending = relatedDownloads.any(
+      (task) => task.status != DownloadStatus.failed,
+    );
+    final hasFailedDownloads = relatedDownloads.any(
+      (task) => task.status == DownloadStatus.failed,
+    );
 
     final favoriteIcon = isFavorite ? Icons.favorite : Icons.favorite_border;
+    final offlineLabel = isOfflinePending
+        ? 'Making Available Offline...'
+        : isOfflineReady
+            ? 'Remove from Offline'
+            : hasFailedDownloads
+                ? 'Retry Offline Download'
+                : 'Make Available Offline';
+    final offlineTooltip = isOfflinePending
+        ? 'Cancel Offline Request'
+        : isOfflineReady
+            ? 'Remove from Offline'
+            : hasFailedDownloads
+                ? 'Retry Offline Download'
+                : 'Make Available Offline';
+    final offlineIcon =
+        isOfflineReady ? Icons.download_done_rounded : Icons.download_rounded;
+    final offlineOnPressed = canDownload
+        ? () => (isOfflineReady || isOfflinePending)
+            ? state.unpinAlbumOffline(album)
+            : state.makeAlbumAvailableOffline(album)
+        : null;
 
-    return FutureBuilder<bool>(
-      future: pinnedFuture,
-      builder: (context, snapshot) {
-        final isPinned = snapshot.data ?? false;
-        final isLoading = snapshot.connectionState == ConnectionState.waiting;
-        final offlineLabel =
-            isPinned ? 'Remove from Offline' : 'Make Available Offline';
-        final offlineIcon =
-            isPinned ? Icons.download_done_rounded : Icons.download_rounded;
-        final offlineOnPressed = canDownload && !isLoading
-            ? () => isPinned
-                ? state.unpinAlbumOffline(album)
-                : state.makeAlbumAvailableOffline(album)
-            : null;
-
-        return CollectionDetailView(
-          title: album.name,
-          subtitle: subtitle,
-          subtitleWidget: subtitleWidget,
-          imageUrl: headerImageUrl,
-          tracks: displayTracks,
-          nowPlaying: state.nowPlaying,
-          onPlayAll: displayTracks.isEmpty
-              ? null
-              : () => state.playFromList(displayTracks, displayTracks.first),
-          onShuffle: displayTracks.isEmpty
-              ? null
-              : () => state.playShuffledList(displayTracks),
-          onTrackTap: (track) => state.playFromList(displayTracks, track),
-          onPlayNext: state.playNext,
-          onAddToQueue: state.enqueueTrack,
-          onAlbumTap: (track) {
-            if (track.albumId != null) {
-              state.selectAlbumById(track.albumId!);
-            }
-          },
-          onArtistTap: (track) {
-            if (track.artistIds.isNotEmpty) {
-              state.selectArtistById(track.artistIds.first);
-            }
-          },
-          headerActionSpecs: [
-            HeaderActionSpec(
-              icon: favoriteIcon,
-              label: isFavorite ? 'Unfavorite' : 'Favorite',
-              tooltip: isFavorite ? 'Unfavorite' : 'Favorite',
-              outlined: true,
-              onPressed: isFavoriteUpdating
-                  ? null
-                  : () => runWithSnack(
-                        context,
-                        () => state.setAlbumFavorite(album, !isFavorite),
-                      ),
-            ),
-            HeaderActionSpec(
-              icon: offlineIcon,
-              label: offlineLabel,
-              tooltip: offlineLabel,
-              outlined: true,
-              onPressed: offlineOnPressed,
-            ),
-          ],
-          // Keep the richer widgets for non-icon-only layouts (and for showing
-          // loading indicators), but icon-only will always use the specs above.
-          headerActions: [
-            OutlinedButton.icon(
-              onPressed: isFavoriteUpdating
-                  ? null
-                  : () => runWithSnack(
-                        context,
-                        () => state.setAlbumFavorite(album, !isFavorite),
-                      ),
-              icon: isFavoriteUpdating
-                  ? SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    )
-                  : Icon(favoriteIcon),
-              label: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
-            ),
-            FutureBuilder<bool>(
-              future: pinnedFuture,
-              builder: (context, snapshot) {
-                final isPinned = snapshot.data ?? false;
-                final isLoading =
-                    snapshot.connectionState == ConnectionState.waiting;
-                final offlineIcon = isPinned
-                    ? Icons.download_done_rounded
-                    : Icons.download_rounded;
-                return OutlinedButton.icon(
-                  onPressed: canDownload && !isLoading
-                      ? () => isPinned
-                          ? state.unpinAlbumOffline(album)
-                          : state.makeAlbumAvailableOffline(album)
-                      : null,
-                  icon: isLoading
-                      ? SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        )
-                      : Icon(offlineIcon),
-                  label: Text(
-                    isPinned ? 'Remove from Offline' : 'Make Available Offline',
-                  ),
-                );
-              },
-            ),
-          ],
-        );
+    return CollectionDetailView(
+      title: album.name,
+      subtitle: subtitle,
+      subtitleWidget: subtitleWidget,
+      imageUrl: headerImageUrl,
+      tracks: displayTracks,
+      nowPlaying: state.nowPlaying,
+      onPlayAll: displayTracks.isEmpty
+          ? null
+          : () => state.playFromList(displayTracks, displayTracks.first),
+      onShuffle: displayTracks.isEmpty
+          ? null
+          : () => state.playShuffledList(displayTracks),
+      onTrackTap: (track) => state.playFromList(displayTracks, track),
+      onPlayNext: state.playNext,
+      onAddToQueue: state.enqueueTrack,
+      onAlbumTap: (track) {
+        if (track.albumId != null) {
+          state.selectAlbumById(track.albumId!);
+        }
       },
+      onArtistTap: (track) {
+        if (track.artistIds.isNotEmpty) {
+          state.selectArtistById(track.artistIds.first);
+        }
+      },
+      headerActionSpecs: [
+        HeaderActionSpec(
+          icon: favoriteIcon,
+          label: isFavorite ? 'Unfavorite' : 'Favorite',
+          tooltip: isFavorite ? 'Unfavorite' : 'Favorite',
+          outlined: true,
+          onPressed: isFavoriteUpdating
+              ? null
+              : () => runWithSnack(
+                    context,
+                    () => state.setAlbumFavorite(album, !isFavorite),
+                  ),
+        ),
+        HeaderActionSpec(
+          icon: offlineIcon,
+          label: offlineLabel,
+          tooltip: offlineTooltip,
+          isLoading: isOfflinePending,
+          outlined: true,
+          onPressed: offlineOnPressed,
+        ),
+      ],
+      headerActions: [
+        OutlinedButton.icon(
+          onPressed: isFavoriteUpdating
+              ? null
+              : () => runWithSnack(
+                    context,
+                    () => state.setAlbumFavorite(album, !isFavorite),
+                  ),
+          icon: isFavoriteUpdating
+              ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                )
+              : Icon(favoriteIcon),
+          label: Text(isFavorite ? 'Unfavorite' : 'Favorite'),
+        ),
+        OutlinedButton.icon(
+          onPressed: offlineOnPressed,
+          icon: isOfflinePending
+              ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                )
+              : Icon(offlineIcon),
+          label: Text(offlineLabel),
+        ),
+      ],
     );
   }
 }

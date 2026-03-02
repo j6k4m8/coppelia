@@ -304,7 +304,16 @@ class CollectionHeader extends StatelessWidget {
         (value * densityScale).clamp(min, max);
 
     Widget iconOnlyButton(HeaderActionSpec spec) {
-      final iconWidget = Icon(spec.icon);
+      final iconWidget = spec.isLoading
+          ? SizedBox(
+              width: clamped(20, min: 16, max: 22),
+              height: clamped(20, min: 16, max: 22),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            )
+          : Icon(spec.icon);
       final button = spec.outlined
           ? IconButton.outlined(
               key: spec.iconKey,
@@ -334,6 +343,16 @@ class CollectionHeader extends StatelessWidget {
     }
 
     Widget expandedButton(HeaderActionSpec spec) {
+      final iconWidget = spec.isLoading
+          ? SizedBox(
+              width: clamped(16, min: 14, max: 18),
+              height: clamped(16, min: 14, max: 18),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            )
+          : Icon(spec.icon);
       if (spec.menuItems != null && spec.onMenuSelected != null) {
         final tooltip = spec.tooltip ?? spec.label;
         // Use the exact same Material button widget as the other actions so it
@@ -350,7 +369,7 @@ class CollectionHeader extends StatelessWidget {
                       context.findAncestorStateOfType<PopupMenuButtonState>();
                   state?.showButtonMenu();
                 },
-                icon: Icon(spec.icon),
+                icon: iconWidget,
                 label: Text(spec.label),
               );
             },
@@ -360,20 +379,20 @@ class CollectionHeader extends StatelessWidget {
       if (spec.outlined) {
         return OutlinedButton.icon(
           onPressed: spec.onPressed,
-          icon: Icon(spec.icon),
+          icon: iconWidget,
           label: Text(spec.label),
         );
       }
       if (spec.tonal) {
         return FilledButton.tonalIcon(
           onPressed: spec.onPressed,
-          icon: Icon(spec.icon),
+          icon: iconWidget,
           label: Text(spec.label),
         );
       }
       return FilledButton.icon(
         onPressed: spec.onPressed,
-        icon: Icon(spec.icon),
+        icon: iconWidget,
         label: Text(spec.label),
       );
     }
@@ -390,6 +409,7 @@ class HeaderActionSpec {
     required this.icon,
     required this.label,
     required this.onPressed,
+    this.isLoading = false,
     this.tooltip,
     this.iconKey,
     this.menuItems,
@@ -401,6 +421,7 @@ class HeaderActionSpec {
   final IconData icon;
   final String label;
   final VoidCallback? onPressed;
+  final bool isLoading;
   final String? tooltip;
   final Key? iconKey;
   final List<PopupMenuEntry<Object?>>? menuItems;
