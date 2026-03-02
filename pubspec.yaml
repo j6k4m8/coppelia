@@ -1,7 +1,7 @@
 name: coppelia
 description: A refined, cross-platform Jellyfin-focused music player
 publish_to: "none"
-version: 0.0.9+10
+version: 0.0.10+10
 
 environment:
     sdk: ">=3.3.0 <4.0.0"
