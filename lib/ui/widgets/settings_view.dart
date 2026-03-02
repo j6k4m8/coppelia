@@ -27,6 +27,7 @@ import '../../services/log_service.dart';
 import 'compact_switch.dart';
 import 'corner_radius.dart';
 import 'glass_container.dart';
+import 'header_controls.dart';
 
 /// Settings view for Coppelia preferences.
 class SettingsView extends StatelessWidget {
@@ -37,9 +38,21 @@ class SettingsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final densityScale = state.layoutDensity.scaleDouble;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCompactTabs = screenWidth < 900;
     double space(double value) => value * densityScale;
     final leftGutter = (32 * densityScale).clamp(16.0, 40.0).toDouble();
     final rightGutter = (24 * densityScale).clamp(12.0, 32.0).toDouble();
+    final navigator = Navigator.of(context);
+    final canNavigateBack = navigator.canPop() || state.canGoBack;
+
+    Future<void> handleBack() async {
+      final didPop = await navigator.maybePop();
+      if (!didPop && state.canGoBack) {
+        state.goBack();
+      }
+    }
+
     return Padding(
       padding: EdgeInsets.fromLTRB(leftGutter, 0, rightGutter, 0),
       child: DefaultTabController(
@@ -47,7 +60,20 @@ class SettingsView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SettingsTabBar(),
+            Row(
+              children: [
+                SidebarMenuButton(gap: space(8)),
+                HeaderControlButton(
+                  icon: Icons.arrow_back_ios_new,
+                  tooltip: 'Back',
+                  onTap: canNavigateBack ? () => handleBack() : null,
+                ),
+                SizedBox(width: space(isCompactTabs ? 6 : 10)),
+                Expanded(
+                  child: _SettingsTabBar(compact: isCompactTabs),
+                ),
+              ],
+            ),
             SizedBox(height: space(16)),
             Expanded(
               child: TabBarView(
@@ -93,12 +119,18 @@ class SettingsView extends StatelessWidget {
 }
 
 class _SettingsTabBar extends StatelessWidget {
+  const _SettingsTabBar({required this.compact});
+
+  final bool compact;
+
   @override
   Widget build(BuildContext context) {
     final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     return Container(
-      padding: EdgeInsets.all(space(4).clamp(2.0, 6.0)),
+      padding: EdgeInsets.all(
+        compact ? space(2).clamp(1.0, 4.0) : space(4).clamp(2.0, 6.0),
+      ),
       decoration: BoxDecoration(
         color: ColorTokens.cardFill(context, 0.08),
         borderRadius: BorderRadius.circular(context.scaledRadius(16)),
@@ -106,8 +138,10 @@ class _SettingsTabBar extends StatelessWidget {
       ),
       child: TabBar(
         isScrollable: true,
+        tabAlignment: TabAlignment.start,
+        padding: EdgeInsets.zero,
         labelPadding:
-            EdgeInsets.symmetric(horizontal: space(6).clamp(4.0, 10.0)),
+            EdgeInsets.symmetric(horizontal: space(compact ? 2 : 6).clamp(1.0, 8.0)),
         labelColor: Theme.of(context).colorScheme.onSurface,
         unselectedLabelColor: ColorTokens.textSecondary(context),
         dividerColor: Colors.transparent,
@@ -115,14 +149,14 @@ class _SettingsTabBar extends StatelessWidget {
           color: ColorTokens.cardFill(context, 0.18),
           borderRadius: BorderRadius.circular(context.scaledRadius(12)),
         ),
-        tabs: const [
-          _SettingsTabLabel(text: 'Appearance'),
-          _SettingsTabLabel(text: 'Layout'),
-          _SettingsTabLabel(text: 'Keyboard'),
-          _SettingsTabLabel(text: 'Playback'),
-          _SettingsTabLabel(text: 'Cache'),
-          _SettingsTabLabel(text: 'Account'),
-          _SettingsTabLabel(text: 'App'),
+        tabs: [
+          _SettingsTabLabel(text: 'Appearance', compact: compact),
+          _SettingsTabLabel(text: 'Layout', compact: compact),
+          _SettingsTabLabel(text: 'Keyboard', compact: compact),
+          _SettingsTabLabel(text: 'Playback', compact: compact),
+          _SettingsTabLabel(text: 'Cache', compact: compact),
+          _SettingsTabLabel(text: 'Account', compact: compact),
+          _SettingsTabLabel(text: 'App', compact: compact),
         ],
       ),
     );
@@ -130,19 +164,25 @@ class _SettingsTabBar extends StatelessWidget {
 }
 
 class _SettingsTabLabel extends StatelessWidget {
-  const _SettingsTabLabel({required this.text});
+  const _SettingsTabLabel({required this.text, required this.compact});
 
   final String text;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
     return Tab(
+      height: compact ? 34 : null,
       child: Padding(
         padding: EdgeInsets.symmetric(
-          horizontal: space(18).clamp(12.0, 22.0),
-          vertical: space(6).clamp(4.0, 10.0),
+          horizontal: compact
+              ? space(12).clamp(8.0, 14.0)
+              : space(18).clamp(12.0, 22.0),
+          vertical: compact
+              ? space(2).clamp(1.0, 4.0)
+              : space(6).clamp(4.0, 10.0),
         ),
         child: Text(text),
       ),
