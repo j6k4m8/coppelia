@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,6 +9,7 @@ import 'services/cache_store.dart';
 import 'services/jellyfin_client.dart';
 import 'services/menu_service.dart';
 import 'services/playback_controller.dart';
+import 'services/linux_audio_handler.dart';
 import 'services/settings_store.dart';
 import 'services/session_store.dart';
 import 'state/app_state.dart';
@@ -39,6 +43,15 @@ class CoppeliaApp extends StatelessWidget {
             sessionStore: sessionStore,
             settingsStore: settingsStore,
           );
+          if (Platform.isLinux) {
+            AudioService.init(
+              builder: () => LinuxAudioHandler(playback),
+              config: const AudioServiceConfig(
+                androidNotificationChannelId: 'com.matelsky.coppelia.audio',
+                androidNotificationChannelName: 'Coppelia Playback',
+              ),
+            );
+          }
           MenuService.initialize(
             onShowPreferences: () {
               appState.selectLibraryView(LibraryView.settings);
