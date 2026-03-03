@@ -59,6 +59,7 @@ class SettingsStore {
   static const _layoutDensityKey = 'settings_layout_density';
   static const _cornerRadiusStyleKey = 'settings_corner_radius_style';
   static const _trackListStyleKey = 'settings_track_list_style';
+  static const _trackStatusIconsKey = 'settings_track_status_icons';
   static const _deviceIdKey = 'settings_device_id';
   static const _offlineModeKey = 'settings_offline_mode';
   static const _preferLocalSearchKey = 'settings_prefer_local_search';
@@ -508,6 +509,18 @@ class SettingsStore {
     final preferences = await SharedPreferences.getInstance();
     final value = style == TrackListStyle.table ? 'table' : 'card';
     await preferences.setString(_trackListStyleKey, value);
+  }
+
+  /// Loads whether track timestamp status icons are visible.
+  Future<bool> loadTrackStatusIconsEnabled() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(_trackStatusIconsKey) ?? true;
+  }
+
+  /// Saves whether track timestamp status icons are visible.
+  Future<void> saveTrackStatusIconsEnabled(bool enabled) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_trackStatusIconsKey, enabled);
   }
 
   /// Loads the preferred accent color value.

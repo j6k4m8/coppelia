@@ -6,9 +6,8 @@ import '../../models/media_item.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../state/track_list_style.dart';
+import 'track_list_item.dart';
 import 'track_list_section.dart';
-import 'track_row.dart';
-import 'track_table_row.dart';
 import 'track_table_header.dart';
 
 typedef TrackTapCallback = void Function(MediaItem track, int index);
@@ -91,45 +90,16 @@ class _TrackListViewState extends State<TrackListView> {
       final track = widget.tracks[index];
       final isFavorite = state.isFavoriteTrack(track.id);
       final albumNavEnabled = widget.enableAlbumArtistNav;
-
-      // Use table row if table style is selected
-      if (state.trackListStyle == TrackListStyle.table) {
-        return TrackTableRow(
-          track: track,
-          index: index,
-          onTap: () => widget.onTapTrack(track, index),
-          isActive: state.nowPlaying?.id == track.id,
-          visibleColumns: _visibleColumns,
-          isFavorite: isFavorite,
-          onToggleFavorite: () => state.setTrackFavorite(track, !isFavorite),
-          onAlbumTap: albumNavEnabled && track.albumId != null
-              ? () => state.selectAlbumById(track.albumId!)
-              : null,
-          onArtistTap: albumNavEnabled && track.artistIds.isNotEmpty
-              ? () => state.selectArtistById(track.artistIds.first)
-              : null,
-          onPlayNext: () => state.playNext(track),
-          onAddToQueue: () => state.enqueueTrack(track),
-          onGoToAlbum: widget.enableGoToActions && track.albumId != null
-              ? () => state.selectAlbumById(track.albumId!)
-              : null,
-          onGoToArtist: widget.enableGoToActions && track.artistIds.isNotEmpty
-              ? () => state.selectArtistById(track.artistIds.first)
-              : null,
-        );
-      }
-
-      // Otherwise use card style
-      return TrackRow(
+      return TrackListItem(
         track: track,
         index: index,
-        isActive: state.nowPlaying?.id == track.id,
         onTap: () => widget.onTapTrack(track, index),
+        isActive: state.nowPlaying?.id == track.id,
         onPlayNext: () => state.playNext(track),
         onAddToQueue: () => state.enqueueTrack(track),
+        onToggleFavorite: () => state.setTrackFavorite(track, !isFavorite),
         isFavorite: isFavorite,
         isFavoriteUpdating: state.isFavoriteTrackUpdating(track.id),
-        onToggleFavorite: () => state.setTrackFavorite(track, !isFavorite),
         onAlbumTap: albumNavEnabled && track.albumId != null
             ? () => state.selectAlbumById(track.albumId!)
             : null,
@@ -144,6 +114,7 @@ class _TrackListViewState extends State<TrackListView> {
             : null,
         enableContextMenu: widget.enableContextMenu,
         leading: leading,
+        visibleColumns: _visibleColumns,
       );
     }
 

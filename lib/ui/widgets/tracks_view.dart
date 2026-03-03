@@ -10,8 +10,8 @@ import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'alphabet_scroller.dart';
 import 'header_action.dart';
-import 'track_list_section.dart';
 import 'track_list_item.dart';
+import 'track_list_section.dart';
 import 'track_table_header.dart';
 import '../../state/track_list_style.dart';
 

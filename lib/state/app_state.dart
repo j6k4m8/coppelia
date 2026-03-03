@@ -24,6 +24,7 @@ import '../models/playback_resume_state.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
 import '../models/smart_list.dart';
+import '../models/track_status_icon_state.dart';
 import '../services/cache_store.dart';
 import '../services/jellyfin_client.dart';
 import '../services/log_service.dart';
@@ -125,6 +126,7 @@ class AppState extends ChangeNotifier {
   final Set<String> _favoriteTrackUpdatesInFlight = {};
   Set<String> _pinnedAudio = {};
   final List<DownloadTask> _downloadQueue = [];
+  final Map<String, DownloadStatus> _downloadStatusByUrl = {};
   final Map<String, DateTime> _downloadProgressTimestamps = {};
   final Set<String> _cancelledOfflineRequests = {};
   bool _isProcessingDownloads = false;
@@ -261,6 +263,7 @@ class AppState extends ChangeNotifier {
   LayoutDensity _layoutDensity = LayoutDensity.comfortable;
   CornerRadiusStyle _cornerRadiusStyle = CornerRadiusStyle.babyProofed;
   TrackListStyle _trackListStyle = TrackListStyle.card;
+  bool _trackStatusIconsEnabled = true;
   NowPlayingLayout _nowPlayingLayout = NowPlayingLayout.bottom;
   HomeShelfLayout _homeShelfLayout = HomeShelfLayout.whooshy;
   int _homeShelfGridRows = 2;
@@ -565,6 +568,24 @@ class AppState extends ChangeNotifier {
   /// Preferred track list style.
   TrackListStyle get trackListStyle => _trackListStyle;
 
+  /// Whether track timestamp status icons are shown.
+  bool get trackStatusIconsEnabled => _trackStatusIconsEnabled;
+
+  /// O(1) lookup for timestamp status icon state by stream URL.
+  TrackStatusIconState trackStatusForStreamUrl(String streamUrl) {
+    final status = _downloadStatusByUrl[streamUrl];
+    if (status != null) {
+      if (status != DownloadStatus.failed) {
+        return TrackStatusIconState.inQueue;
+      }
+      return TrackStatusIconState.none;
+    }
+    if (_pinnedAudio.contains(streamUrl)) {
+      return TrackStatusIconState.downloaded;
+    }
+    return TrackStatusIconState.none;
+  }
+
   /// True when playback telemetry is enabled.
   bool get telemetryPlaybackEnabled => _telemetryPlayback;
 
@@ -767,6 +788,8 @@ class AppState extends ChangeNotifier {
     _layoutDensity = await _settingsStore.loadLayoutDensity();
     _cornerRadiusStyle = await _settingsStore.loadCornerRadiusStyle();
     _trackListStyle = await _settingsStore.loadTrackListStyle();
+    _trackStatusIconsEnabled =
+        await _settingsStore.loadTrackStatusIconsEnabled();
     _nowPlayingLayout = await _settingsStore.loadNowPlayingLayout();
     _homeShelfLayout = await _settingsStore.loadHomeShelfLayout();
     _homeShelfGridRows = await _settingsStore.loadHomeShelfGridRows();
@@ -875,6 +898,7 @@ class AppState extends ChangeNotifier {
     _lastJumpInRefreshAt = null;
     _queue = [];
     _downloadQueue.clear();
+    _downloadStatusByUrl.clear();
     _cancelledOfflineRequests.clear();
     _isProcessingDownloads = false;
     _nowPlaying = null;
@@ -2974,13 +2998,14 @@ class AppState extends ChangeNotifier {
     if (index == null) {
       return;
     }
-    _downloadQueue[index] = _downloadQueue[index].copyWith(
+    final queuedTask = _downloadQueue[index].copyWith(
       status: DownloadStatus.queued,
       progress: null,
       totalBytes: null,
       downloadedBytes: null,
       errorMessage: null,
     );
+    _replaceDownloadTaskAt(index, queuedTask);
     notifyListeners();
     unawaited(_processDownloadQueue());
   }
@@ -3114,6 +3139,13 @@ class AppState extends ChangeNotifier {
   Future<void> setTrackListStyle(TrackListStyle style) async {
     _trackListStyle = style;
     await _settingsStore.saveTrackListStyle(style);
+    notifyListeners();
+  }
+
+  /// Updates whether track timestamp status icons are shown.
+  Future<void> setTrackStatusIconsEnabled(bool enabled) async {
+    _trackStatusIconsEnabled = enabled;
+    await _settingsStore.saveTrackStatusIconsEnabled(enabled);
     notifyListeners();
   }
 
@@ -3306,6 +3338,21 @@ class AppState extends ChangeNotifier {
     return index == -1 ? null : index;
   }
 
+  void _addDownloadTask(DownloadTask task) {
+    _downloadQueue.add(task);
+    _downloadStatusByUrl[task.track.streamUrl] = task.status;
+  }
+
+  void _replaceDownloadTaskAt(int index, DownloadTask task) {
+    _downloadQueue[index] = task;
+    _downloadStatusByUrl[task.track.streamUrl] = task.status;
+  }
+
+  void _removeDownloadTaskAt(int index) {
+    final removed = _downloadQueue.removeAt(index);
+    _downloadStatusByUrl.remove(removed.track.streamUrl);
+  }
+
   Future<void> _queueDownload(
     MediaItem track, {
     bool requiresWifi = false,
@@ -3325,7 +3372,7 @@ class AppState extends ChangeNotifier {
       await _cacheStore.touchCachedAudio(normalized);
       return;
     }
-    _downloadQueue.add(
+    _addDownloadTask(
       DownloadTask(
         track: normalized,
         status: DownloadStatus.queued,
@@ -3342,7 +3389,10 @@ class AppState extends ChangeNotifier {
     for (var i = 0; i < _downloadQueue.length; i += 1) {
       final task = _downloadQueue[i];
       if (task.status == DownloadStatus.waitingForWifi) {
-        _downloadQueue[i] = task.copyWith(status: DownloadStatus.queued);
+        _replaceDownloadTaskAt(
+          i,
+          task.copyWith(status: DownloadStatus.queued),
+        );
         updated = true;
       }
     }
@@ -3372,13 +3422,14 @@ class AppState extends ChangeNotifier {
         )) {
       return;
     }
-    _downloadQueue[index] = existing.copyWith(
+    final nextTask = existing.copyWith(
       status: status,
       progress: progress,
       totalBytes: totalBytes,
       downloadedBytes: downloadedBytes,
       errorMessage: errorMessage,
     );
+    _replaceDownloadTaskAt(index, nextTask);
     notifyListeners();
   }
 
@@ -3404,7 +3455,7 @@ class AppState extends ChangeNotifier {
     if (index == null) {
       return;
     }
-    _downloadQueue.removeAt(index);
+    _removeDownloadTaskAt(index);
     _downloadProgressTimestamps.remove(streamUrl);
     notifyListeners();
   }
@@ -3550,6 +3601,58 @@ class AppState extends ChangeNotifier {
     } catch (_) {
       return [];
     }
+  }
+
+  Future<List<MediaItem>> _loadPlaylistTracksForOffline(Playlist playlist) async {
+    final cached = await _cacheStore.loadPlaylistTracks(playlist.id);
+    if (cached.isNotEmpty) {
+      return cached;
+    }
+    if (_offlineMode) {
+      return [];
+    }
+    try {
+      final tracks = await _client.fetchPlaylistTracks(playlist.id);
+      await _cacheStore.savePlaylistTracks(playlist.id, tracks);
+      return tracks;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Pins all tracks in a playlist for offline playback.
+  Future<void> makePlaylistAvailableOffline(
+    Playlist playlist, {
+    bool requiresWifi = false,
+  }) async {
+    final tracks = await _loadPlaylistTracksForOffline(playlist);
+    for (final track in tracks) {
+      _cancelledOfflineRequests.remove(track.streamUrl);
+      await _cacheStore.setPinnedAudio(track.streamUrl, true);
+      _pinnedAudio.add(track.streamUrl);
+      await _queueDownload(track, requiresWifi: requiresWifi);
+    }
+    if (_selectedSmartList != null) {
+      unawaited(_loadSmartListTracks(_selectedSmartList!));
+    }
+    unawaited(refreshMediaCacheBytes());
+    notifyListeners();
+  }
+
+  /// Removes a playlist from offline pinning.
+  Future<void> unpinPlaylistOffline(Playlist playlist) async {
+    final tracks = await _loadPlaylistTracksForOffline(playlist);
+    for (final track in tracks) {
+      _cancelledOfflineRequests.add(track.streamUrl);
+      await _cacheStore.setPinnedAudio(track.streamUrl, false);
+      _pinnedAudio.remove(track.streamUrl);
+      _removeDownload(track.streamUrl);
+    }
+    if (_selectedSmartList != null) {
+      unawaited(_loadSmartListTracks(_selectedSmartList!));
+    }
+    unawaited(refreshMediaCacheBytes());
+    notifyListeners();
   }
 
   /// Pins all tracks in an album for offline playback.
