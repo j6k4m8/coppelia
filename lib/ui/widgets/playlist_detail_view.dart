@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/download_task.dart';
 import '../../models/playlist.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
@@ -14,6 +15,72 @@ import 'collection_header.dart';
 import 'playlist_dialogs.dart';
 import 'track_list_item.dart';
 import 'track_table_header.dart';
+
+class PlaylistOfflineActionState {
+  const PlaylistOfflineActionState({
+    required this.canDownload,
+    required this.isOfflineReady,
+    required this.isOfflinePending,
+    required this.hasFailedDownloads,
+    required this.label,
+    required this.tooltip,
+    required this.icon,
+  });
+
+  final bool canDownload;
+  final bool isOfflineReady;
+  final bool isOfflinePending;
+  final bool hasFailedDownloads;
+  final String label;
+  final String tooltip;
+  final IconData icon;
+}
+
+PlaylistOfflineActionState derivePlaylistOfflineActionState({
+  required List<MediaItem> playlistTracks,
+  required Set<String> pinnedAudio,
+  required List<DownloadTask> downloadQueue,
+}) {
+  final playlistTrackUrls = playlistTracks.map((track) => track.streamUrl).toSet();
+  final relatedDownloads = downloadQueue
+      .where((task) => playlistTrackUrls.contains(task.track.streamUrl))
+      .toList();
+  final canDownload = playlistTracks.isNotEmpty;
+  final allTracksPinned = canDownload &&
+      playlistTracks.every((track) => pinnedAudio.contains(track.streamUrl));
+  final isOfflineReady = allTracksPinned && relatedDownloads.isEmpty;
+  final isOfflinePending = relatedDownloads.any(
+    (task) => task.status != DownloadStatus.failed,
+  );
+  final hasFailedDownloads = relatedDownloads.any(
+    (task) => task.status == DownloadStatus.failed,
+  );
+  final label = isOfflinePending
+      ? 'Making Available Offline...'
+      : isOfflineReady
+          ? 'Remove from Offline'
+          : hasFailedDownloads
+              ? 'Retry Offline Download'
+              : 'Make Available Offline';
+  final tooltip = isOfflinePending
+      ? 'Cancel Offline Request'
+      : isOfflineReady
+          ? 'Remove from Offline'
+          : hasFailedDownloads
+              ? 'Retry Offline Download'
+              : 'Make Available Offline';
+  final icon =
+      isOfflineReady ? Icons.download_done_rounded : Icons.download_rounded;
+  return PlaylistOfflineActionState(
+    canDownload: canDownload,
+    isOfflineReady: isOfflineReady,
+    isOfflinePending: isOfflinePending,
+    hasFailedDownloads: hasFailedDownloads,
+    label: label,
+    tooltip: tooltip,
+    icon: icon,
+  );
+}
 
 /// Playlist detail view with track listing.
 class PlaylistDetailView extends StatefulWidget {
@@ -51,11 +118,22 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
     final canEdit =
         state.session != null && !state.offlineMode && !state.offlineOnlyFilter;
     final pinned = state.pinnedAudio;
-    final offlineTracks = state.playlistTracks
+    final fullPlaylistTracks = state.playlistTracks;
+    final offlineTracks = fullPlaylistTracks
         .where((track) => pinned.contains(track.streamUrl))
         .toList();
     final displayTracks =
-        state.offlineOnlyFilter ? offlineTracks : state.playlistTracks;
+        state.offlineOnlyFilter ? offlineTracks : fullPlaylistTracks;
+    final offlineState = derivePlaylistOfflineActionState(
+      playlistTracks: fullPlaylistTracks,
+      pinnedAudio: pinned,
+      downloadQueue: state.downloadQueue,
+    );
+    final offlineOnPressed = offlineState.canDownload
+        ? () => (offlineState.isOfflineReady || offlineState.isOfflinePending)
+            ? state.unpinPlaylistOffline(playlist)
+            : state.makePlaylistAvailableOffline(playlist)
+        : null;
     final canReorder = canEdit &&
         displayTracks.isNotEmpty &&
         displayTracks.every((track) => track.playlistItemId != null);
@@ -93,10 +171,12 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
                         child: _PlaylistHeader(
                           playlist: playlist,
                           tracks: displayTracks,
-                          offlineOnly: state.offlineOnlyFilter,
-                          onToggleOfflineOnly: state.setOfflineOnlyFilter,
                           canEdit: canEdit,
-                          canReorder: canReorder,
+                          offlineLabel: offlineState.label,
+                          offlineTooltip: offlineState.tooltip,
+                          offlineIcon: offlineState.icon,
+                          isOfflinePending: offlineState.isOfflinePending,
+                          onOfflineAction: offlineOnPressed,
                           onRename: () => _handleRename(context, playlist),
                           onDelete: () => _handleDelete(context, playlist),
                         ),
@@ -185,10 +265,12 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
                       return _PlaylistHeader(
                         playlist: playlist,
                         tracks: displayTracks,
-                        offlineOnly: state.offlineOnlyFilter,
-                        onToggleOfflineOnly: state.setOfflineOnlyFilter,
                         canEdit: canEdit,
-                        canReorder: canReorder,
+                        offlineLabel: offlineState.label,
+                        offlineTooltip: offlineState.tooltip,
+                        offlineIcon: offlineState.icon,
+                        isOfflinePending: offlineState.isOfflinePending,
+                        onOfflineAction: offlineOnPressed,
                         onRename: () => _handleRename(context, playlist),
                         onDelete: () => _handleDelete(context, playlist),
                       );
@@ -298,20 +380,24 @@ class _PlaylistHeader extends StatelessWidget {
   const _PlaylistHeader({
     required this.playlist,
     required this.tracks,
-    required this.offlineOnly,
-    required this.onToggleOfflineOnly,
     required this.canEdit,
-    required this.canReorder,
+    required this.offlineLabel,
+    required this.offlineTooltip,
+    required this.offlineIcon,
+    required this.isOfflinePending,
+    required this.onOfflineAction,
     required this.onRename,
     required this.onDelete,
   });
 
   final Playlist playlist;
   final List<MediaItem> tracks;
-  final bool offlineOnly;
-  final ValueChanged<bool> onToggleOfflineOnly;
   final bool canEdit;
-  final bool canReorder;
+  final String offlineLabel;
+  final String offlineTooltip;
+  final IconData offlineIcon;
+  final bool isOfflinePending;
+  final VoidCallback? onOfflineAction;
   final VoidCallback? onRename;
   final VoidCallback? onDelete;
 
@@ -336,6 +422,14 @@ class _PlaylistHeader extends StatelessWidget {
           tonal: true,
           onPressed: () => state.playShuffledList(tracks),
         ),
+      HeaderActionSpec(
+        icon: offlineIcon,
+        label: offlineLabel,
+        tooltip: offlineTooltip,
+        isLoading: isOfflinePending,
+        outlined: true,
+        onPressed: onOfflineAction,
+      ),
       if (canEdit)
         HeaderActionSpec(
           icon: Icons.more_horiz,

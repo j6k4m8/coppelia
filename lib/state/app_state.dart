@@ -3552,6 +3552,58 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  Future<List<MediaItem>> _loadPlaylistTracksForOffline(Playlist playlist) async {
+    final cached = await _cacheStore.loadPlaylistTracks(playlist.id);
+    if (cached.isNotEmpty) {
+      return cached;
+    }
+    if (_offlineMode) {
+      return [];
+    }
+    try {
+      final tracks = await _client.fetchPlaylistTracks(playlist.id);
+      await _cacheStore.savePlaylistTracks(playlist.id, tracks);
+      return tracks;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Pins all tracks in a playlist for offline playback.
+  Future<void> makePlaylistAvailableOffline(
+    Playlist playlist, {
+    bool requiresWifi = false,
+  }) async {
+    final tracks = await _loadPlaylistTracksForOffline(playlist);
+    for (final track in tracks) {
+      _cancelledOfflineRequests.remove(track.streamUrl);
+      await _cacheStore.setPinnedAudio(track.streamUrl, true);
+      _pinnedAudio.add(track.streamUrl);
+      await _queueDownload(track, requiresWifi: requiresWifi);
+    }
+    if (_selectedSmartList != null) {
+      unawaited(_loadSmartListTracks(_selectedSmartList!));
+    }
+    unawaited(refreshMediaCacheBytes());
+    notifyListeners();
+  }
+
+  /// Removes a playlist from offline pinning.
+  Future<void> unpinPlaylistOffline(Playlist playlist) async {
+    final tracks = await _loadPlaylistTracksForOffline(playlist);
+    for (final track in tracks) {
+      _cancelledOfflineRequests.add(track.streamUrl);
+      await _cacheStore.setPinnedAudio(track.streamUrl, false);
+      _pinnedAudio.remove(track.streamUrl);
+      _removeDownload(track.streamUrl);
+    }
+    if (_selectedSmartList != null) {
+      unawaited(_loadSmartListTracks(_selectedSmartList!));
+    }
+    unawaited(refreshMediaCacheBytes());
+    notifyListeners();
+  }
+
   /// Pins all tracks in an album for offline playback.
   Future<void> makeAlbumAvailableOffline(
     Album album, {
