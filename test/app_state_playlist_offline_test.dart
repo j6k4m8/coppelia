@@ -1,9 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:coppelia/models/media_item.dart';
 import 'package:coppelia/models/playlist.dart';
+import 'package:coppelia/models/download_task.dart';
+import 'package:coppelia/models/track_status_icon_state.dart';
 import 'package:coppelia/services/cache_store.dart';
 import 'package:coppelia/services/jellyfin_client.dart';
 import 'package:coppelia/services/playback_controller.dart';
@@ -39,6 +42,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(_track('fallback'));
     registerFallbackValue(<String>{});
+    registerFallbackValue(<String, String>{});
     registerFallbackValue(<MediaItem>[]);
   });
 
@@ -82,6 +86,13 @@ void main() {
     when(
       () => cacheStore.savePlaylistTracks(any(), any()),
     ).thenAnswer((_) async {});
+    when(
+      () => cacheStore.downloadAudioWithProgress(
+        any(),
+        headers: any(named: 'headers'),
+      ),
+    ).thenAnswer((_) => const Stream<FileResponse>.empty());
+    when(() => settingsStore.saveDownloadsPaused(any())).thenAnswer((_) async {});
 
     return AppState(
       cacheStore: cacheStore,
@@ -208,6 +219,98 @@ void main() {
       for (final track in tracks) {
         verify(() => cacheStore.setPinnedAudio(track.streamUrl, false)).called(1);
       }
+    });
+  });
+
+  group('AppState track status icons', () {
+    test('returns downloaded for pinned tracks with no queue entry', () async {
+      final cacheStore = _MockCacheStore();
+      final client = _MockJellyfinClient();
+      final playback = _MockPlaybackController();
+      final sessionStore = _MockSessionStore();
+      final settingsStore = _MockSettingsStore();
+      final state = buildState(
+        cacheStore: cacheStore,
+        client: client,
+        playback: playback,
+        sessionStore: sessionStore,
+        settingsStore: settingsStore,
+      );
+      addTearDown(state.dispose);
+
+      final track = _track('status-downloaded');
+      when(() => cacheStore.isAudioCached(track)).thenAnswer((_) async => true);
+
+      await state.makeTrackAvailableOffline(track);
+
+      expect(
+        state.trackStatusForStreamUrl(track.streamUrl),
+        TrackStatusIconState.downloaded,
+      );
+    });
+
+    test('returns inQueue while download is queued', () async {
+      final cacheStore = _MockCacheStore();
+      final client = _MockJellyfinClient();
+      final playback = _MockPlaybackController();
+      final sessionStore = _MockSessionStore();
+      final settingsStore = _MockSettingsStore();
+      final state = buildState(
+        cacheStore: cacheStore,
+        client: client,
+        playback: playback,
+        sessionStore: sessionStore,
+        settingsStore: settingsStore,
+      );
+      addTearDown(state.dispose);
+
+      final track = _track('status-queued');
+      when(() => cacheStore.isAudioCached(track)).thenAnswer((_) async => false);
+      await state.setDownloadsPaused(true);
+      await state.makeTrackAvailableOffline(track);
+
+      expect(
+        state.trackStatusForStreamUrl(track.streamUrl),
+        TrackStatusIconState.inQueue,
+      );
+      expect(state.downloadQueue, hasLength(1));
+      expect(state.downloadQueue.single.status, DownloadStatus.queued);
+    });
+
+    test('returns none when latest queue status is failed', () async {
+      final cacheStore = _MockCacheStore();
+      final client = _MockJellyfinClient();
+      final playback = _MockPlaybackController();
+      final sessionStore = _MockSessionStore();
+      final settingsStore = _MockSettingsStore();
+      final state = buildState(
+        cacheStore: cacheStore,
+        client: client,
+        playback: playback,
+        sessionStore: sessionStore,
+        settingsStore: settingsStore,
+      );
+      addTearDown(state.dispose);
+
+      final track = _track('status-failed');
+      when(() => cacheStore.isAudioCached(track)).thenAnswer((_) async => false);
+      when(
+        () => cacheStore.downloadAudioWithProgress(
+          track,
+          headers: any(named: 'headers'),
+        ),
+      ).thenAnswer((_) => Stream<FileResponse>.error(Exception('download failed')));
+
+      await state.makeTrackAvailableOffline(track);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(state.downloadQueue, hasLength(1));
+      expect(state.downloadQueue.single.status, DownloadStatus.failed);
+      expect(
+        state.trackStatusForStreamUrl(track.streamUrl),
+        TrackStatusIconState.none,
+      );
     });
   });
 }

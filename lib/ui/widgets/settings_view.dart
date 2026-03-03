@@ -517,6 +517,17 @@ class _AppearanceSettingsState extends State<_AppearanceSettings> {
         ),
         SizedBox(height: space(16)),
         _SettingRow(
+          title: 'Track status icons',
+          subtitle:
+              'Show a downloaded or in-queue icon beside each track duration.',
+          forceInline: true,
+          trailing: CompactSwitch(
+            value: state.trackStatusIconsEnabled,
+            onChanged: state.setTrackStatusIconsEnabled,
+          ),
+        ),
+        SizedBox(height: space(16)),
+        _SettingRow(
           title: 'Corner radius',
           subtitle: 'Dial in how rounded the UI feels.',
           trailing: SizedBox(

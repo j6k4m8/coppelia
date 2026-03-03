@@ -52,9 +52,15 @@ class TrackListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
+    final trackListStyle = context.select((AppState state) => state.trackListStyle);
+    final showTrackStatusIcons = context.select(
+      (AppState state) => state.trackStatusIconsEnabled,
+    );
+    final statusIconState = context.select(
+      (AppState state) => state.trackStatusForStreamUrl(track.streamUrl),
+    );
 
-    if (state.trackListStyle == TrackListStyle.table) {
+    if (trackListStyle == TrackListStyle.table) {
       return TrackTableRow(
         track: track,
         index: index,
@@ -71,6 +77,8 @@ class TrackListItem extends StatelessWidget {
         onGoToAlbum: onGoToAlbum,
         onGoToArtist: onGoToArtist,
         onRemoveFromPlaylist: onRemoveFromPlaylist,
+        statusIconState: statusIconState,
+        showStatusIcon: showTrackStatusIcons,
       );
     }
 
@@ -92,6 +100,8 @@ class TrackListItem extends StatelessWidget {
       enableContextMenu: enableContextMenu,
       leading: leading,
       trailing: trailing,
+      statusIconState: statusIconState,
+      showStatusIcon: showTrackStatusIcons,
     );
   }
 }

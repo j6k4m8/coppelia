@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
 import '../../models/media_item.dart';
+import '../../models/track_status_icon_state.dart';
+import 'track_status_icon_mapper.dart';
 import 'track_context_menu.dart';
 
 /// Table-style row for track listings.
@@ -33,6 +35,8 @@ class TrackTableRow extends StatelessWidget {
     this.onGoToAlbum,
     this.onGoToArtist,
     this.onRemoveFromPlaylist,
+    this.statusIconState = TrackStatusIconState.none,
+    this.showStatusIcon = true,
   });
 
   final MediaItem track;
@@ -49,6 +53,8 @@ class TrackTableRow extends StatelessWidget {
   final VoidCallback? onGoToAlbum;
   final VoidCallback? onGoToArtist;
   final Future<String?> Function()? onRemoveFromPlaylist;
+  final TrackStatusIconState statusIconState;
+  final bool showStatusIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +68,7 @@ class TrackTableRow extends StatelessWidget {
     final secondaryColor = isActive
         ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.7)
         : ColorTokens.textSecondary(context);
+    final statusIcon = iconForTrackStatus(statusIconState);
 
     return Material(
       color: isActive
@@ -244,13 +251,26 @@ class TrackTableRow extends StatelessWidget {
               if (visibleColumns.contains('duration'))
                 SizedBox(
                   width: 80,
-                  child: Text(
-                    formatDuration(track.duration),
-                    style: TextStyle(
-                      color: secondaryColor,
-                      fontSize: 13,
-                    ),
-                    textAlign: TextAlign.right,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (showStatusIcon && statusIcon != null) ...[
+                        Icon(
+                          statusIcon,
+                          size: 14,
+                          color: secondaryColor,
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                      Text(
+                        formatDuration(track.duration),
+                        style: TextStyle(
+                          color: secondaryColor,
+                          fontSize: 13,
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
+                    ],
                   ),
                 ),
               if (visibleColumns.contains('duration'))

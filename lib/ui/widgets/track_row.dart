@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
 import '../../models/media_item.dart';
+import '../../models/track_status_icon_state.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'app_snack.dart';
@@ -15,6 +16,7 @@ import 'artwork_image.dart';
 import 'corner_radius.dart';
 import 'context_menu.dart';
 import 'playlist_dialogs.dart';
+import 'track_status_icon_mapper.dart';
 
 /// Row for a track listing.
 class TrackRow extends StatelessWidget {
@@ -38,6 +40,8 @@ class TrackRow extends StatelessWidget {
     this.enableContextMenu = true,
     this.leading,
     this.trailing,
+    this.statusIconState = TrackStatusIconState.none,
+    this.showStatusIcon = true,
   });
 
   /// Track metadata.
@@ -91,6 +95,12 @@ class TrackRow extends StatelessWidget {
   /// Optional trailing widget to display at the end of the row.
   final Widget? trailing;
 
+  /// Download/offline status icon state shown beside duration.
+  final TrackStatusIconState statusIconState;
+
+  /// Whether timestamp status icons are shown.
+  final bool showStatusIcon;
+
   @override
   Widget build(BuildContext context) {
     final isActive = this.isActive;
@@ -116,6 +126,7 @@ class TrackRow extends StatelessWidget {
     final artRadius =
         context.scaledRadius(clamped(10, min: 4, max: 12));
     final indexWidth = clamped(32, min: 16, max: 36);
+    final statusIcon = iconForTrackStatus(statusIconState);
     Widget buildArtworkFallback() => ArtworkFallback(
           width: artSize,
           height: artSize,
@@ -219,6 +230,14 @@ class TrackRow extends StatelessWidget {
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 SizedBox(width: space(8).clamp(4.0, 10.0)),
+              ],
+              if (showStatusIcon && statusIcon != null) ...[
+                Icon(
+                  statusIcon,
+                  size: clamped(14, min: 12, max: 16),
+                  color: ColorTokens.textSecondary(context),
+                ),
+                SizedBox(width: space(6).clamp(3.0, 8.0)),
               ],
               Text(
                 formatDuration(track.duration),
