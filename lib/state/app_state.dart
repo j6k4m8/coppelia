@@ -140,6 +140,7 @@ class AppState extends ChangeNotifier {
   Duration _duration = Duration.zero;
   bool _isPlaying = false;
   bool _isBuffering = false;
+  ProcessingState _processingState = ProcessingState.idle;
   bool _isNowPlayingCached = false;
   bool _isPreparingPlayback = false;
   bool _isApplyingQueueUpdate = false;
@@ -2717,12 +2718,12 @@ class AppState extends ChangeNotifier {
       );
     } else {
       await logService.info('togglePlayback: Resuming playback');
-      _startPlaybackPolling();
       await _performPlaybackAction(
         () => _playback.play(),
         'play',
       );
     }
+    _syncPlaybackPolling();
   }
 
   /// Skips to the next track.
@@ -2901,11 +2902,13 @@ class AppState extends ChangeNotifier {
   Future<void> seek(Duration position) async {
     _lastSeekRequestedAt = DateTime.now();
     _lastRequestedSeekPosition = position;
-    await _performPlaybackAction(
+    final didSeek = await _performPlaybackAction(
       () => _playback.seek(position),
       'seek',
     );
-    _updatePlaybackProgress(position: position);
+    if (didSeek) {
+      _updatePlaybackProgress(position: position);
+    }
   }
 
   /// Updates the theme preference.
@@ -4060,6 +4063,7 @@ class AppState extends ChangeNotifier {
         _activeSessionHasPlayed = true;
       }
       _isBuffering = nextBuffering;
+      _processingState = state.processingState;
       if (shouldStopPreparing) {
         _isPreparingPlayback = false;
       }
@@ -4070,15 +4074,9 @@ class AppState extends ChangeNotifier {
         _updateNowPlayingInfo(force: true);
       }
       if (playingChanged) {
-        _maybeReportPlaybackState(isPaused: !_isPlaying);
+        _maybeReportPlaybackState();
       }
-      if (state.processingState == ProcessingState.ready ||
-          state.processingState == ProcessingState.buffering ||
-          state.processingState == ProcessingState.loading) {
-        _startPlaybackPolling();
-      } else {
-        _stopPlaybackPolling();
-      }
+      _syncPlaybackPolling(state);
       if (state.processingState == ProcessingState.completed) {
         _maybeReportStopped(completed: true);
       }
@@ -4148,6 +4146,35 @@ class AppState extends ChangeNotifier {
   void _stopPlaybackPolling() {
     _playbackPollTimer?.cancel();
     _playbackPollTimer = null;
+  }
+
+  bool _shouldRunPlaybackPolling({
+    required bool isPlaying,
+    required ProcessingState processingState,
+  }) {
+    switch (processingState) {
+      case ProcessingState.loading:
+      case ProcessingState.buffering:
+        return true;
+      case ProcessingState.ready:
+        return isPlaying;
+      case ProcessingState.idle:
+      case ProcessingState.completed:
+        return false;
+    }
+  }
+
+  void _syncPlaybackPolling([PlayerState? state]) {
+    final isPlaying = state?.playing ?? _isPlaying;
+    final processingState = state?.processingState ?? _processingState;
+    if (_shouldRunPlaybackPolling(
+      isPlaying: isPlaying,
+      processingState: processingState,
+    )) {
+      _startPlaybackPolling();
+    } else {
+      _stopPlaybackPolling();
+    }
   }
 
   void _recordPlayHistory(MediaItem track) {
@@ -4374,7 +4401,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void _maybeReportPlaybackState({required bool isPaused}) {
+  void _maybeReportPlaybackState() {
     if (!_telemetryPlayback) {
       return;
     }
@@ -4386,7 +4413,7 @@ class AppState extends ChangeNotifier {
       }
       return;
     }
-    _reportPlaybackProgress(isPaused: isPaused, force: true);
+    _reportPlaybackProgress(isPaused: true, force: true);
   }
 
   void _maybeReportProgress() {
@@ -5018,14 +5045,15 @@ class AppState extends ChangeNotifier {
     }
 
     await logService
-        .info('_playFromList[$requestId]: Starting playback polling');
-    _startPlaybackPolling();
+        .info('_playFromList[$requestId]: Syncing playback polling state');
+    _syncPlaybackPolling();
 
     await logService.info('_playFromList[$requestId]: Initiating play command');
     final didPlay = await _performPlaybackAction(
       () => _playback.play(),
       'play',
     );
+    _syncPlaybackPolling();
     await logService.info(
         '_playFromList[$requestId]: Play command ${didPlay ? "successful" : "failed"}');
   }
