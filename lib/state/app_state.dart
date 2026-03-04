@@ -140,6 +140,7 @@ class AppState extends ChangeNotifier {
   Duration _duration = Duration.zero;
   bool _isPlaying = false;
   bool _isBuffering = false;
+  ProcessingState _processingState = ProcessingState.idle;
   bool _isNowPlayingCached = false;
   bool _isPreparingPlayback = false;
   bool _isApplyingQueueUpdate = false;
@@ -198,7 +199,12 @@ class AppState extends ChangeNotifier {
           _position >= _duration - const Duration(seconds: 1) &&
           rawPosition <= const Duration(seconds: 1);
       if (!isWrapAroundNearBoundary) {
-        return false;
+        // Accept large backward corrections so we can recover if the backend
+        // advanced tracks while Flutter missed an index event.
+        final backwardDelta = _position - rawPosition;
+        if (backwardDelta <= const Duration(seconds: 2)) {
+          return false;
+        }
       }
     }
     return true;
@@ -236,6 +242,40 @@ class AppState extends ChangeNotifier {
       }
     }
     return true;
+  }
+
+  void _ingestPlaybackTick({
+    required Duration rawPosition,
+    Duration syntheticAdvanceStep = Duration.zero,
+    bool forceSideEffects = false,
+  }) {
+    _syncNowPlayingFromCurrentIndex();
+
+    var didUpdatePosition = false;
+    if (rawPosition != _position && _shouldUseRawPosition(rawPosition)) {
+      _updatePlaybackProgress(position: rawPosition);
+      didUpdatePosition = true;
+    } else if (syntheticAdvanceStep > Duration.zero &&
+        _playback.isPlaying &&
+        (_duration == Duration.zero || _position < _duration)) {
+      // Desktop backends can occasionally stall position updates while audio
+      // is still playing. Keep the scrubber advancing between real samples.
+      _updatePlaybackProgress(position: _position + syntheticAdvanceStep);
+      didUpdatePosition = true;
+    }
+
+    final liveDuration = _playback.duration;
+    if (liveDuration != null &&
+        liveDuration > Duration.zero &&
+        liveDuration != _duration) {
+      _updatePlaybackProgress(duration: liveDuration);
+    }
+
+    if (didUpdatePosition || forceSideEffects) {
+      _maybeReportProgress();
+      _persistPlaybackResumeState();
+      _updateNowPlayingInfo();
+    }
   }
 
   ThemeMode _themeMode = ThemeMode.dark;
@@ -1750,7 +1790,8 @@ class AppState extends ChangeNotifier {
       if (!_isSearchRequestActive(requestId, query)) {
         return;
       }
-      if (_tracksOffset == beforeOffset && _libraryTracks.length == beforeCount) {
+      if (_tracksOffset == beforeOffset &&
+          _libraryTracks.length == beforeCount) {
         break;
       }
       _publishLocalSearchResults(query, requestId);
@@ -2677,12 +2718,12 @@ class AppState extends ChangeNotifier {
       );
     } else {
       await logService.info('togglePlayback: Resuming playback');
-      _startPlaybackPolling();
       await _performPlaybackAction(
         () => _playback.play(),
         'play',
       );
     }
+    _syncPlaybackPolling();
   }
 
   /// Skips to the next track.
@@ -2861,11 +2902,13 @@ class AppState extends ChangeNotifier {
   Future<void> seek(Duration position) async {
     _lastSeekRequestedAt = DateTime.now();
     _lastRequestedSeekPosition = position;
-    await _performPlaybackAction(
+    final didSeek = await _performPlaybackAction(
       () => _playback.seek(position),
       'seek',
     );
-    _updatePlaybackProgress(position: position);
+    if (didSeek) {
+      _updatePlaybackProgress(position: position);
+    }
   }
 
   /// Updates the theme preference.
@@ -3603,7 +3646,8 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<List<MediaItem>> _loadPlaylistTracksForOffline(Playlist playlist) async {
+  Future<List<MediaItem>> _loadPlaylistTracksForOffline(
+      Playlist playlist) async {
     final cached = await _cacheStore.loadPlaylistTracks(playlist.id);
     if (cached.isNotEmpty) {
       return cached;
@@ -3991,22 +4035,16 @@ class AppState extends ChangeNotifier {
 
   void _bindPlayback() {
     _positionSubscription = _playback.positionStream.listen((position) {
-      if (_shouldUseRawPosition(position)) {
-        _updatePlaybackProgress(position: position);
-      }
-      if (_duration == Duration.zero) {
-        final liveDuration = _playback.duration;
-        if (liveDuration != null && liveDuration > Duration.zero) {
-          _updatePlaybackProgress(duration: liveDuration);
-        }
-      }
-      _maybeReportProgress();
-      _persistPlaybackResumeState();
-      _updateNowPlayingInfo();
+      _ingestPlaybackTick(
+        rawPosition: position,
+        forceSideEffects: true,
+      );
     });
     _durationSubscription = _playback.durationStream.listen((duration) {
-      _updatePlaybackProgress(duration: duration ?? Duration.zero);
-      _updateNowPlayingInfo(force: true);
+      if (duration != null && duration > Duration.zero) {
+        _updatePlaybackProgress(duration: duration);
+        _updateNowPlayingInfo(force: true);
+      }
     });
     _playerStateSubscription = _playback.playerStateStream.listen((state) {
       LogService.instance.then((log) => log.info(
@@ -4025,6 +4063,7 @@ class AppState extends ChangeNotifier {
         _activeSessionHasPlayed = true;
       }
       _isBuffering = nextBuffering;
+      _processingState = state.processingState;
       if (shouldStopPreparing) {
         _isPreparingPlayback = false;
       }
@@ -4035,15 +4074,9 @@ class AppState extends ChangeNotifier {
         _updateNowPlayingInfo(force: true);
       }
       if (playingChanged) {
-        _maybeReportPlaybackState(isPaused: !_isPlaying);
+        _maybeReportPlaybackState();
       }
-      if (state.processingState == ProcessingState.ready ||
-          state.processingState == ProcessingState.buffering ||
-          state.processingState == ProcessingState.loading) {
-        _startPlaybackPolling();
-      } else {
-        _stopPlaybackPolling();
-      }
+      _syncPlaybackPolling(state);
       if (state.processingState == ProcessingState.completed) {
         _maybeReportStopped(completed: true);
       }
@@ -4072,7 +4105,8 @@ class AppState extends ChangeNotifier {
         if (_nowPlaying?.id != next.id) {
           _setNowPlaying(next, notify: false);
           didMutatePlaybackState = true;
-        } else if (_duration == Duration.zero && next.duration > Duration.zero) {
+        } else if (_duration == Duration.zero &&
+            next.duration > Duration.zero) {
           _updatePlaybackProgress(duration: next.duration);
           _updateNowPlayingInfo(force: true);
           didMutatePlaybackState = true;
@@ -4102,35 +4136,45 @@ class AppState extends ChangeNotifier {
     }
     const pollInterval = Duration(milliseconds: 500);
     _playbackPollTimer = Timer.periodic(pollInterval, (_) {
-      final position = _playback.position;
-      var didUpdatePosition = false;
-      if (position != _position && _shouldUseRawPosition(position)) {
-        _updatePlaybackProgress(position: position);
-        didUpdatePosition = true;
-      } else if (_isPlaying &&
-          (_duration == Duration.zero || _position < _duration)) {
-        // Desktop backends can occasionally stall position updates while audio
-        // is still playing. Keep the scrubber advancing between real samples.
-        _updatePlaybackProgress(position: _position + pollInterval);
-        didUpdatePosition = true;
-      }
-      final liveDuration = _playback.duration;
-      if (liveDuration != null &&
-          liveDuration > Duration.zero &&
-          liveDuration != _duration) {
-        _updatePlaybackProgress(duration: liveDuration);
-      }
-      if (didUpdatePosition) {
-        _maybeReportProgress();
-        _persistPlaybackResumeState();
-        _updateNowPlayingInfo();
-      }
+      _ingestPlaybackTick(
+        rawPosition: _playback.position,
+        syntheticAdvanceStep: pollInterval,
+      );
     });
   }
 
   void _stopPlaybackPolling() {
     _playbackPollTimer?.cancel();
     _playbackPollTimer = null;
+  }
+
+  bool _shouldRunPlaybackPolling({
+    required bool isPlaying,
+    required ProcessingState processingState,
+  }) {
+    switch (processingState) {
+      case ProcessingState.loading:
+      case ProcessingState.buffering:
+        return true;
+      case ProcessingState.ready:
+        return isPlaying;
+      case ProcessingState.idle:
+      case ProcessingState.completed:
+        return false;
+    }
+  }
+
+  void _syncPlaybackPolling([PlayerState? state]) {
+    final isPlaying = state?.playing ?? _isPlaying;
+    final processingState = state?.processingState ?? _processingState;
+    if (_shouldRunPlaybackPolling(
+      isPlaying: isPlaying,
+      processingState: processingState,
+    )) {
+      _startPlaybackPolling();
+    } else {
+      _stopPlaybackPolling();
+    }
   }
 
   void _recordPlayHistory(MediaItem track) {
@@ -4357,7 +4401,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void _maybeReportPlaybackState({required bool isPaused}) {
+  void _maybeReportPlaybackState() {
     if (!_telemetryPlayback) {
       return;
     }
@@ -4369,7 +4413,7 @@ class AppState extends ChangeNotifier {
       }
       return;
     }
-    _reportPlaybackProgress(isPaused: isPaused, force: true);
+    _reportPlaybackProgress(isPaused: true, force: true);
   }
 
   void _maybeReportProgress() {
@@ -5001,14 +5045,15 @@ class AppState extends ChangeNotifier {
     }
 
     await logService
-        .info('_playFromList[$requestId]: Starting playback polling');
-    _startPlaybackPolling();
+        .info('_playFromList[$requestId]: Syncing playback polling state');
+    _syncPlaybackPolling();
 
     await logService.info('_playFromList[$requestId]: Initiating play command');
     final didPlay = await _performPlaybackAction(
       () => _playback.play(),
       'play',
     );
+    _syncPlaybackPolling();
     await logService.info(
         '_playFromList[$requestId]: Play command ${didPlay ? "successful" : "failed"}');
   }
