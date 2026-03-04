@@ -198,7 +198,12 @@ class AppState extends ChangeNotifier {
           _position >= _duration - const Duration(seconds: 1) &&
           rawPosition <= const Duration(seconds: 1);
       if (!isWrapAroundNearBoundary) {
-        return false;
+        // Accept large backward corrections so we can recover if the backend
+        // advanced tracks while Flutter missed an index event.
+        final backwardDelta = _position - rawPosition;
+        if (backwardDelta <= const Duration(seconds: 2)) {
+          return false;
+        }
       }
     }
     return true;
@@ -236,6 +241,40 @@ class AppState extends ChangeNotifier {
       }
     }
     return true;
+  }
+
+  void _ingestPlaybackTick({
+    required Duration rawPosition,
+    Duration syntheticAdvanceStep = Duration.zero,
+    bool forceSideEffects = false,
+  }) {
+    _syncNowPlayingFromCurrentIndex();
+
+    var didUpdatePosition = false;
+    if (rawPosition != _position && _shouldUseRawPosition(rawPosition)) {
+      _updatePlaybackProgress(position: rawPosition);
+      didUpdatePosition = true;
+    } else if (syntheticAdvanceStep > Duration.zero &&
+        _playback.isPlaying &&
+        (_duration == Duration.zero || _position < _duration)) {
+      // Desktop backends can occasionally stall position updates while audio
+      // is still playing. Keep the scrubber advancing between real samples.
+      _updatePlaybackProgress(position: _position + syntheticAdvanceStep);
+      didUpdatePosition = true;
+    }
+
+    final liveDuration = _playback.duration;
+    if (liveDuration != null &&
+        liveDuration > Duration.zero &&
+        liveDuration != _duration) {
+      _updatePlaybackProgress(duration: liveDuration);
+    }
+
+    if (didUpdatePosition || forceSideEffects) {
+      _maybeReportProgress();
+      _persistPlaybackResumeState();
+      _updateNowPlayingInfo();
+    }
   }
 
   ThemeMode _themeMode = ThemeMode.dark;
@@ -1750,7 +1789,8 @@ class AppState extends ChangeNotifier {
       if (!_isSearchRequestActive(requestId, query)) {
         return;
       }
-      if (_tracksOffset == beforeOffset && _libraryTracks.length == beforeCount) {
+      if (_tracksOffset == beforeOffset &&
+          _libraryTracks.length == beforeCount) {
         break;
       }
       _publishLocalSearchResults(query, requestId);
@@ -3603,7 +3643,8 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<List<MediaItem>> _loadPlaylistTracksForOffline(Playlist playlist) async {
+  Future<List<MediaItem>> _loadPlaylistTracksForOffline(
+      Playlist playlist) async {
     final cached = await _cacheStore.loadPlaylistTracks(playlist.id);
     if (cached.isNotEmpty) {
       return cached;
@@ -3991,22 +4032,16 @@ class AppState extends ChangeNotifier {
 
   void _bindPlayback() {
     _positionSubscription = _playback.positionStream.listen((position) {
-      if (_shouldUseRawPosition(position)) {
-        _updatePlaybackProgress(position: position);
-      }
-      if (_duration == Duration.zero) {
-        final liveDuration = _playback.duration;
-        if (liveDuration != null && liveDuration > Duration.zero) {
-          _updatePlaybackProgress(duration: liveDuration);
-        }
-      }
-      _maybeReportProgress();
-      _persistPlaybackResumeState();
-      _updateNowPlayingInfo();
+      _ingestPlaybackTick(
+        rawPosition: position,
+        forceSideEffects: true,
+      );
     });
     _durationSubscription = _playback.durationStream.listen((duration) {
-      _updatePlaybackProgress(duration: duration ?? Duration.zero);
-      _updateNowPlayingInfo(force: true);
+      if (duration != null && duration > Duration.zero) {
+        _updatePlaybackProgress(duration: duration);
+        _updateNowPlayingInfo(force: true);
+      }
     });
     _playerStateSubscription = _playback.playerStateStream.listen((state) {
       LogService.instance.then((log) => log.info(
@@ -4072,7 +4107,8 @@ class AppState extends ChangeNotifier {
         if (_nowPlaying?.id != next.id) {
           _setNowPlaying(next, notify: false);
           didMutatePlaybackState = true;
-        } else if (_duration == Duration.zero && next.duration > Duration.zero) {
+        } else if (_duration == Duration.zero &&
+            next.duration > Duration.zero) {
           _updatePlaybackProgress(duration: next.duration);
           _updateNowPlayingInfo(force: true);
           didMutatePlaybackState = true;
@@ -4102,29 +4138,10 @@ class AppState extends ChangeNotifier {
     }
     const pollInterval = Duration(milliseconds: 500);
     _playbackPollTimer = Timer.periodic(pollInterval, (_) {
-      final position = _playback.position;
-      var didUpdatePosition = false;
-      if (position != _position && _shouldUseRawPosition(position)) {
-        _updatePlaybackProgress(position: position);
-        didUpdatePosition = true;
-      } else if (_isPlaying &&
-          (_duration == Duration.zero || _position < _duration)) {
-        // Desktop backends can occasionally stall position updates while audio
-        // is still playing. Keep the scrubber advancing between real samples.
-        _updatePlaybackProgress(position: _position + pollInterval);
-        didUpdatePosition = true;
-      }
-      final liveDuration = _playback.duration;
-      if (liveDuration != null &&
-          liveDuration > Duration.zero &&
-          liveDuration != _duration) {
-        _updatePlaybackProgress(duration: liveDuration);
-      }
-      if (didUpdatePosition) {
-        _maybeReportProgress();
-        _persistPlaybackResumeState();
-        _updateNowPlayingInfo();
-      }
+      _ingestPlaybackTick(
+        rawPosition: _playback.position,
+        syntheticAdvanceStep: pollInterval,
+      );
     });
   }
 
