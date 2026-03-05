@@ -199,12 +199,7 @@ class AppState extends ChangeNotifier {
           _position >= _duration - const Duration(seconds: 1) &&
           rawPosition <= const Duration(seconds: 1);
       if (!isWrapAroundNearBoundary) {
-        // Accept large backward corrections so we can recover if the backend
-        // advanced tracks while Flutter missed an index event.
-        final backwardDelta = _position - rawPosition;
-        if (backwardDelta <= const Duration(seconds: 2)) {
-          return false;
-        }
+        return false;
       }
     }
     return true;
@@ -2738,10 +2733,7 @@ class AppState extends ChangeNotifier {
   Future<void> previousTrack() async {
     const restartThreshold = Duration(seconds: 5);
     if (_position > restartThreshold) {
-      await _performPlaybackAction(
-        () => _playback.seek(Duration.zero),
-        'restart',
-      );
+      await seek(Duration.zero);
       return;
     }
     await _performPlaybackAction(
@@ -4244,8 +4236,9 @@ class AppState extends ChangeNotifier {
     MediaItem track, {
     bool notify = true,
     bool recordHistory = true,
+    bool forceRestart = false,
   }) {
-    if (_nowPlaying?.id == track.id) {
+    if (!forceRestart && _nowPlaying?.id == track.id) {
       if (_duration == Duration.zero && track.duration > Duration.zero) {
         _updatePlaybackProgress(duration: track.duration);
         _updateNowPlayingInfo(force: true);
@@ -5032,17 +5025,15 @@ class AppState extends ChangeNotifier {
     }
 
     await logService
-        .info('_playFromList[$requestId]: Setting now playing track');
-    final syncedFromPlayer = _syncNowPlayingFromCurrentIndex();
-    if (!syncedFromPlayer) {
-      if (_nowPlaying?.id != playbackTrack.id) {
-        _setNowPlaying(playbackTrack);
-      } else if (playbackTrack.duration > Duration.zero &&
-          _duration == Duration.zero) {
-        _updatePlaybackProgress(duration: playbackTrack.duration);
-      }
-      _rememberCurrentIndexEvent(index, playbackTrack);
-    }
+        .info('_playFromList[$requestId]: Priming now playing track state');
+    _lastSeekRequestedAt = DateTime.now();
+    _lastRequestedSeekPosition = Duration.zero;
+    _setNowPlaying(
+      playbackTrack,
+      notify: false,
+      forceRestart: true,
+    );
+    _rememberCurrentIndexEvent(index, playbackTrack);
 
     await logService
         .info('_playFromList[$requestId]: Syncing playback polling state');
