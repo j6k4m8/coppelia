@@ -138,9 +138,9 @@ class AppState extends ChangeNotifier {
   MediaItem? _nowPlaying;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
+  bool _isDurationAuthoritative = false;
   bool _isPlaying = false;
   bool _isBuffering = false;
-  ProcessingState _processingState = ProcessingState.idle;
   bool _isNowPlayingCached = false;
   bool _isPreparingPlayback = false;
   bool _isApplyingQueueUpdate = false;
@@ -159,17 +159,68 @@ class AppState extends ChangeNotifier {
   final Random _random = Random();
   int _playRequestId = 0;
 
-  void _updatePlaybackProgress({Duration? position, Duration? duration}) {
-    final nextDuration = duration ?? _duration;
+  void _updatePlaybackProgress({
+    Duration? position,
+    Duration? duration,
+    bool durationIsAuthoritative = false,
+  }) {
+    var nextDuration = duration ?? _duration;
     final nextPosition = position ?? _position;
-    final clampedPosition =
-        (nextDuration > Duration.zero && nextPosition > nextDuration)
-            ? nextDuration
-            : nextPosition;
+    if (duration != null) {
+      if (duration <= Duration.zero) {
+        _isDurationAuthoritative = false;
+      } else {
+        _isDurationAuthoritative = durationIsAuthoritative;
+      }
+    }
+    var clampedPosition = nextPosition;
+    if (nextDuration > Duration.zero && nextPosition > nextDuration) {
+      if (_isDurationAuthoritative) {
+        clampedPosition = nextDuration;
+      } else {
+        // Metadata durations can be wrong. Keep progress advancing until
+        // player-reported duration catches up.
+        nextDuration = nextPosition;
+      }
+    }
     _duration = nextDuration;
     _position = clampedPosition;
     _durationNotifier.value = _duration;
     _positionNotifier.value = _position;
+  }
+
+  void _resetPlaybackRuntimeState({
+    bool clearNowPlaying = false,
+    bool clearReporting = false,
+  }) {
+    _updatePlaybackProgress(
+      position: Duration.zero,
+      duration: Duration.zero,
+    );
+    _isPlaying = false;
+    _isBuffering = false;
+    _isDurationAuthoritative = false;
+    _isNowPlayingCached = false;
+    _isPreparingPlayback = false;
+    _isPlayingNotifier.value = false;
+    _isBufferingNotifier.value = false;
+    _lastNowPlayingUpdateAt = null;
+    _lastSeekRequestedAt = null;
+    _lastRequestedSeekPosition = null;
+    _lastHandledCurrentIndex = null;
+    _lastHandledCurrentTrackId = null;
+    if (clearNowPlaying) {
+      _nowPlaying = null;
+      unawaited(_maybeUpdateNowPlayingPalette(null));
+    }
+    if (clearReporting) {
+      _playSessionId = null;
+      _reportedStartSessionId = null;
+      _reportedStopSessionId = null;
+      _lastProgressReportAt = null;
+      _activeSessionHasPlayed = false;
+    }
+    _syncPlaybackPolling();
   }
 
   bool _shouldUseRawPosition(Duration rawPosition) {
@@ -218,12 +269,29 @@ class AppState extends ChangeNotifier {
         _nowPlaying?.id == track.id;
   }
 
-  bool _syncNowPlayingFromCurrentIndex({bool notify = true}) {
-    final index = _playback.currentIndex;
+  bool _syncNowPlayingFromCurrentIndex({
+    bool notify = true,
+    int? indexOverride,
+    bool skipDuplicate = false,
+    bool logTrackChange = false,
+  }) {
+    final index = indexOverride ?? _playback.currentIndex;
     if (index == null || index < 0 || index >= _queue.length) {
       return false;
     }
     final next = _queue[index];
+    if (skipDuplicate && _isDuplicateCurrentIndexEvent(index, next)) {
+      return false;
+    }
+    if (logTrackChange && _nowPlaying?.id != next.id) {
+      final formatInfo = next.container != null || next.codec != null
+          ? ' [${next.container ?? "unknown"}/${next.codec ?? "unknown"}]'
+          : '';
+      LogService.instance.then((log) => log.info(
+          'Current index changed to $index (queue size: ${_queue.length})'));
+      LogService.instance.then((log) => log.info(
+          'Now playing: "${next.title}" by ${next.artists.join(", ")}$formatInfo'));
+    }
     _rememberCurrentIndexEvent(index, next);
     if (_nowPlaying?.id != next.id) {
       _setNowPlaying(next, notify: notify);
@@ -239,6 +307,38 @@ class AppState extends ChangeNotifier {
     return true;
   }
 
+  void _applyPlayerStateSnapshot(PlayerState state) {
+    final nextPlaying = state.playing;
+    final nextBuffering = state.processingState == ProcessingState.loading ||
+        state.processingState == ProcessingState.buffering;
+    final playingChanged = _isPlaying != nextPlaying;
+    final bufferingChanged = _isBuffering != nextBuffering;
+    final shouldStopPreparing = _isPreparingPlayback &&
+        (state.processingState == ProcessingState.ready ||
+            state.processingState == ProcessingState.completed);
+    _isPlaying = nextPlaying;
+    if (_isPlaying) {
+      _activeSessionHasPlayed = true;
+    }
+    _isBuffering = nextBuffering;
+    if (shouldStopPreparing) {
+      _isPreparingPlayback = false;
+    }
+    _isPlayingNotifier.value = _isPlaying;
+    _isBufferingNotifier.value = _isBuffering;
+    if (playingChanged || bufferingChanged || shouldStopPreparing) {
+      notifyListeners();
+      _updateNowPlayingInfo(force: true);
+    }
+    if (playingChanged) {
+      _maybeReportPlaybackState();
+    }
+    _syncPlaybackPolling(state);
+    if (state.processingState == ProcessingState.completed) {
+      _maybeReportStopped(completed: true);
+    }
+  }
+
   void _ingestPlaybackTick({
     required Duration rawPosition,
     Duration syntheticAdvanceStep = Duration.zero,
@@ -246,15 +346,19 @@ class AppState extends ChangeNotifier {
   }) {
     _syncNowPlayingFromCurrentIndex();
 
+    final rawMatchesState = rawPosition == _position;
     var didUpdatePosition = false;
     if (rawPosition != _position && _shouldUseRawPosition(rawPosition)) {
       _updatePlaybackProgress(position: rawPosition);
       didUpdatePosition = true;
     } else if (syntheticAdvanceStep > Duration.zero &&
+        rawMatchesState &&
         _playback.isPlaying &&
         (_duration == Duration.zero || _position < _duration)) {
       // Desktop backends can occasionally stall position updates while audio
       // is still playing. Keep the scrubber advancing between real samples.
+      // Only synthesize when raw position is actually stalled; never after a
+      // rejected raw sample, or we can drift ahead of real playback.
       _updatePlaybackProgress(position: _position + syntheticAdvanceStep);
       didUpdatePosition = true;
     }
@@ -263,7 +367,10 @@ class AppState extends ChangeNotifier {
     if (liveDuration != null &&
         liveDuration > Duration.zero &&
         liveDuration != _duration) {
-      _updatePlaybackProgress(duration: liveDuration);
+      _updatePlaybackProgress(
+        duration: liveDuration,
+        durationIsAuthoritative: true,
+      );
     }
 
     if (didUpdatePosition || forceSideEffects) {
@@ -936,18 +1043,8 @@ class AppState extends ChangeNotifier {
     _downloadStatusByUrl.clear();
     _cancelledOfflineRequests.clear();
     _isProcessingDownloads = false;
-    _nowPlaying = null;
-    unawaited(_maybeUpdateNowPlayingPalette(null));
-    _playSessionId = null;
-    _reportedStartSessionId = null;
-    _reportedStopSessionId = null;
-    _lastProgressReportAt = null;
+    _resetPlaybackRuntimeState(clearNowPlaying: true, clearReporting: true);
     _lastPlaybackPersistAt = null;
-    _lastNowPlayingUpdateAt = null;
-    _activeSessionHasPlayed = false;
-    _isBuffering = false;
-    _isNowPlayingCached = false;
-    _isPreparingPlayback = false;
     unawaited(_nowPlayingService.clear());
     await _sessionStore.saveSession(null);
     notifyListeners();
@@ -2727,6 +2824,7 @@ class AppState extends ChangeNotifier {
       () => _playback.skipNext(),
       'skip next',
     );
+    _syncPlaybackPolling();
   }
 
   /// Skips to the previous track.
@@ -2740,6 +2838,7 @@ class AppState extends ChangeNotifier {
       () => _playback.skipPrevious(),
       'skip previous',
     );
+    _syncPlaybackPolling();
   }
 
   /// Jumps to a specific position in the queue.
@@ -2758,6 +2857,7 @@ class AppState extends ChangeNotifier {
       () => _playback.play(),
       'play',
     );
+    _syncPlaybackPolling();
   }
 
   /// Reorders the playback queue.
@@ -2866,19 +2966,7 @@ class AppState extends ChangeNotifier {
     if (_queue.isEmpty || currentIndex == null || currentIndex < 0) {
       await _playback.clearQueue(keepCurrent: false);
       _queue = [];
-      _nowPlaying = null;
-      unawaited(_maybeUpdateNowPlayingPalette(null));
-      _updatePlaybackProgress(
-        position: Duration.zero,
-        duration: Duration.zero,
-      );
-      _isPlaying = false;
-      _isBuffering = false;
-      _isNowPlayingCached = false;
-      _isPreparingPlayback = false;
-      _isPlayingNotifier.value = _isPlaying;
-      _isBufferingNotifier.value = _isBuffering;
-      _lastNowPlayingUpdateAt = null;
+      _resetPlaybackRuntimeState(clearNowPlaying: true, clearReporting: true);
       unawaited(_nowPlayingService.clear());
       notifyListeners();
       return;
@@ -4034,80 +4122,35 @@ class AppState extends ChangeNotifier {
     });
     _durationSubscription = _playback.durationStream.listen((duration) {
       if (duration != null && duration > Duration.zero) {
-        _updatePlaybackProgress(duration: duration);
+        _updatePlaybackProgress(
+          duration: duration,
+          durationIsAuthoritative: true,
+        );
         _updateNowPlayingInfo(force: true);
       }
     });
     _playerStateSubscription = _playback.playerStateStream.listen((state) {
       LogService.instance.then((log) => log.info(
           'Player state: playing=${state.playing}, processingState=${state.processingState}'));
-
-      final nextPlaying = state.playing;
-      final nextBuffering = state.processingState == ProcessingState.loading ||
-          state.processingState == ProcessingState.buffering;
-      final playingChanged = _isPlaying != nextPlaying;
-      final bufferingChanged = _isBuffering != nextBuffering;
-      final shouldStopPreparing = _isPreparingPlayback &&
-          (state.processingState == ProcessingState.ready ||
-              state.processingState == ProcessingState.completed);
-      _isPlaying = nextPlaying;
-      if (_isPlaying) {
-        _activeSessionHasPlayed = true;
-      }
-      _isBuffering = nextBuffering;
-      _processingState = state.processingState;
-      if (shouldStopPreparing) {
-        _isPreparingPlayback = false;
-      }
-      _isPlayingNotifier.value = _isPlaying;
-      _isBufferingNotifier.value = _isBuffering;
-      if (playingChanged || bufferingChanged || shouldStopPreparing) {
-        notifyListeners();
-        _updateNowPlayingInfo(force: true);
-      }
-      if (playingChanged) {
-        _maybeReportPlaybackState();
-      }
-      _syncPlaybackPolling(state);
-      if (state.processingState == ProcessingState.completed) {
-        _maybeReportStopped(completed: true);
-      }
+      _applyPlayerStateSnapshot(state);
     });
     _currentIndexSubscription = _playback.currentIndexStream.listen((index) {
       if (_isApplyingQueueUpdate) {
         return;
       }
-      if (index != null && index >= 0 && index < _queue.length) {
-        final next = _queue[index];
-        if (_isDuplicateCurrentIndexEvent(index, next)) {
-          return;
-        }
-        _rememberCurrentIndexEvent(index, next);
-        var didMutatePlaybackState = false;
-        // Only log if the track actually changed
-        if (_nowPlaying?.id != next.id) {
-          final formatInfo = next.container != null || next.codec != null
-              ? ' [${next.container ?? "unknown"}/${next.codec ?? "unknown"}]'
-              : '';
-          LogService.instance.then((log) => log.info(
-              'Current index changed to $index (queue size: ${_queue.length})'));
-          LogService.instance.then((log) => log.info(
-              'Now playing: "${next.title}" by ${next.artists.join(", ")}$formatInfo'));
-        }
-        if (_nowPlaying?.id != next.id) {
-          _setNowPlaying(next, notify: false);
-          didMutatePlaybackState = true;
-        } else if (_duration == Duration.zero &&
-            next.duration > Duration.zero) {
-          _updatePlaybackProgress(duration: next.duration);
-          _updateNowPlayingInfo(force: true);
-          didMutatePlaybackState = true;
-        }
-        unawaited(_cacheStore.handlePlaybackAdvance(_queue, index));
-        if (didMutatePlaybackState) {
-          notifyListeners();
-        }
+      if (index == null || index < 0 || index >= _queue.length) {
+        return;
       }
+      final didApply = _syncNowPlayingFromCurrentIndex(
+        notify: true,
+        indexOverride: index,
+        skipDuplicate: true,
+        logTrackChange: true,
+      );
+      if (!didApply) {
+        return;
+      }
+      unawaited(_cacheStore.handlePlaybackAdvance(_queue, index));
     });
   }
 
@@ -4157,8 +4200,8 @@ class AppState extends ChangeNotifier {
   }
 
   void _syncPlaybackPolling([PlayerState? state]) {
-    final isPlaying = state?.playing ?? _isPlaying;
-    final processingState = state?.processingState ?? _processingState;
+    final isPlaying = state?.playing ?? _playback.isPlaying;
+    final processingState = state?.processingState ?? _playback.processingState;
     if (_shouldRunPlaybackPolling(
       isPlaying: isPlaying,
       processingState: processingState,
@@ -4248,8 +4291,12 @@ class AppState extends ChangeNotifier {
       }
       return;
     }
-    _lastSeekRequestedAt = null;
-    _lastRequestedSeekPosition = null;
+    // Guard against stale position callbacks from the previous track.
+    // Immediately after an index switch, some backends can emit one or more
+    // late samples from the old item. Treat this like a seek-to-zero request
+    // so those samples are ignored until the new track position catches up.
+    _lastSeekRequestedAt = DateTime.now();
+    _lastRequestedSeekPosition = Duration.zero;
     final previousTrack = _nowPlaying;
     final previousSession = _playSessionId;
     if (_activeSessionHasPlayed) {
