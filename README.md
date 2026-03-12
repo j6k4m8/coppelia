@@ -93,7 +93,23 @@ You will need to sideload the app using Xcode or a tool like AltStore for now...
 
 ### Linux
 
-I am not sure! I don't have a linux machine handy. If you do, and you can get stuff to run, please let me know!
+#### Arch Linux & Derivatives (AUR)
+
+> [!info]
+> This section covers the `-bin` package. For the most up-to-date version, you can also use the `-git` package, which compiles directly from the source.
+> Please note that some Linux-specific quirks may occur, as I do not currently have access to a physical machine for testing.
+
+Using **yay**:
+```bash
+yay -S coppelia-bin
+```
+Using **paru**
+```
+paru -S coppelia-bin
+```
+Other Distributions
+
+You can download Coppelia directly from the official Releases page.
 
 ## Keyboard Shortcuts
 
