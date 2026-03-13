@@ -33,6 +33,9 @@ class PlaybackController {
   /// True when playback is active.
   bool get isPlaying => _player.playing;
 
+  /// Latest playback processing state.
+  ProcessingState get processingState => _player.processingState;
+
   /// The current media item from the queue.
   MediaItem? get currentMediaItem {
     final tag = _player.sequenceState.currentSource?.tag;
