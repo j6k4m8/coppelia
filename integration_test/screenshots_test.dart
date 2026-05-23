@@ -18,6 +18,10 @@ import 'package:coppelia/state/library_view.dart';
 
 import 'screenshot_helper.dart';
 
+const _targetPollStep = Duration(milliseconds: 200);
+const _targetTimeout = Duration(seconds: 15);
+const _finalSettleDelay = Duration(seconds: 5);
+
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   const target =
@@ -42,6 +46,16 @@ void main() {
       settingsStore: SettingsStore(),
     );
     await appState.bootstrap();
+
+    if (target != 'login' &&
+        (screenshotServer.isEmpty ||
+            screenshotUsername.isEmpty ||
+            screenshotPassword.isEmpty)) {
+      throw StateError(
+        'Screenshot target "$target" requires '
+        'SCREENSHOT_SERVER, SCREENSHOT_USERNAME, and SCREENSHOT_PASSWORD.',
+      );
+    }
 
     if (target != 'login' && screenshotServer.isNotEmpty) {
       final success = await appState.signIn(
@@ -70,12 +84,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    if (target == 'settings') {
-      appState.selectLibraryView(LibraryView.settings);
-      await tester.pumpAndSettle();
-    }
+    await _prepareScreenshotTarget(
+      tester: tester,
+      appState: appState,
+      target: target,
+    );
 
-    await Future<void>.delayed(const Duration(seconds: 5));
+    await Future<void>.delayed(_finalSettleDelay);
     await tester.pump();
     final screenshotData = await captureScreenshot(
       screenshotKey,
@@ -89,6 +104,169 @@ void main() {
       'platform': Platform.operatingSystem,
     };
   });
+}
+
+Future<void> _prepareScreenshotTarget({
+  required WidgetTester tester,
+  required AppState appState,
+  required String target,
+}) async {
+  switch (target) {
+    case 'login':
+      return;
+    case 'home':
+      await _pumpForAsyncWork(tester);
+      return;
+    case 'settings':
+      appState.selectLibraryView(LibraryView.settings);
+      await _pumpForAsyncWork(tester);
+      return;
+    case 'albums':
+      appState.selectLibraryView(LibraryView.albums);
+      await _waitForCondition(
+        tester,
+        () => appState.albums.isNotEmpty,
+      );
+      return;
+    case 'artists':
+      appState.selectLibraryView(LibraryView.artists);
+      await _waitForCondition(
+        tester,
+        () => appState.artists.isNotEmpty,
+      );
+      return;
+    case 'tracks':
+      appState.selectLibraryView(LibraryView.tracks);
+      await _waitForCondition(
+        tester,
+        () => appState.libraryTracks.isNotEmpty || !appState.isLoadingTracks,
+      );
+      return;
+    case 'playlists':
+      appState.selectLibraryView(LibraryView.homePlaylists);
+      await _pumpForAsyncWork(tester);
+      return;
+    case 'album-detail':
+      await _prepareAlbumDetail(tester, appState);
+      return;
+    case 'artist-detail':
+      await _prepareArtistDetail(tester, appState);
+      return;
+    case 'playlist-detail':
+      await _preparePlaylistDetail(tester, appState);
+      return;
+    case 'queue':
+      await _prepareQueue(tester, appState);
+      return;
+    default:
+      throw UnsupportedError('Unknown screenshot target "$target".');
+  }
+}
+
+Future<void> _prepareAlbumDetail(
+  WidgetTester tester,
+  AppState appState,
+) async {
+  final album =
+      await appState.getRandomAlbum() ?? _firstOrNull(appState.albums);
+  if (album == null) {
+    throw StateError('Album detail screenshot requires at least one album.');
+  }
+  await appState.selectAlbum(album);
+  await _waitForCondition(
+    tester,
+    () => appState.selectedAlbum?.id == album.id,
+  );
+}
+
+Future<void> _prepareArtistDetail(
+  WidgetTester tester,
+  AppState appState,
+) async {
+  final artist =
+      await appState.getRandomArtist() ?? _firstOrNull(appState.artists);
+  if (artist == null) {
+    throw StateError('Artist detail screenshot requires at least one artist.');
+  }
+  await appState.selectArtist(artist);
+  await _waitForCondition(
+    tester,
+    () => appState.selectedArtist?.id == artist.id,
+  );
+}
+
+Future<void> _preparePlaylistDetail(
+  WidgetTester tester,
+  AppState appState,
+) async {
+  final playlist = _firstOrNull(appState.playlists);
+  if (playlist == null) {
+    throw StateError(
+      'Playlist detail screenshot requires at least one playlist.',
+    );
+  }
+  await appState.selectPlaylist(playlist);
+  await _waitForCondition(
+    tester,
+    () => appState.selectedPlaylist?.id == playlist.id,
+  );
+}
+
+Future<void> _prepareQueue(
+  WidgetTester tester,
+  AppState appState,
+) async {
+  if (appState.queue.isEmpty) {
+    final album =
+        await appState.getRandomAlbum() ?? _firstOrNull(appState.albums);
+    if (album != null) {
+      await appState.playAlbum(album);
+    } else {
+      final track = await appState.getRandomTrack() ??
+          _firstOrNull(appState.featuredTracks);
+      if (track == null) {
+        throw StateError(
+            'Queue screenshot requires at least one playable item.');
+      }
+      await appState.enqueueTrack(track);
+    }
+    await _waitForCondition(
+      tester,
+      () => appState.queue.isNotEmpty,
+    );
+    if (appState.isPlaying) {
+      await appState.togglePlayback();
+      await _pumpForAsyncWork(tester);
+    }
+  }
+
+  appState.selectLibraryView(LibraryView.queue);
+  await _waitForCondition(
+    tester,
+    () => appState.selectedView == LibraryView.queue,
+  );
+}
+
+T? _firstOrNull<T>(List<T> items) => items.isEmpty ? null : items.first;
+
+Future<void> _waitForCondition(
+  WidgetTester tester,
+  bool Function() condition, {
+  Duration timeout = _targetTimeout,
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    if (condition()) {
+      break;
+    }
+    await tester.pump(_targetPollStep);
+  }
+  await _pumpForAsyncWork(tester);
+}
+
+Future<void> _pumpForAsyncWork(WidgetTester tester) async {
+  await tester.pumpAndSettle();
+  await tester.pump(const Duration(milliseconds: 300));
 }
 
 class _NoScrollbarBehavior extends ScrollBehavior {

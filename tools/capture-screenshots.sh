@@ -3,11 +3,25 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-TARGETS=("login")
+TARGETS=()
 DEVICES=()
-SERVER=""
-USERNAME=""
-PASSWORD=""
+CLI_SERVER=""
+CLI_USERNAME=""
+CLI_PASSWORD=""
+ENV_FILE=""
+DEFAULT_ENV_FILE="$PROJECT_ROOT/.screenshot.env"
+OUTPUT_DIR="$PROJECT_ROOT/docs/screenshots"
+LIBRARY_TARGETS=(
+  "home"
+  "albums"
+  "artists"
+  "tracks"
+  "playlists"
+  "album-detail"
+  "artist-detail"
+  "queue"
+  "settings"
+)
 SYSTEM_FLUTTER="$(command -v flutter || true)"
 if [[ -z "$SYSTEM_FLUTTER" ]]; then
   echo "flutter command not found; install Flutter first."
@@ -31,10 +45,16 @@ copies the generated PNGs into docs/screenshots/<device>.
 
 Options:
   --device DEVICE   One or more Flutter device IDs (default: macos)
-  --target NAME     Screenshot target label (default: login)
-  --server URL      Jellyfin URL to auto-login before capturing (default: none)
-  --username NAME   Username for the server login (default: empty)
-  --password PWD    Password for the server login (default: empty)
+  --target NAME     Screenshot target label. Repeat to capture multiple pages.
+                   Available targets: login, home, albums, artists, tracks,
+                   playlists, album-detail, artist-detail, playlist-detail,
+                   queue, settings.
+  --env-file FILE   Load screenshot credentials from a local env file.
+                   Defaults to ./.screenshot.env when present.
+  --output-dir DIR  Destination directory (default: docs/screenshots)
+  --server URL      Jellyfin URL to auto-login before capturing
+  --username NAME   Username for the server login
+  --password PWD    Password for the server login
   --help            Show this help message.
 EOF
 }
@@ -47,19 +67,27 @@ while [[ $# -gt 0 ]]; do
       ;;
     --target)
       shift
-    TARGETS+=("$1")
-    ;;
+      TARGETS+=("$1")
+      ;;
+    --env-file)
+      shift
+      ENV_FILE="$1"
+      ;;
+    --output-dir)
+      shift
+      OUTPUT_DIR="$1"
+      ;;
     --server)
       shift
-      SERVER="$1"
+      CLI_SERVER="$1"
       ;;
     --username)
       shift
-      USERNAME="$1"
+      CLI_USERNAME="$1"
       ;;
     --password)
       shift
-      PASSWORD="$1"
+      CLI_PASSWORD="$1"
       ;;
     --help)
       usage
@@ -74,11 +102,48 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+if [[ -z "$ENV_FILE" && -f "$DEFAULT_ENV_FILE" ]]; then
+  ENV_FILE="$DEFAULT_ENV_FILE"
+fi
+
+if [[ -n "$ENV_FILE" ]]; then
+  if [[ ! -f "$ENV_FILE" ]]; then
+    echo "Env file not found: $ENV_FILE"
+    exit 1
+  fi
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  set +a
+fi
+
+SERVER="${CLI_SERVER:-${SCREENSHOT_SERVER:-}}"
+USERNAME="${CLI_USERNAME:-${SCREENSHOT_USERNAME:-}}"
+PASSWORD="${CLI_PASSWORD:-${SCREENSHOT_PASSWORD:-}}"
+
 if [[ ${#DEVICES[@]} -eq 0 ]]; then
   DEVICES+=("macos")
 fi
 
-mkdir -p "$PROJECT_ROOT/docs/screenshots"
+if [[ ${#TARGETS[@]} -eq 0 ]]; then
+  if [[ -n "$SERVER" && -n "$USERNAME" && -n "$PASSWORD" ]]; then
+    TARGETS=("${LIBRARY_TARGETS[@]}")
+  else
+    TARGETS=("login")
+  fi
+fi
+
+for target in "${TARGETS[@]}"; do
+  if [[ "$target" != "login" &&
+    ( -z "$SERVER" || -z "$USERNAME" || -z "$PASSWORD" ) ]]; then
+    echo "Target \"$target\" requires auth. Set SCREENSHOT_SERVER, SCREENSHOT_USERNAME,"
+    echo "and SCREENSHOT_PASSWORD, pass --server/--username/--password, or create"
+    echo ".screenshot.env from .screenshot.env.example."
+    exit 1
+  fi
+done
+
+mkdir -p "$OUTPUT_DIR"
 
 for device in "${DEVICES[@]}"; do
   echo "Capturing screenshots on $device..."
@@ -106,8 +171,8 @@ for device in "${DEVICES[@]}"; do
 
     LOG_FILE="$PROJECT_ROOT/build/flutter_driver_commands_0.log"
     if [[ -f "$LOG_FILE" ]]; then
-      mkdir -p "$PROJECT_ROOT/docs/screenshots/$device"
-      python3 - "$LOG_FILE" "$PROJECT_ROOT/docs/screenshots/$device/screenshot-$target-$device.png" <<'PY'
+      mkdir -p "$OUTPUT_DIR/$device"
+      python3 - "$LOG_FILE" "$OUTPUT_DIR/$device/screenshot-$target-$device.png" <<'PY'
 import base64
 import pathlib
 import re
@@ -125,5 +190,5 @@ PY
     fi
   done
 
-  echo "  Screenshots saved to docs/screenshots/$device/"
+  echo "  Screenshots saved to $OUTPUT_DIR/$device/"
 done
