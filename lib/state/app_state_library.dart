@@ -1770,6 +1770,7 @@ extension AppStateLibraryExtension on AppState {
 
   Future<void> _loadAlbums() async {
     await _loadRemoteCollection(
+      collectionName: 'albums',
       fetch: _client.fetchAlbums,
       assign: (albums) => _albums = albums,
       save: _cacheStore.saveAlbums,
@@ -1778,6 +1779,7 @@ extension AppStateLibraryExtension on AppState {
 
   Future<void> _loadArtists() async {
     await _loadRemoteCollection(
+      collectionName: 'artists',
       fetch: _client.fetchArtists,
       assign: (artists) => _artists = artists,
       save: _cacheStore.saveArtists,
@@ -1786,6 +1788,7 @@ extension AppStateLibraryExtension on AppState {
 
   Future<void> _loadGenres() async {
     await _loadRemoteCollection(
+      collectionName: 'genres',
       fetch: _client.fetchGenres,
       assign: (genres) => _genres = genres,
       save: _cacheStore.saveGenres,
@@ -1794,6 +1797,7 @@ extension AppStateLibraryExtension on AppState {
 
   Future<void> _loadFavoriteAlbums() async {
     await _loadRemoteCollection(
+      collectionName: 'favorite albums',
       fetch: _client.fetchFavoriteAlbums,
       assign: (albums) => _favoriteAlbums = albums,
       save: _cacheStore.saveFavoriteAlbums,
@@ -1807,6 +1811,7 @@ extension AppStateLibraryExtension on AppState {
 
   Future<void> _loadFavoriteArtists() async {
     await _loadRemoteCollection(
+      collectionName: 'favorite artists',
       fetch: _client.fetchFavoriteArtists,
       assign: (artists) => _favoriteArtists = artists,
       save: _cacheStore.saveFavoriteArtists,
@@ -1821,6 +1826,7 @@ extension AppStateLibraryExtension on AppState {
 
   Future<void> _loadFavoriteTracks() async {
     await _loadRemoteCollection(
+      collectionName: 'favorite tracks',
       fetch: _client.fetchFavoriteTracks,
       assign: (tracks) => _favoriteTracks = tracks,
       save: _cacheStore.saveFavoriteTracks,
@@ -1833,6 +1839,7 @@ extension AppStateLibraryExtension on AppState {
   }
 
   Future<void> _loadRemoteCollection<T>({
+    required String collectionName,
     required Future<List<T>> Function() fetch,
     required void Function(List<T> values) assign,
     required Future<void> Function(List<T> values) save,
@@ -1850,7 +1857,14 @@ extension AppStateLibraryExtension on AppState {
         assign(values);
         await save(values);
       }
-    } catch (_) {
+    } catch (error, stackTrace) {
+      await LogService.instance.then(
+        (log) => log.error(
+          'Library: Failed to refresh $collectionName',
+          error,
+          stackTrace,
+        ),
+      );
       // Use cached results when available.
     } finally {
       _isLoadingLibrary = false;
