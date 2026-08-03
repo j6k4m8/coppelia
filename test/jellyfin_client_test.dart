@@ -114,6 +114,133 @@ void main() {
     expect(headers, isNot(contains('X-Emby-Token')));
   });
 
+  test('fetchAlbums retrieves every page', () async {
+    final client = _MockHttpClient();
+    final jellyfin = JellyfinClient(httpClient: client);
+    jellyfin.updateSession(
+      const AuthSession(
+        accessToken: 'token',
+        serverUrl: 'https://demo.jellyfin.org',
+        userId: 'user-1',
+        userName: 'Jordan',
+      ),
+    );
+    final firstPage = List.generate(
+      200,
+      (index) => <String, dynamic>{
+        'Id': 'album-$index',
+        'Name': 'Album $index',
+        'ChildCount': 1,
+      },
+    );
+    when(
+      () => client.get(
+        any(),
+        headers: any(named: 'headers'),
+      ),
+    ).thenAnswer((invocation) async {
+      final uri = invocation.positionalArguments.first as Uri;
+      if (uri.queryParameters['StartIndex'] == '0') {
+        return http.Response(
+          jsonEncode({'Items': firstPage, 'TotalRecordCount': 201}),
+          200,
+        );
+      }
+      return http.Response(
+        jsonEncode({
+          'Items': [
+            {'Id': 'album-200', 'Name': 'Album 200', 'ChildCount': 1},
+          ],
+          'TotalRecordCount': 201,
+        }),
+        200,
+      );
+    });
+
+    final albums = await jellyfin.fetchAlbums();
+
+    expect(albums, hasLength(201));
+    final requests = verify(
+      () => client.get(
+        captureAny(),
+        headers: any(named: 'headers'),
+      ),
+    ).captured.cast<Uri>();
+    expect(requests, hasLength(2));
+    expect(requests[0].path, '/Users/user-1/Items');
+    expect(requests[0].queryParameters['Fields'], 'ChildCount');
+    expect(requests[0].queryParameters['StartIndex'], '0');
+    expect(requests[0].queryParameters['Limit'], '200');
+    expect(requests[1].queryParameters['StartIndex'], '200');
+  });
+
+  test('fetchGenres uses the music genres endpoint', () async {
+    final client = _MockHttpClient();
+    final jellyfin = JellyfinClient(httpClient: client);
+    jellyfin.updateSession(
+      const AuthSession(
+        accessToken: 'token',
+        serverUrl: 'https://demo.jellyfin.org',
+        userId: 'user-1',
+        userName: 'Jordan',
+      ),
+    );
+    when(
+      () => client.get(
+        any(),
+        headers: any(named: 'headers'),
+      ),
+    ).thenAnswer(
+      (_) async => http.Response(
+        jsonEncode({
+          'Items': [
+            {'Id': 'genre-1', 'Name': 'Jazz', 'ItemCount': 7},
+          ],
+          'TotalRecordCount': 1,
+        }),
+        200,
+      ),
+    );
+
+    final genres = await jellyfin.fetchGenres();
+
+    expect(genres.single.name, 'Jazz');
+    expect(genres.single.trackCount, 7);
+    final uri = verify(
+      () => client.get(
+        captureAny(),
+        headers: any(named: 'headers'),
+      ),
+    ).captured.single as Uri;
+    expect(uri.path, '/MusicGenres');
+    expect(uri.queryParameters['Fields'], 'ItemCounts');
+    expect(uri.queryParameters, isNot(contains('IncludeItemTypes')));
+  });
+
+  test('fetchAlbums rejects a malformed response', () async {
+    final client = _MockHttpClient();
+    final jellyfin = JellyfinClient(httpClient: client);
+    jellyfin.updateSession(
+      const AuthSession(
+        accessToken: 'token',
+        serverUrl: 'https://demo.jellyfin.org',
+        userId: 'user-1',
+        userName: 'Jordan',
+      ),
+    );
+    when(
+      () => client.get(
+        any(),
+        headers: any(named: 'headers'),
+      ),
+    ).thenAnswer((_) async => http.Response(jsonEncode({'Items': {}}), 200));
+
+    await expectLater(
+      jellyfin.fetchAlbums(),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
   test('fetchRecentlyAddedAlbums requests newest album records', () async {
     final client = _MockHttpClient();
     final jellyfin = JellyfinClient(httpClient: client);
