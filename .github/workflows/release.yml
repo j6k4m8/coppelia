@@ -255,6 +255,16 @@ jobs:
       - name: Build Linux packages
         run: fastforge release --name dev
 
+      - name: Create stable Linux release assets
+        run: |
+          appimage=$(find dist -type f -name '*.AppImage' -print -quit)
+          deb=$(find dist -type f -name '*.deb' -print -quit)
+          rpm=$(find dist -type f -name '*.rpm' -print -quit)
+          test -n "$appimage" && test -n "$deb" && test -n "$rpm"
+          cp "$appimage" Coppelia-linux.AppImage
+          cp "$deb" Coppelia-linux.deb
+          cp "$rpm" Coppelia-linux.rpm
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -262,6 +272,9 @@ jobs:
           if-no-files-found: error
           path: |
             Coppelia-linux.tar.gz
+            Coppelia-linux.AppImage
+            Coppelia-linux.deb
+            Coppelia-linux.rpm
             dist/**
 
       - name: Create GitHub release
@@ -271,4 +284,7 @@ jobs:
           generate_release_notes: true
           files: |
             Coppelia-linux.tar.gz
+            Coppelia-linux.AppImage
+            Coppelia-linux.deb
+            Coppelia-linux.rpm
             dist/**
