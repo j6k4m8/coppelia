@@ -29,6 +29,9 @@ class JellyfinClient {
   /// A playlist mutation should not leave its caller waiting indefinitely.
   static const Duration _defaultPlaylistRequestTimeout = Duration(seconds: 8);
 
+  /// Keeps large collection loads bounded without fetching each item separately.
+  static const int _collectionPageSize = 200;
+
   /// Client version for Jellyfin analytics.
   String get clientVersion => AppInfo.version;
 
@@ -176,31 +179,23 @@ class JellyfinClient {
   }
 
   /// Fetches albums from Jellyfin.
-  Future<List<Album>> fetchAlbums() async {
+  Future<List<Album>> fetchAlbums() {
     final session = _requireSession();
-    final uri = Uri.parse(
-      '${session.serverUrl}/Users/${session.userId}/Items',
-    ).replace(
+    return _fetchPagedCollection(
+      session: session,
+      path: '/Users/${session.userId}/Items',
+      collectionName: 'albums',
       queryParameters: {
         'IncludeItemTypes': 'MusicAlbum',
         'Recursive': 'true',
         'SortBy': 'SortName',
-        'Fields': 'ImageTags,ChildCount,AlbumArtist,AlbumArtists',
+        'Fields': 'ChildCount',
       },
+      fromJellyfin: (item) => Album.fromJellyfin(
+        item,
+        serverUrl: session.serverUrl,
+      ),
     );
-    final response =
-        await _httpClient.get(uri, headers: _authenticatedHeaders(session));
-    if (response.statusCode != 200) {
-      throw Exception('Unable to load albums (${response.statusCode}).');
-    }
-    final payload = jsonDecode(response.body) as Map<String, dynamic>;
-    final items = payload['Items'] as List<dynamic>? ?? [];
-    return items
-        .map((item) => Album.fromJellyfin(
-              item as Map<String, dynamic>,
-              serverUrl: session.serverUrl,
-            ))
-        .toList();
   }
 
   /// Fetches the newest albums added to the user's Jellyfin library.
@@ -259,29 +254,22 @@ class JellyfinClient {
   }
 
   /// Fetches genres from Jellyfin.
-  Future<List<Genre>> fetchGenres() async {
+  Future<List<Genre>> fetchGenres() {
     final session = _requireSession();
-    final uri = Uri.parse('${session.serverUrl}/Genres').replace(
+    return _fetchPagedCollection(
+      session: session,
+      path: '/MusicGenres',
+      collectionName: 'music genres',
       queryParameters: {
         'UserId': session.userId,
         'SortBy': 'SortName',
-        'IncludeItemTypes': 'Audio',
-        'Fields': 'ImageTags,SongCount,AlbumCount',
+        'Fields': 'ItemCounts',
       },
+      fromJellyfin: (item) => Genre.fromJellyfin(
+        item,
+        serverUrl: session.serverUrl,
+      ),
     );
-    final response =
-        await _httpClient.get(uri, headers: _authenticatedHeaders(session));
-    if (response.statusCode != 200) {
-      throw Exception('Unable to load genres (${response.statusCode}).');
-    }
-    final payload = jsonDecode(response.body) as Map<String, dynamic>;
-    final items = payload['Items'] as List<dynamic>? ?? [];
-    return items
-        .map((item) => Genre.fromJellyfin(
-              item as Map<String, dynamic>,
-              serverUrl: session.serverUrl,
-            ))
-        .toList();
   }
 
   /// Fetches the tracks for a playlist.
@@ -1374,6 +1362,121 @@ class JellyfinClient {
       artistCount: counts[2],
       playlistCount: counts[3],
     );
+  }
+
+  Future<List<T>> _fetchPagedCollection<T>({
+    required AuthSession session,
+    required String path,
+    required String collectionName,
+    required Map<String, String> queryParameters,
+    required T Function(Map<String, dynamic> item) fromJellyfin,
+  }) async {
+    final logService = await LogService.instance;
+    final results = <T>[];
+    var startIndex = 0;
+    var page = 1;
+    int? totalRecordCount;
+
+    while (true) {
+      final uri = Uri.parse('${session.serverUrl}$path').replace(
+        queryParameters: {
+          ...queryParameters,
+          'StartIndex': '$startIndex',
+          'Limit': '$_collectionPageSize',
+          'EnableTotalRecordCount': 'true',
+        },
+      );
+      await logService.info(
+        'JellyfinClient: Fetching $collectionName page $page',
+      );
+
+      final response =
+          await _httpClient.get(uri, headers: _authenticatedHeaders(session));
+      if (response.statusCode != 200) {
+        final error = JellyfinRequestException(
+          'Unable to load $collectionName (${response.statusCode}).',
+        );
+        await logService.error(
+          'JellyfinClient: Failed to load $collectionName',
+          error,
+          StackTrace.current,
+        );
+        throw error;
+      }
+
+      late Map<String, dynamic> payload;
+      late List<dynamic> rawItems;
+      try {
+        payload = _collectionPayload(
+          response.body,
+          collectionName: collectionName,
+        );
+        final responseItems = payload['Items'];
+        if (responseItems is! List<dynamic>) {
+          throw FormatException(
+            'Jellyfin returned an invalid $collectionName response.',
+          );
+        }
+        rawItems = responseItems;
+      } catch (error, stackTrace) {
+        await logService.error(
+          'JellyfinClient: Failed to parse $collectionName page $page',
+          error,
+          stackTrace,
+        );
+        rethrow;
+      }
+
+      final pageItems = <T>[];
+      try {
+        for (final rawItem in rawItems) {
+          if (rawItem is! Map<String, dynamic>) {
+            throw FormatException(
+              'Jellyfin returned an invalid $collectionName item.',
+            );
+          }
+          pageItems.add(fromJellyfin(rawItem));
+        }
+      } catch (error, stackTrace) {
+        await logService.error(
+          'JellyfinClient: Failed to parse $collectionName page $page',
+          error,
+          stackTrace,
+        );
+        rethrow;
+      }
+
+      results.addAll(pageItems);
+      final rawTotal = payload['TotalRecordCount'];
+      if (rawTotal is num) {
+        totalRecordCount = rawTotal.toInt();
+      }
+      await logService.info(
+        'JellyfinClient: Received ${pageItems.length} $collectionName '
+        '(loaded ${results.length}${totalRecordCount == null ? '' : ' of $totalRecordCount'})',
+      );
+
+      startIndex += pageItems.length;
+      if (pageItems.isEmpty ||
+          pageItems.length < _collectionPageSize ||
+          (totalRecordCount != null && startIndex >= totalRecordCount)) {
+        return results;
+      }
+      page += 1;
+    }
+  }
+
+  Map<String, dynamic> _collectionPayload(
+    String body, {
+    required String collectionName,
+  }) {
+    final decoded = jsonDecode(body);
+    if (decoded is! Map<String, dynamic>) {
+      throw FormatException(
+        'Jellyfin returned an invalid $collectionName response.',
+      );
+    }
+    return decoded;
   }
 
   /// Returns the server URL without a trailing slash.
