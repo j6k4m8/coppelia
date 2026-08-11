@@ -131,6 +131,8 @@ void main() {
         'Id': 'album-$index',
         'Name': 'Album $index',
         'ChildCount': 1,
+        if (index == 0) 'AlbumArtist': 'Artist 0',
+        if (index == 0) 'ImageTags': {'Primary': 'cover-0'},
       },
     );
     when(
@@ -160,6 +162,11 @@ void main() {
     final albums = await jellyfin.fetchAlbums();
 
     expect(albums, hasLength(201));
+    expect(albums.first.artistName, 'Artist 0');
+    expect(
+      albums.first.imageUrl,
+      'https://demo.jellyfin.org/Items/album-0/Images/Primary?fillWidth=500&quality=90',
+    );
     final requests = verify(
       () => client.get(
         captureAny(),
@@ -168,7 +175,10 @@ void main() {
     ).captured.cast<Uri>();
     expect(requests, hasLength(2));
     expect(requests[0].path, '/Users/user-1/Items');
-    expect(requests[0].queryParameters['Fields'], 'ChildCount');
+    expect(
+      requests[0].queryParameters['Fields'],
+      'ImageTags,ChildCount,AlbumArtist,AlbumArtists',
+    );
     expect(requests[0].queryParameters['StartIndex'], '0');
     expect(requests[0].queryParameters['Limit'], '200');
     expect(requests[1].queryParameters['StartIndex'], '200');
@@ -194,7 +204,12 @@ void main() {
       (_) async => http.Response(
         jsonEncode({
           'Items': [
-            {'Id': 'genre-1', 'Name': 'Jazz', 'ItemCount': 7},
+            {
+              'Id': 'genre-1',
+              'Name': 'Jazz',
+              'ItemCount': 7,
+              'ImageTags': {'Primary': 'cover'},
+            },
           ],
           'TotalRecordCount': 1,
         }),
@@ -206,6 +221,10 @@ void main() {
 
     expect(genres.single.name, 'Jazz');
     expect(genres.single.trackCount, 7);
+    expect(
+      genres.single.imageUrl,
+      'https://demo.jellyfin.org/Items/genre-1/Images/Primary?fillWidth=500&quality=90',
+    );
     final uri = verify(
       () => client.get(
         captureAny(),
@@ -213,7 +232,7 @@ void main() {
       ),
     ).captured.single as Uri;
     expect(uri.path, '/MusicGenres');
-    expect(uri.queryParameters['Fields'], 'ItemCounts');
+    expect(uri.queryParameters['Fields'], 'ImageTags,ItemCounts');
     expect(uri.queryParameters, isNot(contains('IncludeItemTypes')));
   });
 
