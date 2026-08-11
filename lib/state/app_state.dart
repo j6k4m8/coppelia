@@ -827,9 +827,17 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void _ensureHomeInHistory() {
-    if (_viewHistory.isEmpty) {
-      _viewHistory.add(LibraryView.home);
+  bool get _hasSelectedDetail =>
+      _selectedPlaylist != null ||
+      _selectedSmartList != null ||
+      _selectedAlbum != null ||
+      _selectedArtist != null ||
+      _selectedGenre != null;
+
+  /// Records the list or Home view that opened a detail screen.
+  void _recordDetailEntry() {
+    if (!_hasSelectedDetail) {
+      _recordViewHistory(_selectedView);
     }
   }
 

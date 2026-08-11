@@ -6,9 +6,7 @@ extension AppStateLibraryExtension on AppState {
     Playlist playlist, {
     bool offlineOnly = false,
   }) async {
-    if (_selectedView != LibraryView.home) {
-      _recordViewHistory(_selectedView);
-    }
+    _recordDetailEntry();
     final isSamePlaylist = _selectedPlaylist?.id == playlist.id;
     _selectedPlaylist = playlist;
     _selectedSmartList = null;
@@ -111,9 +109,7 @@ extension AppStateLibraryExtension on AppState {
 
   /// Selects a Smart List and loads its tracks.
   Future<void> selectSmartList(SmartList list) async {
-    if (_selectedView != LibraryView.home) {
-      _recordViewHistory(_selectedView);
-    }
+    _recordDetailEntry();
     final isSameSmartList = _selectedSmartList?.id == list.id;
     _selectedSmartList = list;
     _selectedView = LibraryView.home;
@@ -1457,9 +1453,7 @@ extension AppStateLibraryExtension on AppState {
 
   /// Selects an album and loads its tracks.
   Future<void> selectAlbum(Album album, {bool offlineOnly = false}) async {
-    if (_selectedView != LibraryView.home) {
-      _recordViewHistory(_selectedView);
-    }
+    _recordDetailEntry();
     final isSameAlbum = _selectedAlbum?.id == album.id;
     _selectedPlaylist = null;
     _playlistTracks = [];
@@ -1584,9 +1578,7 @@ extension AppStateLibraryExtension on AppState {
 
   /// Selects an artist and loads their tracks.
   Future<void> selectArtist(Artist artist, {bool offlineOnly = false}) async {
-    if (_selectedView != LibraryView.home) {
-      _recordViewHistory(_selectedView);
-    }
+    _recordDetailEntry();
     final isSameArtist = _selectedArtist?.id == artist.id;
     _selectedPlaylist = null;
     _playlistTracks = [];
@@ -1650,9 +1642,7 @@ extension AppStateLibraryExtension on AppState {
 
   /// Selects a genre and loads its tracks.
   Future<void> selectGenre(Genre genre) async {
-    if (_selectedView != LibraryView.home) {
-      _recordViewHistory(_selectedView);
-    }
+    _recordDetailEntry();
     final isSameGenre = _selectedGenre?.id == genre.id;
     _selectedPlaylist = null;
     _playlistTracks = [];

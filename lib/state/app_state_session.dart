@@ -67,7 +67,6 @@ extension AppStateSessionExtension on AppState {
     if (!setEquals(_pinnedAudio, storedPinnedAudio)) {
       await _cacheStore.savePinnedAudio(_pinnedAudio);
     }
-    _ensureHomeInHistory();
     unawaited(refreshMediaCacheBytes());
     await _loadCachedLibrary();
     await _applyPlaybackSettings();
@@ -128,7 +127,6 @@ extension AppStateSessionExtension on AppState {
     _selectedSmartList = null;
     _selectedView = LibraryView.home;
     _viewHistory.clear();
-    _ensureHomeInHistory();
     _selectedAlbum = null;
     _selectedArtist = null;
     _selectedGenre = null;
