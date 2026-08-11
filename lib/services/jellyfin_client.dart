@@ -32,6 +32,9 @@ class JellyfinClient {
   /// Keeps large collection loads bounded without fetching each item separately.
   static const int _collectionPageSize = 200;
 
+  static const String _albumFields =
+      'ImageTags,ChildCount,AlbumArtist,AlbumArtists';
+
   /// Client version for Jellyfin analytics.
   String get clientVersion => AppInfo.version;
 
@@ -189,7 +192,7 @@ class JellyfinClient {
         'IncludeItemTypes': 'MusicAlbum',
         'Recursive': 'true',
         'SortBy': 'SortName',
-        'Fields': 'ChildCount',
+        'Fields': _albumFields,
       },
       fromJellyfin: (item) => Album.fromJellyfin(
         item,
@@ -210,7 +213,7 @@ class JellyfinClient {
         'SortBy': 'DateCreated',
         'SortOrder': 'Descending',
         'Limit': '12',
-        'Fields': 'ImageTags,ChildCount,AlbumArtist,AlbumArtists',
+        'Fields': _albumFields,
       },
     );
     final response =
@@ -263,7 +266,7 @@ class JellyfinClient {
       queryParameters: {
         'UserId': session.userId,
         'SortBy': 'SortName',
-        'Fields': 'ItemCounts',
+        'Fields': 'ImageTags,ItemCounts',
       },
       fromJellyfin: (item) => Genre.fromJellyfin(
         item,
@@ -787,7 +790,7 @@ class JellyfinClient {
         'Recursive': 'true',
         'Filters': 'IsFavorite',
         'SortBy': 'SortName',
-        'Fields': 'ImageTags,ChildCount,AlbumArtist,AlbumArtists',
+        'Fields': _albumFields,
       },
     );
     final response =
@@ -1292,7 +1295,7 @@ class JellyfinClient {
         'Recursive': 'true',
         'SortBy': 'Random',
         'Limit': '1',
-        'Fields': 'ImageTags,ChildCount,AlbumArtist,AlbumArtists',
+        'Fields': _albumFields,
       },
     );
     final response =
