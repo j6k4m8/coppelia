@@ -1,0 +1,5 @@
+What's new in 0.1.2
+
+* Added a Recently Added Albums shelf to Home.
+* Made library browsing more reliable by paginating server requests.
+* Made back-navigation less crazymode.
