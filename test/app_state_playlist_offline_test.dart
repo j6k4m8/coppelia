@@ -23,6 +23,7 @@ import 'package:coppelia/services/playback_controller.dart';
 import 'package:coppelia/services/session_store.dart';
 import 'package:coppelia/services/settings_store.dart';
 import 'package:coppelia/state/app_state.dart';
+import 'package:coppelia/state/library_view.dart';
 
 class _MockCacheStore extends Mock implements CacheStore {}
 
@@ -58,6 +59,25 @@ Album _album(String id) {
     id: id,
     name: 'Album $id',
     artistName: 'Artist',
+    trackCount: 1,
+    imageUrl: null,
+  );
+}
+
+Artist _artist(String id) {
+  return Artist(
+    id: id,
+    name: 'Artist $id',
+    albumCount: 1,
+    trackCount: 1,
+    imageUrl: null,
+  );
+}
+
+Genre _genre(String id) {
+  return Genre(
+    id: id,
+    name: 'Genre $id',
     trackCount: 1,
     imageUrl: null,
   );
@@ -620,6 +640,132 @@ void main() {
   });
 
   group('AppState detail selection', () {
+    void testHomeDetailBackNavigation(
+      String detail,
+      Future<void> Function(AppState state) select,
+      bool Function(AppState state) isSelected,
+    ) {
+      test('$detail opened from Home returns to Home', () async {
+        final cacheStore = _MockCacheStore();
+        final client = _MockJellyfinClient();
+        final playback = _MockPlaybackController();
+        final sessionStore = _MockSessionStore();
+        final settingsStore = _MockSettingsStore();
+        final state = buildState(
+          cacheStore: cacheStore,
+          client: client,
+          playback: playback,
+          sessionStore: sessionStore,
+          settingsStore: settingsStore,
+        );
+        addTearDown(state.dispose);
+
+        when(() => cacheStore.loadPlaylistTracks(any()))
+            .thenAnswer((_) async => const <MediaItem>[]);
+        when(() => client.fetchPlaylistTracks(any()))
+            .thenAnswer((_) async => const <MediaItem>[]);
+        when(() => cacheStore.loadAlbumTracks(any()))
+            .thenAnswer((_) async => const <MediaItem>[]);
+        when(() => client.fetchAlbumTracks(any()))
+            .thenAnswer((_) async => const <MediaItem>[]);
+        when(() => cacheStore.loadArtistTracks(any()))
+            .thenAnswer((_) async => const <MediaItem>[]);
+        when(() => client.fetchArtistTracks(any()))
+            .thenAnswer((_) async => const <MediaItem>[]);
+        when(() => cacheStore.saveArtistTracks(any(), any()))
+            .thenAnswer((_) async {});
+        when(() => cacheStore.loadGenreTracks(any()))
+            .thenAnswer((_) async => const <MediaItem>[]);
+        when(() => client.fetchGenreTracks(any()))
+            .thenAnswer((_) async => const <MediaItem>[]);
+        when(() => cacheStore.saveGenreTracks(any(), any()))
+            .thenAnswer((_) async {});
+
+        await select(state);
+
+        expect(isSelected(state), isTrue);
+        expect(state.canGoBack, isTrue);
+        state.goBack();
+        expect(state.selectedView, LibraryView.home);
+        expect(state.selectedPlaylist, isNull);
+        expect(state.selectedSmartList, isNull);
+        expect(state.selectedAlbum, isNull);
+        expect(state.selectedArtist, isNull);
+        expect(state.selectedGenre, isNull);
+        expect(state.canGoBack, isFalse);
+      });
+    }
+
+    testHomeDetailBackNavigation(
+      'playlist',
+      (state) => state.selectPlaylist(
+        const Playlist(
+          id: 'playlist-back',
+          name: 'Playlist',
+          trackCount: 1,
+          imageUrl: null,
+        ),
+      ),
+      (state) => state.selectedPlaylist != null,
+    );
+    testHomeDetailBackNavigation(
+      'Smart List',
+      (state) => state.selectSmartList(_titleContainsSmartList('Needle')),
+      (state) => state.selectedSmartList != null,
+    );
+    testHomeDetailBackNavigation(
+      'album',
+      (state) => state.selectAlbum(_album('back')),
+      (state) => state.selectedAlbum != null,
+    );
+    testHomeDetailBackNavigation(
+      'artist',
+      (state) => state.selectArtist(_artist('back')),
+      (state) => state.selectedArtist != null,
+    );
+    testHomeDetailBackNavigation(
+      'genre',
+      (state) => state.selectGenre(_genre('back')),
+      (state) => state.selectedGenre != null,
+    );
+
+    test('playlist opened from a list returns to that list', () async {
+      final cacheStore = _MockCacheStore();
+      final client = _MockJellyfinClient();
+      final playback = _MockPlaybackController();
+      final sessionStore = _MockSessionStore();
+      final settingsStore = _MockSettingsStore();
+      final state = buildState(
+        cacheStore: cacheStore,
+        client: client,
+        playback: playback,
+        sessionStore: sessionStore,
+        settingsStore: settingsStore,
+      );
+      addTearDown(state.dispose);
+      const playlist = Playlist(
+        id: 'playlist-list-back',
+        name: 'Playlist',
+        trackCount: 1,
+        imageUrl: null,
+      );
+      when(() => cacheStore.loadPlaylistTracks(playlist.id))
+          .thenAnswer((_) async => const <MediaItem>[]);
+      when(() => client.fetchPlaylistTracks(playlist.id))
+          .thenAnswer((_) async => const <MediaItem>[]);
+
+      state.selectLibraryView(LibraryView.homePlaylists);
+      await state.selectPlaylist(playlist);
+      state.goBack();
+
+      expect(state.selectedView, LibraryView.homePlaylists);
+      expect(state.selectedPlaylist, isNull);
+      expect(state.canGoBack, isTrue);
+      state.goBack();
+      expect(state.selectedView, LibraryView.home);
+      expect(state.canGoBack, isFalse);
+    });
+
     test('selectAlbum clears playlist detail state', () async {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
