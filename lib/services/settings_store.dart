@@ -72,6 +72,32 @@ class SettingsStore {
   static const _smartListsKey = 'settings_smart_lists';
   static const int _defaultAccentValue = 0xFF6F7BFF;
 
+  String? _smartListScope;
+
+  /// Activates the server scope used for library-specific Smart Lists.
+  void activateSmartListScope(String? serverId) {
+    _smartListScope = serverId;
+  }
+
+  /// Moves Smart Lists created before server profiles into the first profile.
+  Future<void> migrateLegacySmartLists(String serverId) async {
+    final preferences = await SharedPreferences.getInstance();
+    final legacy = preferences.getString(_smartListsKey);
+    if (legacy != null && legacy.isNotEmpty) {
+      await preferences.setString(_smartListsKeyFor(serverId), legacy);
+    }
+    await preferences.remove(_smartListsKey);
+  }
+
+  /// Deletes Smart Lists stored for one removed server.
+  Future<void> clearSmartListsScope(String serverId) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove(_smartListsKeyFor(serverId));
+  }
+
+  String _smartListsKeyFor(String? serverId) =>
+      serverId == null ? _smartListsKey : '$_smartListsKey.$serverId';
+
   /// Loads the preferred theme mode.
   Future<ThemeMode> loadThemeMode() async {
     final preferences = await SharedPreferences.getInstance();
@@ -250,7 +276,7 @@ class SettingsStore {
   /// Loads stored Smart Lists.
   Future<List<SmartList>> loadSmartLists() async {
     final preferences = await SharedPreferences.getInstance();
-    final raw = preferences.getString(_smartListsKey);
+    final raw = preferences.getString(_smartListsKeyFor(_smartListScope));
     if (raw == null || raw.isEmpty) {
       return [];
     }
@@ -269,7 +295,10 @@ class SettingsStore {
   Future<void> saveSmartLists(List<SmartList> lists) async {
     final preferences = await SharedPreferences.getInstance();
     final payload = lists.map((list) => list.toJson()).toList();
-    await preferences.setString(_smartListsKey, jsonEncode(payload));
+    await preferences.setString(
+      _smartListsKeyFor(_smartListScope),
+      jsonEncode(payload),
+    );
   }
 
   /// Loads or generates a unique device identifier.
@@ -465,7 +494,8 @@ class SettingsStore {
     final preferences = await SharedPreferences.getInstance();
     final raw = preferences.getString(_sidebarVisibilityKey);
     final visibility = {
-      for (final item in SidebarItem.values) item: true,
+      for (final item in SidebarItem.values)
+        if (item != SidebarItem.servers) item: true,
     };
     if (raw == null) {
       return visibility;
@@ -487,7 +517,8 @@ class SettingsStore {
     final preferences = await SharedPreferences.getInstance();
     final payload = <String, bool>{
       for (final item in SidebarItem.values)
-        item.storageKey: visibility[item] ?? true,
+        if (item != SidebarItem.servers || visibility.containsKey(item))
+          item.storageKey: visibility[item] ?? true,
     };
     await preferences.setString(_sidebarVisibilityKey, jsonEncode(payload));
   }

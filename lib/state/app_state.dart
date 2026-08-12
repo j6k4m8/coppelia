@@ -23,6 +23,7 @@ import '../models/media_item.dart';
 import '../models/playback_resume_state.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
+import '../models/saved_server.dart';
 import '../models/smart_list.dart';
 import '../models/track_status_icon_state.dart';
 import '../models/whole_library_offline.dart';
@@ -32,8 +33,8 @@ import '../services/log_service.dart';
 import '../services/now_playing_service.dart';
 import '../services/playback_controller.dart';
 import '../services/search_service.dart';
+import '../services/server_store.dart';
 import '../services/settings_store.dart';
-import '../services/session_store.dart';
 import 'browse_layout.dart';
 import 'accent_color_source.dart';
 import 'home_section.dart';
@@ -65,12 +66,12 @@ class AppState extends ChangeNotifier {
     required CacheStore cacheStore,
     required JellyfinClient client,
     required PlaybackController playback,
-    required SessionStore sessionStore,
+    required ServerStore serverStore,
     required SettingsStore settingsStore,
   })  : _cacheStore = cacheStore,
         _client = client,
         _playback = playback,
-        _sessionStore = sessionStore,
+        _serverStore = serverStore,
         _settingsStore = settingsStore {
     _bindPlayback();
     _bindNowPlaying();
@@ -80,13 +81,17 @@ class AppState extends ChangeNotifier {
   final JellyfinClient _client;
   final PlaybackController _playback;
   final NowPlayingService _nowPlayingService = NowPlayingService();
-  final SessionStore _sessionStore;
+  final ServerStore _serverStore;
   final SettingsStore _settingsStore;
 
   AuthSession? _session;
+  List<SavedServer> _savedServers = [];
+  SavedServer? _activeServer;
+  int _serverGeneration = 0;
   bool _isBootstrapping = true;
   bool _isLoadingLibrary = false;
   String? _authError;
+  String? _libraryError;
   Playlist? _selectedPlaylist;
   LibraryView _selectedView = LibraryView.home;
   Album? _selectedAlbum;
@@ -169,6 +174,17 @@ class AppState extends ChangeNotifier {
   final ValueNotifier<int> _pinnedCacheBytesNotifier = ValueNotifier(0);
   final Random _random = Random();
   int _playRequestId = 0;
+
+  /// Invalidates asynchronous work owned by the previous server profile.
+  int _beginServerTransition() {
+    _serverGeneration += 1;
+    return _serverGeneration;
+  }
+
+  int _captureServerGeneration() => _serverGeneration;
+
+  bool _isCurrentServerGeneration(int generation) =>
+      generation == _serverGeneration;
 
   void _updatePlaybackProgress({
     Duration? position,
@@ -352,7 +368,8 @@ class AppState extends ChangeNotifier {
     HomeSection.values,
   );
   Map<SidebarItem, bool> _sidebarVisibility = {
-    for (final item in SidebarItem.values) item: true,
+    for (final item in SidebarItem.values)
+      if (item != SidebarItem.servers) item: true,
   };
   double _sidebarWidth = 240;
   bool _sidebarCollapsed = false;
@@ -390,6 +407,18 @@ class AppState extends ChangeNotifier {
   /// Current authenticated session.
   AuthSession? get session => _session;
 
+  /// Saved Jellyfin servers available on this device.
+  List<SavedServer> get savedServers => List.unmodifiable(_savedServers);
+
+  /// Active saved server, when a session is available.
+  SavedServer? get activeServer => _activeServer;
+
+  /// Number of selectable server and address destinations.
+  int get savedDestinationCount => _savedServers.fold<int>(
+        0,
+        (count, server) => count + server.addresses.length,
+      );
+
   /// True while the app restores cached state.
   bool get isBootstrapping => _isBootstrapping;
 
@@ -398,6 +427,9 @@ class AppState extends ChangeNotifier {
 
   /// Error message from the last authentication attempt.
   String? get authError => _authError;
+
+  /// Most recent non-auth library refresh failure for the active server.
+  String? get libraryError => _libraryError;
 
   /// Available playlists for the user.
   List<Playlist> get playlists => List.unmodifiable(_playlists);
@@ -806,8 +838,12 @@ class AppState extends ChangeNotifier {
       _homeSectionVisibility[section] ?? true;
 
   /// Returns whether a sidebar item should be shown.
-  bool isSidebarItemVisible(SidebarItem item) =>
-      _sidebarVisibility[item] ?? true;
+  bool isSidebarItemVisible(SidebarItem item) {
+    if (item == SidebarItem.servers && !_sidebarVisibility.containsKey(item)) {
+      return savedDestinationCount > 1;
+    }
+    return _sidebarVisibility[item] ?? true;
+  }
 
   /// Returns a saved scroll offset for a key.
   double loadScrollOffset(String key) => _scrollOffsets[key] ?? 0;
@@ -1148,19 +1184,7 @@ class AppState extends ChangeNotifier {
   }
 
   String _canonicalStreamUrlForStreamUrl(String streamUrl) {
-    final session = _session;
-    if (session == null) {
-      return streamUrl;
-    }
-    final itemId = _extractStreamItemId(streamUrl);
-    if (itemId == streamUrl) {
-      return streamUrl;
-    }
-    final canonical = _client.buildStreamUrl(
-      itemId: itemId,
-      userId: session.userId,
-    );
-    return canonical.isEmpty ? streamUrl : canonical;
+    return _cacheStore.audioKeyForStreamUrl(streamUrl);
   }
 
   MediaItem _normalizeTrackForOffline(MediaItem track) {

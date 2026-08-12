@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/playlist.dart';
+import '../../models/saved_server.dart';
 import '../../models/smart_list.dart';
 import '../../state/app_state.dart';
 import '../../state/library_view.dart';
@@ -139,6 +140,9 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
     final settingsVisible = context.select(
       (AppState s) => s.isSidebarItemVisible(SidebarItem.settings),
     );
+    final serversVisible = context.select(
+      (AppState s) => s.isSidebarItemVisible(SidebarItem.servers),
+    );
     final searchVisible = context.select(
       (AppState s) => s.isSidebarItemVisible(SidebarItem.search),
     );
@@ -189,6 +193,8 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
     );
     final offlineMode = context.select((AppState s) => s.offlineMode);
     final sessionPresent = context.select((AppState s) => s.session != null);
+    final savedServers = context.select((AppState s) => s.savedServers);
+    final activeServer = context.select((AppState s) => s.activeServer);
     final smartLists = context.select((AppState s) => s.smartLists);
     final playlists = context.select((AppState s) => s.playlists);
     final selectedView = context.select((AppState s) => s.selectedView);
@@ -290,6 +296,14 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
                 ),
             ],
           ),
+          if (serversVisible && activeServer != null) ...[
+            SizedBox(height: space(10)),
+            _SidebarServerSwitcher(
+              servers: savedServers,
+              activeServer: activeServer,
+              onNavigate: widget.onNavigate,
+            ),
+          ],
           SizedBox(height: space(32)),
           if (settingsVisible) ...[
             _NavTile(
@@ -694,6 +708,141 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
       ),
     );
   }
+}
+
+class _SidebarServerSwitcher extends StatelessWidget {
+  const _SidebarServerSwitcher({
+    required this.servers,
+    required this.activeServer,
+    required this.onNavigate,
+  });
+
+  final List<SavedServer> servers;
+  final SavedServer activeServer;
+  final VoidCallback? onNavigate;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    final destinations = <_ServerDestination>[
+      for (final server in servers)
+        for (final address in server.addresses)
+          _ServerDestination(server: server, address: address),
+    ];
+    return PopupMenuButton<_ServerDestination>(
+      tooltip: 'Switch server',
+      padding: EdgeInsets.zero,
+      onSelected: (destination) async {
+        if (destination.server.id == activeServer.id &&
+            destination.address.id == activeServer.activeAddress.id) {
+          return;
+        }
+        final appState = context.read<AppState>();
+        final switched = await appState.switchServer(
+          destination.server.id,
+          addressId: destination.address.id,
+        );
+        if (!context.mounted) {
+          return;
+        }
+        if (switched) {
+          onNavigate?.call();
+          final refreshError = appState.libraryError;
+          if (refreshError != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(refreshError)),
+            );
+          }
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(appState.authError ?? 'Could not switch servers.'),
+          ),
+        );
+      },
+      itemBuilder: (context) => destinations.map(
+        (destination) {
+          final selected = destination.server.id == activeServer.id &&
+              destination.address.id == activeServer.activeAddress.id;
+          final hasAliases = destination.server.addresses.length > 1;
+          return PopupMenuItem(
+            value: destination,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 24,
+                  child: selected
+                      ? Icon(
+                          Icons.check,
+                          color: Theme.of(context).colorScheme.primary,
+                        )
+                      : null,
+                ),
+                Expanded(
+                  child: Text(
+                    hasAliases
+                        ? '${destination.server.name} - ${destination.address.name}'
+                        : destination.server.name,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ).toList(),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: space(10).clamp(8.0, 14.0),
+          vertical: space(8).clamp(6.0, 12.0),
+        ),
+        decoration: BoxDecoration(
+          color: ColorTokens.cardFill(context, 0.08),
+          borderRadius: BorderRadius.circular(context.scaledRadius(12)),
+          border: Border.all(color: ColorTokens.border(context, 0.12)),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.dns_outlined,
+              size: (18 * densityScale).clamp(14.0, 20.0),
+            ),
+            SizedBox(width: space(10).clamp(8.0, 14.0)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    activeServer.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  Text(
+                    activeServer.activeAddress.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: ColorTokens.textSecondary(context),
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.expand_more, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ServerDestination {
+  const _ServerDestination({required this.server, required this.address});
+
+  final SavedServer server;
+  final ServerAddress address;
 }
 
 class _NavTile extends StatelessWidget {

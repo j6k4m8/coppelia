@@ -115,13 +115,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               : const Text('Sign in'),
                         ),
                       ),
-                      SizedBox(height: space(16)),
-                      Text(
-                        'Tip: Use a local Jellyfin user with music library access.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: ColorTokens.textSecondary(context, 0.55),
-                        ),
-                      ),
                     ],
                   ),
                 ),

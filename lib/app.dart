@@ -10,8 +10,8 @@ import 'services/jellyfin_client.dart';
 import 'services/menu_service.dart';
 import 'services/playback_controller.dart';
 import 'services/linux_audio_handler.dart';
+import 'services/server_store.dart';
 import 'services/settings_store.dart';
-import 'services/session_store.dart';
 import 'state/app_state.dart';
 import 'state/library_view.dart';
 import 'ui/screens/home_screen.dart';
@@ -32,7 +32,7 @@ class CoppeliaApp extends StatelessWidget {
       return ChangeNotifierProvider<AppState>(
         create: (_) {
           final cacheStore = CacheStore();
-          final sessionStore = SessionStore();
+          final serverStore = ServerStore();
           final playback = PlaybackController();
           final client = JellyfinClient();
           final settingsStore = SettingsStore();
@@ -40,7 +40,7 @@ class CoppeliaApp extends StatelessWidget {
             cacheStore: cacheStore,
             client: client,
             playback: playback,
-            sessionStore: sessionStore,
+            serverStore: serverStore,
             settingsStore: settingsStore,
           );
           if (Platform.isLinux) {

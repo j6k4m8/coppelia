@@ -603,11 +603,12 @@ extension AppStateOfflineExtension on AppState {
     if (_isProcessingDownloads || _downloadsPaused) {
       return;
     }
+    final serverGeneration = _captureServerGeneration();
     _isProcessingDownloads = true;
     try {
       _resetWaitingDownloads();
       while (true) {
-        if (_downloadsPaused) {
+        if (_downloadsPaused || !_isCurrentServerGeneration(serverGeneration)) {
           break;
         }
         DownloadTask? next;
@@ -618,6 +619,9 @@ extension AppStateOfflineExtension on AppState {
           final canDownload = await _canDownloadOverNetwork(
             requireWifi: task.requiresWifi,
           );
+          if (!_isCurrentServerGeneration(serverGeneration)) {
+            break;
+          }
           if (canDownload) {
             next = task;
             break;
@@ -630,14 +634,19 @@ extension AppStateOfflineExtension on AppState {
         if (next == null) {
           break;
         }
-        await _downloadTrack(next);
+        await _downloadTrack(next, serverGeneration);
       }
     } finally {
-      _isProcessingDownloads = false;
+      if (_isCurrentServerGeneration(serverGeneration)) {
+        _isProcessingDownloads = false;
+      }
     }
   }
 
-  Future<void> _downloadTrack(DownloadTask task) async {
+  Future<void> _downloadTrack(DownloadTask task, int serverGeneration) async {
+    if (!_isCurrentServerGeneration(serverGeneration)) {
+      return;
+    }
     final streamUrl = task.track.streamUrl;
     _updateDownloadTask(streamUrl, status: DownloadStatus.downloading);
     try {
@@ -645,6 +654,9 @@ extension AppStateOfflineExtension on AppState {
         task.track,
         headers: _playbackHeaders(),
       )) {
+        if (!_isCurrentServerGeneration(serverGeneration)) {
+          return;
+        }
         if (_cancelledOfflineRequests.contains(streamUrl)) {
           _cancelledOfflineRequests.remove(streamUrl);
           _removeDownload(streamUrl);
@@ -664,6 +676,9 @@ extension AppStateOfflineExtension on AppState {
         }
       }
     } catch (error) {
+      if (!_isCurrentServerGeneration(serverGeneration)) {
+        return;
+      }
       if (_cancelledOfflineRequests.contains(streamUrl)) {
         _cancelledOfflineRequests.remove(streamUrl);
         _removeDownload(streamUrl);

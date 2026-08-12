@@ -11,6 +11,8 @@ import 'package:coppelia/services/jellyfin_client.dart';
 class _MockHttpClient extends Mock implements http.Client {}
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   setUpAll(() {
     registerFallbackValue(Uri.parse('https://example.com'));
     registerFallbackValue(
@@ -60,6 +62,36 @@ void main() {
     expect(headers['Authorization'], contains('Client="Coppelia"'));
     expect(headers, isNot(contains('X-Emby-Authorization')));
     expect(headers, isNot(contains('X-Emby-Token')));
+  });
+
+  test('validateSession accepts a saved token only at a reachable address',
+      () async {
+    final client = _MockHttpClient();
+    const session = AuthSession(
+      accessToken: 'token',
+      serverUrl: 'https://remote.example.com',
+      userId: 'user-1',
+      userName: 'Jordan',
+    );
+    when(
+      () => client.get(any(), headers: any(named: 'headers')),
+    ).thenAnswer((_) async => http.Response('{}', 401));
+
+    final jellyfin = JellyfinClient(httpClient: client);
+    await expectLater(
+      jellyfin.validateSession(session),
+      throwsA(isA<JellyfinRequestException>()),
+    );
+
+    when(
+      () => client.get(any(), headers: any(named: 'headers')),
+    ).thenAnswer((_) async => http.Response('{}', 200));
+    await jellyfin.validateSession(session);
+
+    final uri = verify(
+      () => client.get(captureAny(), headers: any(named: 'headers')),
+    ).captured.last as Uri;
+    expect(uri.toString(), 'https://remote.example.com/Users/user-1');
   });
 
   test('fetchPlaylists maps Jellyfin responses', () async {
