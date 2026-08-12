@@ -11,6 +11,7 @@ class CachedAudioEntry {
     required this.cachedAt,
     required this.bytes,
     this.mediaItem,
+    this.legacyCacheKey,
   });
 
   /// Stream URL used as cache key.
@@ -33,6 +34,9 @@ class CachedAudioEntry {
 
   /// Full track metadata captured when the audio was cached.
   final MediaItem? mediaItem;
+
+  /// Original cache-manager key retained while migrating legacy downloads.
+  final String? legacyCacheKey;
 
   /// Returns a user-friendly artist label.
   String get artistLabel =>

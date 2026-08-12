@@ -16,14 +16,16 @@ import 'package:coppelia/models/playlist.dart';
 import 'package:coppelia/models/smart_list.dart';
 import 'package:coppelia/models/cached_audio_entry.dart';
 import 'package:coppelia/models/download_task.dart';
+import 'package:coppelia/models/saved_server.dart';
 import 'package:coppelia/models/track_status_icon_state.dart';
 import 'package:coppelia/services/cache_store.dart';
 import 'package:coppelia/services/jellyfin_client.dart';
 import 'package:coppelia/services/playback_controller.dart';
-import 'package:coppelia/services/session_store.dart';
+import 'package:coppelia/services/server_store.dart';
 import 'package:coppelia/services/settings_store.dart';
 import 'package:coppelia/state/app_state.dart';
 import 'package:coppelia/state/library_view.dart';
+import 'package:coppelia/state/sidebar_item.dart';
 
 class _MockCacheStore extends Mock implements CacheStore {}
 
@@ -31,9 +33,39 @@ class _MockJellyfinClient extends Mock implements JellyfinClient {}
 
 class _MockPlaybackController extends Mock implements PlaybackController {}
 
-class _MockSessionStore extends Mock implements SessionStore {}
+class _MockServerStore extends Mock implements ServerStore {}
 
 class _MockSettingsStore extends Mock implements SettingsStore {}
+
+const _savedServer = SavedServer(
+  id: 'server-1',
+  name: 'Example',
+  userId: 'user',
+  userName: 'User',
+  addresses: [
+    ServerAddress(
+      id: 'address-1',
+      name: 'Example',
+      url: 'https://example.com',
+    ),
+  ],
+  activeAddressId: 'address-1',
+);
+
+const _remoteSavedServer = SavedServer(
+  id: 'server-2',
+  name: 'Remote',
+  userId: 'remote-user',
+  userName: 'Remote User',
+  addresses: [
+    ServerAddress(
+      id: 'address-2',
+      name: 'Remote',
+      url: 'https://remote.example.com',
+    ),
+  ],
+  activeAddressId: 'address-2',
+);
 
 MediaItem _track(
   String id, {
@@ -113,6 +145,15 @@ void main() {
       (_) async => null,
     );
     registerFallbackValue(_track('fallback'));
+    registerFallbackValue(
+      const AuthSession(
+        accessToken: 'fallback-token',
+        serverUrl: 'https://example.com',
+        userId: 'fallback-user',
+        userName: 'Fallback User',
+      ),
+    );
+    registerFallbackValue(_savedServer);
     registerFallbackValue(<String>{});
     registerFallbackValue(<String>[]);
     registerFallbackValue(<String, String>{});
@@ -135,7 +176,7 @@ void main() {
     required _MockCacheStore cacheStore,
     required _MockJellyfinClient client,
     required _MockPlaybackController playback,
-    required _MockSessionStore sessionStore,
+    required _MockServerStore serverStore,
     required _MockSettingsStore settingsStore,
   }) {
     when(
@@ -162,6 +203,40 @@ void main() {
     when(
       () => cacheStore.loadCachedAudioEntries(),
     ).thenAnswer((_) async => const <CachedAudioEntry>[]);
+    when(() => cacheStore.audioKeyForStreamUrl(any())).thenAnswer(
+      (invocation) => invocation.positionalArguments.single as String,
+    );
+    when(() => cacheStore.loadPlaylists())
+        .thenAnswer((_) async => const <Playlist>[]);
+    when(() => cacheStore.loadFeaturedTracks())
+        .thenAnswer((_) async => const <MediaItem>[]);
+    when(() => cacheStore.loadAlbums())
+        .thenAnswer((_) async => const <Album>[]);
+    when(() => cacheStore.loadRecentlyAddedAlbums())
+        .thenAnswer((_) async => const <Album>[]);
+    when(() => cacheStore.loadArtists())
+        .thenAnswer((_) async => const <Artist>[]);
+    when(() => cacheStore.loadGenres())
+        .thenAnswer((_) async => const <Genre>[]);
+    when(() => cacheStore.loadFavoriteAlbums())
+        .thenAnswer((_) async => const <Album>[]);
+    when(() => cacheStore.loadFavoriteArtists())
+        .thenAnswer((_) async => const <Artist>[]);
+    when(() => cacheStore.loadFavoriteTracks())
+        .thenAnswer((_) async => const <MediaItem>[]);
+    when(() => cacheStore.loadRecentTracks())
+        .thenAnswer((_) async => const <MediaItem>[]);
+    when(() => cacheStore.loadPlayHistory())
+        .thenAnswer((_) async => const <MediaItem>[]);
+    when(() => cacheStore.loadLibraryStats()).thenAnswer((_) async => null);
+    when(() => cacheStore.loadPlaybackResumeState())
+        .thenAnswer((_) async => null);
+    when(() => cacheStore.loadPinnedAudio())
+        .thenAnswer((_) async => <String>{});
+    when(() => settingsStore.loadSmartLists())
+        .thenAnswer((_) async => const <SmartList>[]);
+    when(() => settingsStore.saveSidebarVisibility(any()))
+        .thenAnswer((_) async {});
     when(
       () => cacheStore.clearOfflineAudioState(),
     ).thenAnswer((_) async {});
@@ -218,15 +293,23 @@ void main() {
     ).thenAnswer((_) => const Stream<FileResponse>.empty());
     when(() => settingsStore.saveDownloadsPaused(any()))
         .thenAnswer((_) async {});
+    when(() => cacheStore.clearScope(any())).thenAnswer((_) async {});
+    when(() => settingsStore.clearSmartListsScope(any()))
+        .thenAnswer((_) async {});
     when(
-      () => sessionStore.saveSession(null),
+      () => playback.clearQueue(keepCurrent: any(named: 'keepCurrent')),
     ).thenAnswer((_) async {});
+    when(() => serverStore.removeServer(any())).thenAnswer((_) async => null);
+    when(() => serverStore.pendingServerRemovals())
+        .thenAnswer((_) async => const <String>[]);
+    when(() => serverStore.completeServerRemoval(any()))
+        .thenAnswer((_) async {});
 
     return AppState(
       cacheStore: cacheStore,
       client: client,
       playback: playback,
-      sessionStore: sessionStore,
+      serverStore: serverStore,
       settingsStore: settingsStore,
     );
   }
@@ -234,7 +317,7 @@ void main() {
   void stubSignedInRefresh({
     required _MockCacheStore cacheStore,
     required _MockJellyfinClient client,
-    required _MockSessionStore sessionStore,
+    required _MockServerStore serverStore,
   }) {
     const session = AuthSession(
       accessToken: 'token',
@@ -249,7 +332,19 @@ void main() {
         password: 'password',
       ),
     ).thenAnswer((_) async => session);
-    when(() => sessionStore.saveSession(session)).thenAnswer((_) async {});
+    when(
+      () => serverStore.addAuthenticatedServer(
+        session,
+        name: any(named: 'name'),
+      ),
+    ).thenAnswer(
+      (_) async => const StoredServerSession(
+        server: _savedServer,
+        session: session,
+      ),
+    );
+    when(() => serverStore.loadServers())
+        .thenAnswer((_) async => const [_savedServer]);
     when(() => client.fetchPlaylists())
         .thenAnswer((_) async => const <Playlist>[]);
     when(() => cacheStore.savePlaylists(any())).thenAnswer((_) async {});
@@ -294,20 +389,20 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
       stubSignedInRefresh(
         cacheStore: cacheStore,
         client: client,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
       );
       final albums = [_album('new')];
       when(() => client.fetchRecentlyAddedAlbums())
@@ -329,20 +424,20 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
       stubSignedInRefresh(
         cacheStore: cacheStore,
         client: client,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
       );
       when(() => client.fetchRecentlyAddedAlbums())
           .thenThrow(StateError('unsupported sort'));
@@ -357,25 +452,25 @@ void main() {
       expect(state.recentlyAddedAlbums, isEmpty);
     });
 
-    test('signOut clears offline audio state for the previous account',
+    test('removeServer clears offline audio state for the removed account',
         () async {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
       stubSignedInRefresh(
         cacheStore: cacheStore,
         client: client,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
       );
 
       final signedIn = await state.signIn(
@@ -385,14 +480,241 @@ void main() {
       );
       expect(signedIn, isTrue);
 
-      await state.signOut();
+      await state.removeServer(_savedServer.id);
 
-      verify(() => cacheStore.savePlaybackResumeState(null)).called(1);
-      verify(() => cacheStore.clearOfflineAudioState()).called(1);
+      verify(() => cacheStore.clearScope(_savedServer.id)).called(1);
       verify(() => client.clearSession()).called(1);
-      verify(() => sessionStore.saveSession(null)).called(1);
+      verify(() => serverStore.removeServer(_savedServer.id)).called(1);
       expect(state.session, isNull);
       expect(state.pinnedAudio, isEmpty);
+    });
+
+    test('switchServer stops playback and activates scoped server data',
+        () async {
+      final cacheStore = _MockCacheStore();
+      final client = _MockJellyfinClient();
+      final playback = _MockPlaybackController();
+      final serverStore = _MockServerStore();
+      final settingsStore = _MockSettingsStore();
+      final state = buildState(
+        cacheStore: cacheStore,
+        client: client,
+        playback: playback,
+        serverStore: serverStore,
+        settingsStore: settingsStore,
+      );
+      addTearDown(state.dispose);
+      stubSignedInRefresh(
+        cacheStore: cacheStore,
+        client: client,
+        serverStore: serverStore,
+      );
+      when(() => serverStore.loadServers()).thenAnswer(
+        (_) async => const [_savedServer, _remoteSavedServer],
+      );
+      const remoteSession = AuthSession(
+        accessToken: 'remote-token',
+        serverUrl: 'https://remote.example.com',
+        userId: 'remote-user',
+        userName: 'Remote User',
+      );
+      const remoteStored = StoredServerSession(
+        server: _remoteSavedServer,
+        session: remoteSession,
+      );
+      when(
+        () => serverStore.activate('server-2', addressId: 'address-2'),
+      ).thenAnswer((_) async => remoteStored);
+
+      expect(
+        await state.signIn(
+          serverUrl: 'https://example.com',
+          username: 'user',
+          password: 'password',
+        ),
+        isTrue,
+      );
+      clearInteractions(cacheStore);
+      clearInteractions(client);
+      clearInteractions(playback);
+
+      expect(
+        await state.switchServer('server-2', addressId: 'address-2'),
+        isTrue,
+      );
+
+      expect(state.activeServer?.id, _remoteSavedServer.id);
+      expect(state.session?.accessToken, remoteSession.accessToken);
+      expect(state.session?.serverUrl, remoteSession.serverUrl);
+      expect(state.isSidebarItemVisible(SidebarItem.servers), isTrue);
+      await state.setSidebarItemVisible(SidebarItem.servers, false);
+      expect(state.isSidebarItemVisible(SidebarItem.servers), isFalse);
+      verify(() => playback.clearQueue(keepCurrent: false)).called(1);
+      verify(() => client.updateSession(remoteSession)).called(1);
+      verify(() => cacheStore.activateScope(_remoteSavedServer.id)).called(1);
+    });
+
+    test('a stale refresh cannot overwrite the newly selected server',
+        () async {
+      final cacheStore = _MockCacheStore();
+      final client = _MockJellyfinClient();
+      final playback = _MockPlaybackController();
+      final serverStore = _MockServerStore();
+      final settingsStore = _MockSettingsStore();
+      final state = buildState(
+        cacheStore: cacheStore,
+        client: client,
+        playback: playback,
+        serverStore: serverStore,
+        settingsStore: settingsStore,
+      );
+      addTearDown(state.dispose);
+      stubSignedInRefresh(
+        cacheStore: cacheStore,
+        client: client,
+        serverStore: serverStore,
+      );
+      when(() => serverStore.loadServers()).thenAnswer(
+        (_) async => const [_savedServer, _remoteSavedServer],
+      );
+      const remoteSession = AuthSession(
+        accessToken: 'remote-token',
+        serverUrl: 'https://remote.example.com',
+        userId: 'remote-user',
+        userName: 'Remote User',
+      );
+      when(
+        () => serverStore.activate('server-2', addressId: 'address-2'),
+      ).thenAnswer(
+        (_) async => const StoredServerSession(
+          server: _remoteSavedServer,
+          session: remoteSession,
+        ),
+      );
+
+      expect(
+        await state.signIn(
+          serverUrl: 'https://example.com',
+          username: 'user',
+          password: 'password',
+        ),
+        isTrue,
+      );
+
+      final oldRefresh = Completer<List<Playlist>>();
+      const remotePlaylists = [
+        Playlist(
+          id: 'remote-playlist',
+          name: 'Remote playlist',
+          trackCount: 1,
+          imageUrl: null,
+        ),
+      ];
+      var requests = 0;
+      when(() => client.fetchPlaylists()).thenAnswer((_) {
+        requests += 1;
+        return requests == 1
+            ? oldRefresh.future
+            : Future.value(remotePlaylists);
+      });
+
+      final staleRefresh = state.refreshLibrary();
+      expect(
+        await state.switchServer('server-2', addressId: 'address-2'),
+        isTrue,
+      );
+      oldRefresh.complete(const [
+        Playlist(
+          id: 'old-playlist',
+          name: 'Old playlist',
+          trackCount: 1,
+          imageUrl: null,
+        ),
+      ]);
+      await staleRefresh;
+
+      expect(state.activeServer?.id, _remoteSavedServer.id);
+      expect(state.playlists, remotePlaylists);
+    });
+
+    test('adding an alias to another server does not switch profiles',
+        () async {
+      final cacheStore = _MockCacheStore();
+      final client = _MockJellyfinClient();
+      final playback = _MockPlaybackController();
+      final serverStore = _MockServerStore();
+      final settingsStore = _MockSettingsStore();
+      final state = buildState(
+        cacheStore: cacheStore,
+        client: client,
+        playback: playback,
+        serverStore: serverStore,
+        settingsStore: settingsStore,
+      );
+      addTearDown(state.dispose);
+      stubSignedInRefresh(
+        cacheStore: cacheStore,
+        client: client,
+        serverStore: serverStore,
+      );
+      when(() => serverStore.loadServers()).thenAnswer(
+        (_) async => const [_savedServer, _remoteSavedServer],
+      );
+      const remoteSession = AuthSession(
+        accessToken: 'remote-token',
+        serverUrl: 'https://remote.example.com',
+        userId: 'remote-user',
+        userName: 'Remote User',
+      );
+      when(() => serverStore.sessionFor(_remoteSavedServer)).thenAnswer(
+        (_) async => const StoredServerSession(
+          server: _remoteSavedServer,
+          session: remoteSession,
+        ),
+      );
+      when(() => client.validateSession(any())).thenAnswer((_) async {});
+      final remoteWithAlias = _remoteSavedServer.copyWith(
+        addresses: const [
+          ServerAddress(
+            id: 'address-2',
+            name: 'Remote',
+            url: 'https://remote.example.com',
+          ),
+          ServerAddress(
+            id: 'address-3',
+            name: 'Office',
+            url: 'https://office.example.com',
+          ),
+        ],
+      );
+      when(
+        () => serverStore.addAddress(
+          _remoteSavedServer.id,
+          name: 'Office',
+          url: 'https://office.example.com',
+        ),
+      ).thenAnswer((_) async => [_savedServer, remoteWithAlias]);
+
+      expect(
+        await state.signIn(
+          serverUrl: 'https://example.com',
+          username: 'user',
+          password: 'password',
+        ),
+        isTrue,
+      );
+      clearInteractions(client);
+
+      await state.addServerAddress(
+        _remoteSavedServer.id,
+        name: 'Office',
+        url: 'https://office.example.com',
+      );
+
+      expect(state.activeServer?.id, _savedServer.id);
+      expect(state.session?.serverUrl, 'https://example.com');
+      verify(() => client.validateSession(any())).called(1);
+      verifyNever(() => client.updateSession(any()));
     });
   });
 
@@ -401,13 +723,13 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
@@ -441,13 +763,13 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
@@ -480,13 +802,13 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
@@ -523,13 +845,13 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
@@ -583,13 +905,13 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
@@ -649,13 +971,13 @@ void main() {
         final cacheStore = _MockCacheStore();
         final client = _MockJellyfinClient();
         final playback = _MockPlaybackController();
-        final sessionStore = _MockSessionStore();
+        final serverStore = _MockServerStore();
         final settingsStore = _MockSettingsStore();
         final state = buildState(
           cacheStore: cacheStore,
           client: client,
           playback: playback,
-          sessionStore: sessionStore,
+          serverStore: serverStore,
           settingsStore: settingsStore,
         );
         addTearDown(state.dispose);
@@ -733,13 +1055,13 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
@@ -770,13 +1092,13 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
@@ -823,13 +1145,13 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
@@ -876,13 +1198,13 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
@@ -915,20 +1237,20 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
       stubSignedInRefresh(
         cacheStore: cacheStore,
         client: client,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
       );
 
       final firstPage = List.generate(
@@ -965,13 +1287,13 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
@@ -999,13 +1321,13 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
@@ -1025,13 +1347,13 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);
@@ -1054,13 +1376,13 @@ void main() {
       final cacheStore = _MockCacheStore();
       final client = _MockJellyfinClient();
       final playback = _MockPlaybackController();
-      final sessionStore = _MockSessionStore();
+      final serverStore = _MockServerStore();
       final settingsStore = _MockSettingsStore();
       final state = buildState(
         cacheStore: cacheStore,
         client: client,
         playback: playback,
-        sessionStore: sessionStore,
+        serverStore: serverStore,
         settingsStore: settingsStore,
       );
       addTearDown(state.dispose);

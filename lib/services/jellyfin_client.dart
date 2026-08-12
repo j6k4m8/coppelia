@@ -106,14 +106,14 @@ class JellyfinClient {
     return streamUri.toString();
   }
 
-  /// Signs in to Jellyfin using username and password.
+  /// Signs in to Jellyfin using a username and optional password.
   Future<AuthSession> authenticate({
     required String serverUrl,
     required String username,
     required String password,
   }) async {
     final logService = await LogService.instance;
-    final sanitizedUrl = _sanitizeServerUrl(serverUrl);
+    final sanitizedUrl = normalizeServerUrl(serverUrl);
 
     await logService
         .info('Attempting authentication to $sanitizedUrl for user $username');
@@ -151,6 +151,36 @@ class JellyfinClient {
         'Authentication successful for user ${session.userName} (${session.userId})');
 
     return session;
+  }
+
+  /// Verifies that an existing token is accepted at a proposed server address.
+  Future<void> validateSession(AuthSession session) async {
+    final uri = Uri.parse('${session.serverUrl}/Users/${session.userId}');
+    final response = await _httpClient.get(
+      uri,
+      headers: _authenticatedHeaders(session),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw JellyfinRequestException(
+        'Unable to authenticate at this address (${response.statusCode}).',
+      );
+    }
+  }
+
+  /// Normalizes a user-supplied Jellyfin base URL.
+  static String normalizeServerUrl(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      throw const FormatException('Server URL is required.');
+    }
+    final withScheme = trimmed.contains('://') ? trimmed : 'https://$trimmed';
+    final uri = Uri.parse(withScheme);
+    if (!uri.hasScheme || uri.host.isEmpty) {
+      throw const FormatException('Enter a valid server URL.');
+    }
+    return uri
+        .replace(path: uri.path.replaceAll(RegExp(r'/+$'), ''))
+        .toString();
   }
 
   /// Fetches user playlists from Jellyfin.
@@ -1480,11 +1510,6 @@ class JellyfinClient {
       );
     }
     return decoded;
-  }
-
-  /// Returns the server URL without a trailing slash.
-  String _sanitizeServerUrl(String raw) {
-    return raw.trim().replaceAll(RegExp(r'/+$'), '');
   }
 
   AuthSession _requireSession() {

@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 
 import '../../core/formatters.dart';
 import '../../models/download_task.dart';
+import '../../models/saved_server.dart';
 import '../../models/whole_library_offline.dart';
 import '../../state/app_state.dart';
 import '../../state/accent_color_source.dart';
@@ -99,7 +100,7 @@ class SettingsView extends StatelessWidget {
                     ),
                   ),
                   _SettingsTab(
-                    child: _AccountSettings(state: state),
+                    child: _ServerSettings(state: state),
                   ),
                   _SettingsTab(
                     child: _AppSettings(),
@@ -157,7 +158,7 @@ class _SettingsTabBar extends StatelessWidget {
           _SettingsTabLabel(text: 'Keyboard', compact: compact),
           _SettingsTabLabel(text: 'Playback', compact: compact),
           _SettingsTabLabel(text: 'Cache', compact: compact),
-          _SettingsTabLabel(text: 'Account', compact: compact),
+          _SettingsTabLabel(text: 'Servers', compact: compact),
           _SettingsTabLabel(text: 'App', compact: compact),
         ],
       ),
@@ -612,6 +613,10 @@ class _LayoutSettings extends StatelessWidget {
           _SidebarToggleSpec(
             item: SidebarItem.settings,
             subtitle: 'Show Settings in the sidebar.',
+          ),
+          _SidebarToggleSpec(
+            item: SidebarItem.servers,
+            subtitle: 'Show the current-server switcher when available.',
           ),
         ],
       ),
@@ -2137,93 +2142,229 @@ class _ShortcutRecorderState extends State<_ShortcutRecorder> {
   }
 }
 
-class _AccountSettings extends StatelessWidget {
-  const _AccountSettings({required this.state});
+class _ServerSettings extends StatelessWidget {
+  const _ServerSettings({required this.state});
 
   final AppState state;
 
+  Future<void> _addServer(BuildContext context) async {
+    final credentials = await _showServerLoginDialog(context);
+    if (credentials == null || !context.mounted) {
+      return;
+    }
+    final signedIn = await state.signIn(
+      serverUrl: credentials.url,
+      username: credentials.username,
+      password: credentials.password,
+      serverName: credentials.name,
+    );
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          signedIn
+              ? 'Added ${credentials.name.trim().isEmpty ? credentials.url : credentials.name.trim()}.'
+              : state.authError ?? 'Could not add that server.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _switchTo(
+    BuildContext context,
+    SavedServer server,
+    String addressId,
+  ) async {
+    if (state.activeServer?.id == server.id &&
+        state.activeServer?.activeAddress.id == addressId) {
+      return;
+    }
+    final switched = await state.switchServer(server.id, addressId: addressId);
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          switched
+              ? state.libraryError ?? 'Switched to ${server.name}.'
+              : state.authError ?? 'Could not switch servers.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _renameServer(BuildContext context, SavedServer server) async {
+    final name = await _showTextDialog(
+      context,
+      title: 'Rename server',
+      label: 'Server name',
+      initialValue: server.name,
+      action: 'Save',
+    );
+    if (name == null || name.isEmpty) {
+      return;
+    }
+    await state.renameServer(server.id, name);
+  }
+
+  Future<void> _addAddress(BuildContext context, SavedServer server) async {
+    final address = await _showAddressDialog(context);
+    if (address == null) {
+      return;
+    }
+    try {
+      await state.addServerAddress(server.id,
+          name: address.name, url: address.url);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Address added.')),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'This address cannot use this sign-in. Add it as a separate server instead.',
+            ),
+            action: SnackBarAction(
+              label: 'Add server',
+              onPressed: () => unawaited(_addServer(context)),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _editAddress(
+    BuildContext context,
+    SavedServer server,
+    ServerAddress address,
+  ) async {
+    final edited = await _showAddressDialog(context, address: address);
+    if (edited == null) {
+      return;
+    }
+    try {
+      await state.updateServerAddress(
+        server.id,
+        address.id,
+        name: edited.name,
+        url: edited.url,
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Address updated.')),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not update address: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeAddress(
+    BuildContext context,
+    SavedServer server,
+    ServerAddress address,
+  ) async {
+    final confirmed = await _confirm(
+      context,
+      title: 'Remove address?',
+      message: '“${address.name}” will no longer be used for ${server.name}.',
+      action: 'Remove',
+    );
+    if (confirmed != true) {
+      return;
+    }
+    await state.removeServerAddress(server.id, address.id);
+  }
+
+  Future<void> _removeServer(BuildContext context, SavedServer server) async {
+    final confirmed = await _confirm(
+      context,
+      title: 'Remove server?',
+      message:
+          'This removes ${server.name}, its secure sign-in token, downloads, pins, Smart Lists, and cached library data from this device.',
+      action: 'Remove server',
+    );
+    if (confirmed != true) {
+      return;
+    }
+    await state.removeServer(server.id);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final session = state.session;
     final densityScale = state.layoutDensity.scaleDouble;
     double space(double value) => value * densityScale;
-    double clamped(double value, {double min = 0, double max = 999}) =>
-        (value * densityScale).clamp(min, max);
-    final stats = state.libraryStats;
-    final trackCount = stats?.trackCount ??
-        state.playlists.fold<int>(
-          0,
-          (total, playlist) => total + playlist.trackCount,
-        );
-    final albumCount = stats?.albumCount ?? state.albums.length;
-    final artistCount = stats?.artistCount ?? state.artists.length;
-    final playlistCount = stats?.playlistCount ?? state.playlists.length;
+    final activeServerId = state.activeServer?.id;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Account', style: Theme.of(context).textTheme.titleLarge),
-        SizedBox(height: space(12)),
-        if (session == null)
+        Row(
+          children: [
+            Expanded(
+              child: Text('Servers',
+                  style: Theme.of(context).textTheme.titleLarge),
+            ),
+            FilledButton.icon(
+              onPressed: () => _addServer(context),
+              icon: const Icon(Icons.add),
+              label: const Text('Add server'),
+            ),
+          ],
+        ),
+        SizedBox(height: space(8)),
+        Text(
+          'Each server keeps its own library cache, downloads, pins, resume state, and Smart Lists. Add labelled addresses only when they reach the same signed-in server.',
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: ColorTokens.textSecondary(context)),
+        ),
+        SizedBox(height: space(16)),
+        if (state.savedServers.isEmpty)
           Text(
-            'No active session.',
+            'No saved servers. Add one to sign in.',
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
                 ?.copyWith(color: ColorTokens.textSecondary(context)),
           )
         else
-          Container(
-            padding: EdgeInsets.all(space(16).clamp(10.0, 20.0)),
-            decoration: BoxDecoration(
-              color: ColorTokens.cardFill(context, 0.08),
-              borderRadius: BorderRadius.circular(
-                context.scaledRadius(clamped(18, min: 12, max: 22)),
+          ...state.savedServers.map(
+            (server) => Padding(
+              padding: EdgeInsets.only(bottom: space(12)),
+              child: _SavedServerCard(
+                server: server,
+                isActive: server.id == activeServerId,
+                onSelect: () => _switchTo(
+                  context,
+                  server,
+                  server.activeAddress.id,
+                ),
+                onRename: () => _renameServer(context, server),
+                onAddAddress: () => _addAddress(context, server),
+                onSelectAddress: (address) => _switchTo(
+                  context,
+                  server,
+                  address.id,
+                ),
+                onEditAddress: (address) =>
+                    _editAddress(context, server, address),
+                onRemoveAddress: server.addresses.length == 1
+                    ? null
+                    : (address) => _removeAddress(context, server, address),
+                onRemove: () => _removeServer(context, server),
               ),
-              border: Border.all(color: ColorTokens.border(context, 0.12)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Signed in as',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: ColorTokens.textSecondary(context)),
-                ),
-                SizedBox(height: space(6).clamp(4.0, 10.0)),
-                Text(
-                  session.userName,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                SizedBox(height: space(16)),
-                _AccountMetaRow(label: 'Server', value: session.serverUrl),
-                SizedBox(height: space(8)),
-                _AccountMetaRow(label: 'User ID', value: session.userId),
-                SizedBox(height: space(16)),
-                Wrap(
-                  spacing: space(8),
-                  runSpacing: space(8),
-                  children: [
-                    _AccountStatChip(
-                      label: 'Tracks',
-                      value: formatCount(trackCount),
-                    ),
-                    _AccountStatChip(
-                      label: 'Albums',
-                      value: formatCount(albumCount),
-                    ),
-                    _AccountStatChip(
-                      label: 'Artists',
-                      value: formatCount(artistCount),
-                    ),
-                    _AccountStatChip(
-                      label: 'Playlists',
-                      value: formatCount(playlistCount),
-                    ),
-                  ],
-                ),
-              ],
             ),
           ),
         SizedBox(height: space(24)),
@@ -2277,18 +2418,521 @@ class _AccountSettings extends StatelessWidget {
             onChanged: state.setPreferLocalSearch,
           ),
         ),
-        SizedBox(height: space(16)),
-        _SettingRow(
-          title: 'Sign out',
-          subtitle: 'Disconnect from this Jellyfin account.',
-          trailing: OutlinedButton(
-            onPressed: state.signOut,
-            child: const Text('Sign out'),
-          ),
-        ),
       ],
     );
   }
+}
+
+class _SavedServerCard extends StatelessWidget {
+  const _SavedServerCard({
+    required this.server,
+    required this.isActive,
+    required this.onSelect,
+    required this.onRename,
+    required this.onAddAddress,
+    required this.onSelectAddress,
+    required this.onEditAddress,
+    required this.onRemoveAddress,
+    required this.onRemove,
+  });
+
+  final SavedServer server;
+  final bool isActive;
+  final VoidCallback onSelect;
+  final VoidCallback onRename;
+  final VoidCallback onAddAddress;
+  final ValueChanged<ServerAddress> onSelectAddress;
+  final ValueChanged<ServerAddress> onEditAddress;
+  final ValueChanged<ServerAddress>? onRemoveAddress;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final densityScale = context.watch<AppState>().layoutDensity.scaleDouble;
+    double space(double value) => value * densityScale;
+    return Container(
+      padding: EdgeInsets.all(space(16).clamp(12.0, 20.0)),
+      decoration: BoxDecoration(
+        color: ColorTokens.cardFill(context, isActive ? 0.14 : 0.08),
+        borderRadius: BorderRadius.circular(context.scaledRadius(18)),
+        border: Border.all(
+          color: isActive
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.55)
+              : ColorTokens.border(context, 0.12),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(server.name,
+                        style: Theme.of(context).textTheme.titleMedium),
+                    SizedBox(height: space(3)),
+                    Text(
+                      'Signed in as ${server.userName}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: ColorTokens.textSecondary(context),
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isActive)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Current',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                  ),
+                ),
+              PopupMenuButton<_ServerMenuAction>(
+                tooltip: 'Server actions',
+                onSelected: (action) {
+                  switch (action) {
+                    case _ServerMenuAction.rename:
+                      onRename();
+                    case _ServerMenuAction.remove:
+                      onRemove();
+                  }
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: _ServerMenuAction.rename,
+                    child: Text('Rename server'),
+                  ),
+                  PopupMenuItem(
+                    value: _ServerMenuAction.remove,
+                    child: Text('Remove server'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          SizedBox(height: space(14)),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Addresses',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: onAddAddress,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add address'),
+              ),
+            ],
+          ),
+          SizedBox(height: space(4)),
+          ...server.addresses.map(
+            (address) => _ServerAddressRow(
+              address: address,
+              selected: isActive && address.id == server.activeAddress.id,
+              onSelect: () => onSelectAddress(address),
+              onEdit: () => onEditAddress(address),
+              onRemove: onRemoveAddress == null
+                  ? null
+                  : () => onRemoveAddress!(address),
+            ),
+          ),
+          if (!isActive) ...[
+            SizedBox(height: space(12)),
+            OutlinedButton.icon(
+              onPressed: onSelect,
+              icon: const Icon(Icons.sync_alt),
+              label: const Text('Switch to this server'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ServerAddressRow extends StatelessWidget {
+  const _ServerAddressRow({
+    required this.address,
+    required this.selected,
+    required this.onSelect,
+    required this.onEdit,
+    required this.onRemove,
+  });
+
+  final ServerAddress address;
+  final bool selected;
+  final VoidCallback onSelect;
+  final VoidCallback onEdit;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onSelect,
+      borderRadius: BorderRadius.circular(context.scaledRadius(10)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
+        child: Row(
+          children: [
+            Icon(
+              selected ? Icons.radio_button_checked : Icons.radio_button_off,
+              size: 18,
+              color: selected
+                  ? Theme.of(context).colorScheme.primary
+                  : ColorTokens.textSecondary(context),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(address.name),
+                  const SizedBox(height: 2),
+                  Text(
+                    address.url,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: ColorTokens.textSecondary(context),
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuButton<_AddressMenuAction>(
+              tooltip: 'Address actions',
+              onSelected: (action) {
+                switch (action) {
+                  case _AddressMenuAction.edit:
+                    onEdit();
+                  case _AddressMenuAction.remove:
+                    onRemove?.call();
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: _AddressMenuAction.edit,
+                  child: Text('Edit address'),
+                ),
+                if (onRemove != null)
+                  const PopupMenuItem(
+                    value: _AddressMenuAction.remove,
+                    child: Text('Remove address'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+enum _ServerMenuAction { rename, remove }
+
+enum _AddressMenuAction { edit, remove }
+
+class _ServerLoginDetails {
+  const _ServerLoginDetails({
+    required this.name,
+    required this.url,
+    required this.username,
+    required this.password,
+  });
+
+  final String name;
+  final String url;
+  final String username;
+  final String password;
+}
+
+class _AddressDetails {
+  const _AddressDetails({required this.name, required this.url});
+
+  final String name;
+  final String url;
+}
+
+Future<_ServerLoginDetails?> _showServerLoginDialog(
+    BuildContext context) async {
+  final nameController = TextEditingController();
+  final urlController = TextEditingController();
+  final usernameController = TextEditingController();
+  final passwordController = TextEditingController();
+  String? error;
+  final result = await showDialog<_ServerLoginDetails>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) {
+        return AlertDialog(
+          title: const Text('Add server'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Server name (optional)',
+                    hintText: 'Home Jellyfin',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: urlController,
+                  keyboardType: TextInputType.url,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Server URL',
+                    hintText: 'https://jellyfin.example.com',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: usernameController,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(labelText: 'Username'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  onSubmitted: (_) {
+                    final url = urlController.text.trim();
+                    final username = usernameController.text.trim();
+                    final password = passwordController.text;
+                    if (url.isEmpty || username.isEmpty) {
+                      setState(
+                        () => error = 'Server URL and username are required.',
+                      );
+                      return;
+                    }
+                    Navigator.of(context).pop(
+                      _ServerLoginDetails(
+                        name: nameController.text,
+                        url: url,
+                        username: username,
+                        password: password,
+                      ),
+                    );
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Password (optional)',
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    error!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final url = urlController.text.trim();
+                final username = usernameController.text.trim();
+                final password = passwordController.text;
+                if (url.isEmpty || username.isEmpty) {
+                  setState(
+                    () => error = 'Server URL and username are required.',
+                  );
+                  return;
+                }
+                Navigator.of(context).pop(
+                  _ServerLoginDetails(
+                    name: nameController.text,
+                    url: url,
+                    username: username,
+                    password: password,
+                  ),
+                );
+              },
+              child: const Text('Add server'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+  nameController.dispose();
+  urlController.dispose();
+  usernameController.dispose();
+  passwordController.dispose();
+  return result;
+}
+
+Future<_AddressDetails?> _showAddressDialog(
+  BuildContext context, {
+  ServerAddress? address,
+}) async {
+  final nameController = TextEditingController(text: address?.name);
+  final urlController = TextEditingController(text: address?.url);
+  String? error;
+  final result = await showDialog<_AddressDetails>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) {
+        return AlertDialog(
+          title: Text(address == null ? 'Add address' : 'Edit address'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Coppelia will verify this address with the existing sign-in before saving it.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: nameController,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Address label (optional)',
+                    hintText: 'Remote',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: urlController,
+                  keyboardType: TextInputType.url,
+                  onSubmitted: (_) {
+                    final url = urlController.text.trim();
+                    if (url.isEmpty) {
+                      setState(() => error = 'Server URL is required.');
+                      return;
+                    }
+                    Navigator.of(context).pop(
+                      _AddressDetails(name: nameController.text, url: url),
+                    );
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Server URL',
+                    hintText: 'https://jellyfin.example.com',
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    error!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final url = urlController.text.trim();
+                if (url.isEmpty) {
+                  setState(() => error = 'Server URL is required.');
+                  return;
+                }
+                Navigator.of(context).pop(
+                  _AddressDetails(name: nameController.text, url: url),
+                );
+              },
+              child: Text(address == null ? 'Add address' : 'Save'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+  nameController.dispose();
+  urlController.dispose();
+  return result;
+}
+
+Future<String?> _showTextDialog(
+  BuildContext context, {
+  required String title,
+  required String label,
+  required String initialValue,
+  required String action,
+}) async {
+  final controller = TextEditingController(text: initialValue);
+  final result = await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
+        decoration: InputDecoration(labelText: label),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+          child: Text(action),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+  return result;
+}
+
+Future<bool?> _confirm(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required String action,
+}) {
+  return showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: Text(message),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(action),
+        ),
+      ],
+    ),
+  );
 }
 
 class _LogsDialog extends StatelessWidget {
@@ -2660,66 +3304,6 @@ class _SidebarToggleSection {
 
   final String title;
   final List<_SidebarToggleSpec> items;
-}
-
-class _AccountMetaRow extends StatelessWidget {
-  const _AccountMetaRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 84,
-          child: Text(
-            label,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: ColorTokens.textSecondary(context)),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            value,
-            style: Theme.of(context).textTheme.bodyMedium,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _AccountStatChip extends StatelessWidget {
-  const _AccountStatChip({
-    required this.label,
-    required this.value,
-  });
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: ColorTokens.cardFill(context, 0.12),
-        borderRadius: BorderRadius.circular(context.scaledRadius(999)),
-        border: Border.all(color: ColorTokens.border(context, 0.12)),
-      ),
-      child: Text(
-        '$value $label',
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
-    );
-  }
 }
 
 class _AccentSwatch extends StatelessWidget {

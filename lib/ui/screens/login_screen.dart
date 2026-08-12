@@ -81,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       SizedBox(height: space(16)),
                       _buildField(
-                        label: 'Password',
+                        label: 'Password (optional)',
                         controller: _passwordController,
                         obscureText: true,
                         densityScale: densityScale,
@@ -113,13 +113,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                       CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Text('Sign in'),
-                        ),
-                      ),
-                      SizedBox(height: space(16)),
-                      Text(
-                        'Tip: Use a local Jellyfin user with music library access.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: ColorTokens.textSecondary(context, 0.55),
                         ),
                       ),
                     ],

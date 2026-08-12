@@ -11,6 +11,8 @@ import 'package:coppelia/services/jellyfin_client.dart';
 class _MockHttpClient extends Mock implements http.Client {}
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   setUpAll(() {
     registerFallbackValue(Uri.parse('https://example.com'));
     registerFallbackValue(
@@ -60,6 +62,71 @@ void main() {
     expect(headers['Authorization'], contains('Client="Coppelia"'));
     expect(headers, isNot(contains('X-Emby-Authorization')));
     expect(headers, isNot(contains('X-Emby-Token')));
+  });
+
+  test('authenticate sends an empty password unchanged', () async {
+    final client = _MockHttpClient();
+    when(
+      () => client.post(
+        any(),
+        headers: any(named: 'headers'),
+        body: any(named: 'body'),
+      ),
+    ).thenAnswer(
+      (_) async => http.Response(
+        jsonEncode({
+          'AccessToken': 'token-123',
+          'User': {'Id': 'user-1', 'Name': 'demo'},
+        }),
+        200,
+      ),
+    );
+
+    final jellyfin = JellyfinClient(httpClient: client);
+    await jellyfin.authenticate(
+      serverUrl: 'https://demo.jellyfin.org/stable',
+      username: 'demo',
+      password: '',
+    );
+
+    final body = verify(
+      () => client.post(
+        any(),
+        headers: any(named: 'headers'),
+        body: captureAny(named: 'body'),
+      ),
+    ).captured.single as String;
+    expect(jsonDecode(body), {'Username': 'demo', 'Pw': ''});
+  });
+
+  test('validateSession accepts a saved token only at a reachable address',
+      () async {
+    final client = _MockHttpClient();
+    const session = AuthSession(
+      accessToken: 'token',
+      serverUrl: 'https://remote.example.com',
+      userId: 'user-1',
+      userName: 'Jordan',
+    );
+    when(
+      () => client.get(any(), headers: any(named: 'headers')),
+    ).thenAnswer((_) async => http.Response('{}', 401));
+
+    final jellyfin = JellyfinClient(httpClient: client);
+    await expectLater(
+      jellyfin.validateSession(session),
+      throwsA(isA<JellyfinRequestException>()),
+    );
+
+    when(
+      () => client.get(any(), headers: any(named: 'headers')),
+    ).thenAnswer((_) async => http.Response('{}', 200));
+    await jellyfin.validateSession(session);
+
+    final uri = verify(
+      () => client.get(captureAny(), headers: any(named: 'headers')),
+    ).captured.last as Uri;
+    expect(uri.toString(), 'https://remote.example.com/Users/user-1');
   });
 
   test('fetchPlaylists maps Jellyfin responses', () async {

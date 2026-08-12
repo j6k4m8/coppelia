@@ -9,6 +9,9 @@ enum SidebarItem {
   /// Settings view.
   settings,
 
+  /// Saved server switcher.
+  servers,
+
   /// Favorite albums.
   favoritesAlbums,
 
@@ -65,6 +68,8 @@ extension SidebarItemMetadata on SidebarItem {
         return 'search';
       case SidebarItem.settings:
         return 'settings';
+      case SidebarItem.servers:
+        return 'servers';
       case SidebarItem.favoritesAlbums:
         return 'favorites_albums';
       case SidebarItem.favoritesSongs:
@@ -107,6 +112,8 @@ extension SidebarItemMetadata on SidebarItem {
         return 'Search';
       case SidebarItem.settings:
         return 'Settings';
+      case SidebarItem.servers:
+        return 'Servers';
       case SidebarItem.favoritesAlbums:
         return 'Albums';
       case SidebarItem.favoritesSongs:

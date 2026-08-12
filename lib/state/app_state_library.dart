@@ -1758,39 +1758,43 @@ extension AppStateLibraryExtension on AppState {
     }
   }
 
-  Future<void> _loadAlbums() async {
+  Future<void> _loadAlbums({int? serverGeneration}) async {
     await _loadRemoteCollection(
       collectionName: 'albums',
       fetch: _client.fetchAlbums,
       assign: (albums) => _albums = albums,
       save: _cacheStore.saveAlbums,
+      serverGeneration: serverGeneration,
     );
   }
 
-  Future<void> _loadArtists() async {
+  Future<void> _loadArtists({int? serverGeneration}) async {
     await _loadRemoteCollection(
       collectionName: 'artists',
       fetch: _client.fetchArtists,
       assign: (artists) => _artists = artists,
       save: _cacheStore.saveArtists,
+      serverGeneration: serverGeneration,
     );
   }
 
-  Future<void> _loadGenres() async {
+  Future<void> _loadGenres({int? serverGeneration}) async {
     await _loadRemoteCollection(
       collectionName: 'genres',
       fetch: _client.fetchGenres,
       assign: (genres) => _genres = genres,
       save: _cacheStore.saveGenres,
+      serverGeneration: serverGeneration,
     );
   }
 
-  Future<void> _loadFavoriteAlbums() async {
+  Future<void> _loadFavoriteAlbums({int? serverGeneration}) async {
     await _loadRemoteCollection(
       collectionName: 'favorite albums',
       fetch: _client.fetchFavoriteAlbums,
       assign: (albums) => _favoriteAlbums = albums,
       save: _cacheStore.saveFavoriteAlbums,
+      serverGeneration: serverGeneration,
       afterLoad: () async {
         if (_autoDownloadFavoritesEnabled && _autoDownloadFavoriteAlbums) {
           unawaited(_prefetchFavoriteDownloads(albumsOnly: true));
@@ -1799,12 +1803,13 @@ extension AppStateLibraryExtension on AppState {
     );
   }
 
-  Future<void> _loadFavoriteArtists() async {
+  Future<void> _loadFavoriteArtists({int? serverGeneration}) async {
     await _loadRemoteCollection(
       collectionName: 'favorite artists',
       fetch: _client.fetchFavoriteArtists,
       assign: (artists) => _favoriteArtists = artists,
       save: _cacheStore.saveFavoriteArtists,
+      serverGeneration: serverGeneration,
       shouldApply: (artists) => artists.isNotEmpty || _favoriteArtists.isEmpty,
       afterLoad: () async {
         if (_autoDownloadFavoritesEnabled && _autoDownloadFavoriteArtists) {
@@ -1814,12 +1819,13 @@ extension AppStateLibraryExtension on AppState {
     );
   }
 
-  Future<void> _loadFavoriteTracks() async {
+  Future<void> _loadFavoriteTracks({int? serverGeneration}) async {
     await _loadRemoteCollection(
       collectionName: 'favorite tracks',
       fetch: _client.fetchFavoriteTracks,
       assign: (tracks) => _favoriteTracks = tracks,
       save: _cacheStore.saveFavoriteTracks,
+      serverGeneration: serverGeneration,
       afterLoad: () async {
         if (_autoDownloadFavoritesEnabled && _autoDownloadFavoriteTracks) {
           unawaited(_prefetchFavoriteDownloads(tracksOnly: true));
@@ -1833,21 +1839,31 @@ extension AppStateLibraryExtension on AppState {
     required Future<List<T>> Function() fetch,
     required void Function(List<T> values) assign,
     required Future<void> Function(List<T> values) save,
+    int? serverGeneration,
     bool Function(List<T> values)? shouldApply,
     Future<void> Function()? afterLoad,
   }) async {
-    if (_session == null || _offlineMode) {
+    final generation = serverGeneration ?? _captureServerGeneration();
+    if (_session == null ||
+        _offlineMode ||
+        !_isCurrentServerGeneration(generation)) {
       return;
     }
     try {
       _isLoadingLibrary = true;
       _notify();
       final values = await fetch();
+      if (!_isCurrentServerGeneration(generation)) {
+        return;
+      }
       if (shouldApply == null || shouldApply(values)) {
         assign(values);
         await save(values);
       }
     } catch (error, stackTrace) {
+      if (!_isCurrentServerGeneration(generation)) {
+        return;
+      }
       await LogService.instance.then(
         (log) => log.error(
           'Library: Failed to refresh $collectionName',
@@ -1857,10 +1873,12 @@ extension AppStateLibraryExtension on AppState {
       );
       // Use cached results when available.
     } finally {
-      _isLoadingLibrary = false;
-      _notify();
-      if (afterLoad != null) {
-        await afterLoad();
+      if (_isCurrentServerGeneration(generation)) {
+        _isLoadingLibrary = false;
+        _notify();
+        if (afterLoad != null) {
+          await afterLoad();
+        }
       }
     }
   }
