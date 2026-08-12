@@ -2718,9 +2718,10 @@ Future<_ServerLoginDetails?> _showServerLoginDialog(
                     final url = urlController.text.trim();
                     final username = usernameController.text.trim();
                     final password = passwordController.text;
-                    if (url.isEmpty || username.isEmpty || password.isEmpty) {
-                      setState(() => error =
-                          'Server URL, username, and password are required.');
+                    if (url.isEmpty || username.isEmpty) {
+                      setState(
+                        () => error = 'Server URL and username are required.',
+                      );
                       return;
                     }
                     Navigator.of(context).pop(
@@ -2732,7 +2733,9 @@ Future<_ServerLoginDetails?> _showServerLoginDialog(
                       ),
                     );
                   },
-                  decoration: const InputDecoration(labelText: 'Password'),
+                  decoration: const InputDecoration(
+                    labelText: 'Password (optional)',
+                  ),
                 ),
                 if (error != null) ...[
                   const SizedBox(height: 8),
@@ -2755,9 +2758,10 @@ Future<_ServerLoginDetails?> _showServerLoginDialog(
                 final url = urlController.text.trim();
                 final username = usernameController.text.trim();
                 final password = passwordController.text;
-                if (url.isEmpty || username.isEmpty || password.isEmpty) {
-                  setState(() => error =
-                      'Server URL, username, and password are required.');
+                if (url.isEmpty || username.isEmpty) {
+                  setState(
+                    () => error = 'Server URL and username are required.',
+                  );
                   return;
                 }
                 Navigator.of(context).pop(

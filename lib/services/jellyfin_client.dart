@@ -106,7 +106,7 @@ class JellyfinClient {
     return streamUri.toString();
   }
 
-  /// Signs in to Jellyfin using username and password.
+  /// Signs in to Jellyfin using a username and optional password.
   Future<AuthSession> authenticate({
     required String serverUrl,
     required String username,

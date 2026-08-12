@@ -81,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       SizedBox(height: space(16)),
                       _buildField(
-                        label: 'Password',
+                        label: 'Password (optional)',
                         controller: _passwordController,
                         obscureText: true,
                         densityScale: densityScale,

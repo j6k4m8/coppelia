@@ -2,7 +2,7 @@
 
 ## Authentication
 
--   **Login**: Sign in to your Jellyfin server.
+-   **Login**: Sign in to your Jellyfin server, with or without a password when the server allows it.
 
 ## Core Library
 

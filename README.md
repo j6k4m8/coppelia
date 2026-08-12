@@ -44,7 +44,7 @@ For more screenshots and info about themes, see [the wiki](https://github.com/j6
 
 ## Features
 
--   Jellyfin authentication
+-   Jellyfin authentication, including passwordless sign-in when the server allows it
 -   Fast library browsing and search (albums, artists, genres, playlists)
 -   Playlist management with create, rename, delete, add/remove tracks, and drag reordering
 -   Audio playback with queue controls, play-next, and clear-queue
