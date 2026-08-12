@@ -14,8 +14,7 @@
 
 ---
 
-> [!IMPORTANT]
-> **I'm looking for users who are interested in testing the app for Android so I can list it on the Play Store. If you're interested, please reach out to coppelia-android-test@matelsky.com :)**
+> [!IMPORTANT] > **I'm looking for users who are interested in testing the app for Android so I can list it on the Play Store. If you're interested, please reach out to coppelia-android-test@matelsky.com :)**
 
 ---
 
@@ -44,7 +43,7 @@ For more screenshots and info about themes, see [the wiki](https://github.com/j6
 
 ## Features
 
--   Jellyfin authentication, including passwordless sign-in when the server allows it
+-   Jellyfin authentication with support for multiple servers and accounts
 -   Fast library browsing and search (albums, artists, genres, playlists)
 -   Playlist management with create, rename, delete, add/remove tracks, and drag reordering
 -   Audio playback with queue controls, play-next, and clear-queue
