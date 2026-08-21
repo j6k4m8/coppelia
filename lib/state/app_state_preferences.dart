@@ -45,6 +45,9 @@ extension AppStatePreferencesExtension on AppState {
     SidebarItem item,
     bool visible,
   ) async {
+    if (item == SidebarItem.settings) {
+      return;
+    }
     _sidebarVisibility[item] = visible;
     await _settingsStore.saveSidebarVisibility(_sidebarVisibility);
     _notify();
