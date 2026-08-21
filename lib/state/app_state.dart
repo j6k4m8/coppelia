@@ -806,8 +806,11 @@ class AppState extends ChangeNotifier {
       _homeSectionVisibility[section] ?? true;
 
   /// Returns whether a sidebar item should be shown.
+  ///
+  /// Settings is intentionally always available so its own visibility controls
+  /// can never leave the app without a route back to Settings.
   bool isSidebarItemVisible(SidebarItem item) =>
-      _sidebarVisibility[item] ?? true;
+      item == SidebarItem.settings || (_sidebarVisibility[item] ?? true);
 
   /// Returns a saved scroll offset for a key.
   double loadScrollOffset(String key) => _scrollOffsets[key] ?? 0;

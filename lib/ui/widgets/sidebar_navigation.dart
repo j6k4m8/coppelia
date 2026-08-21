@@ -136,9 +136,6 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
     final homeVisible = context.select(
       (AppState s) => s.isSidebarItemVisible(SidebarItem.home),
     );
-    final settingsVisible = context.select(
-      (AppState s) => s.isSidebarItemVisible(SidebarItem.settings),
-    );
     final searchVisible = context.select(
       (AppState s) => s.isSidebarItemVisible(SidebarItem.search),
     );
@@ -291,34 +288,32 @@ class _SidebarNavigationState extends State<SidebarNavigation> {
             ],
           ),
           SizedBox(height: space(32)),
-          if (settingsVisible) ...[
+          _NavTile(
+            icon: Icons.settings,
+            label: 'Settings',
+            selected: selectedPlaylistId == null &&
+                selectedView == LibraryView.settings,
+            onTap: () => _handleNavigate(
+              () => appState.selectLibraryView(LibraryView.settings),
+            ),
+          ),
+          SizedBox(height: space(8)),
+          if (searchVisible) ...[
             _NavTile(
-              icon: Icons.settings,
-              label: 'Settings',
+              icon: Icons.search,
+              label: 'Search',
               selected: selectedPlaylistId == null &&
-                  selectedView == LibraryView.settings,
-              onTap: () => _handleNavigate(
-                () => appState.selectLibraryView(LibraryView.settings),
-              ),
+                  (appState.searchQuery.isNotEmpty || appState.isSearching),
+              onTap: () => _handleNavigate(appState.requestSearchFocus),
             ),
             SizedBox(height: space(8)),
-            if (searchVisible) ...[
-              _NavTile(
-                icon: Icons.search,
-                label: 'Search',
-                selected: selectedPlaylistId == null &&
-                    (appState.searchQuery.isNotEmpty || appState.isSearching),
-                onTap: () => _handleNavigate(appState.requestSearchFocus),
-              ),
-              SizedBox(height: space(8)),
-            ],
-            _ToggleTile(
-              icon: Icons.cloud_off,
-              label: 'Offline mode',
-              value: offlineMode,
-              onChanged: (value) => appState.setOfflineMode(value),
-            ),
           ],
+          _ToggleTile(
+            icon: Icons.cloud_off,
+            label: 'Offline mode',
+            value: offlineMode,
+            onChanged: (value) => appState.setOfflineMode(value),
+          ),
           SizedBox(height: space(20)),
           if (showFavoritesSection) ...[
             _SectionHeader(

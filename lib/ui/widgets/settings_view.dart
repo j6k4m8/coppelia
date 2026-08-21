@@ -609,10 +609,6 @@ class _LayoutSettings extends StatelessWidget {
             item: SidebarItem.home,
             subtitle: 'Show Home in the sidebar.',
           ),
-          _SidebarToggleSpec(
-            item: SidebarItem.settings,
-            subtitle: 'Show Settings in the sidebar.',
-          ),
         ],
       ),
       const _SidebarToggleSection(
