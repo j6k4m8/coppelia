@@ -644,75 +644,45 @@ class JellyfinClient {
     await logService.info('JellyfinClient: Fetching album tracks for $albumId');
 
     final session = _requireSession();
-    final commonParameters = <String, String>{
-      'IncludeItemTypes': 'Audio',
-      'Recursive': 'true',
-      'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
-          'DateCreated,UserData,Genres,MediaStreams',
-    };
-    final queries = [
-      {...commonParameters, 'AlbumIds': albumId},
-      {...commonParameters, 'ParentId': albumId},
-    ];
+    final uri = Uri.parse(
+      '${session.serverUrl}/Users/${session.userId}/Items',
+    ).replace(
+      queryParameters: {
+        'ParentId': albumId,
+        'IncludeItemTypes': 'Audio',
+        'Recursive': 'true',
+        'SortBy': 'ParentIndexNumber,IndexNumber,SortName',
+        'SortOrder': 'Ascending',
+        'Fields': 'RunTimeTicks,Artists,Album,ImageTags,AlbumId,ArtistItems,'
+            'DateCreated,UserData,Genres,MediaStreams',
+      },
+    );
 
-    for (var index = 0; index < queries.length; index++) {
-      final uri = Uri.parse(
-        '${session.serverUrl}/Users/${session.userId}/Items',
-      ).replace(queryParameters: queries[index]);
+    await logService.info('JellyfinClient: Making HTTP request to ${uri.path}');
+    final response =
+        await _httpClient.get(uri, headers: _authenticatedHeaders(session));
 
-      await logService.info(
-        'JellyfinClient: Making HTTP request to ${uri.path} '
-        '(album query ${index + 1}/${queries.length})',
+    if (response.statusCode != 200) {
+      await logService.error(
+        'JellyfinClient: Failed to load album tracks',
+        'HTTP ${response.statusCode}',
       );
-      late http.Response response;
-      try {
-        response = await _httpClient
-            .get(uri, headers: _authenticatedHeaders(session))
-            .timeout(const Duration(seconds: 8));
-      } catch (error, stackTrace) {
-        await logService.error(
-          'JellyfinClient: Album tracks request failed',
-          error,
-          stackTrace,
-        );
-        if (index == queries.length - 1) {
-          rethrow;
-        }
-        continue;
-      }
-
-      if (response.statusCode != 200) {
-        await logService.error(
-          'JellyfinClient: Failed to load album tracks',
-          'HTTP ${response.statusCode}',
-        );
-        if (index == queries.length - 1) {
-          throw Exception('Unable to load album tracks.');
-        }
-        continue;
-      }
-
-      final payload = jsonDecode(response.body) as Map<String, dynamic>;
-      final items = payload['Items'] as List<dynamic>? ?? [];
-      await logService.info(
-        'JellyfinClient: Received ${items.length} album tracks '
-        '(album query ${index + 1}/${queries.length})',
-      );
-      if (items.isEmpty && index < queries.length - 1) {
-        continue;
-      }
-
-      return items
-          .map((item) => MediaItem.fromJellyfin(
-                item as Map<String, dynamic>,
-                serverUrl: session.serverUrl,
-                userId: session.userId,
-                deviceId: _deviceId,
-              ))
-          .toList();
+      throw Exception('Unable to load album tracks.');
     }
 
-    return const [];
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = payload['Items'] as List<dynamic>? ?? [];
+    await logService
+        .info('JellyfinClient: Received ${items.length} album tracks');
+
+    return items
+        .map((item) => MediaItem.fromJellyfin(
+              item as Map<String, dynamic>,
+              serverUrl: session.serverUrl,
+              userId: session.userId,
+              deviceId: _deviceId,
+            ))
+        .toList();
   }
 
   /// Fetches tracks for an artist.

@@ -41,6 +41,7 @@ MediaItem _track(
   String album = 'Album',
   String? albumId,
   List<String> artists = const ['Artist'],
+  List<String> artistIds = const [],
 }) {
   return MediaItem(
     id: id,
@@ -51,6 +52,7 @@ MediaItem _track(
     imageUrl: null,
     streamUrl: 'https://example.com/audio/$id.mp3',
     albumId: albumId,
+    artistIds: artistIds,
   );
 }
 
@@ -513,6 +515,69 @@ void main() {
         verify(() => cacheStore.setPinnedAudio(track.streamUrl, false))
             .called(1);
       }
+    });
+  });
+
+  group('AppState artist offline identity', () {
+    const artistA = Artist(
+      id: 'artist-a',
+      name: 'Shared Name',
+      albumCount: 1,
+      trackCount: 1,
+      imageUrl: null,
+    );
+    const artistB = Artist(
+      id: 'artist-b',
+      name: 'Shared Name',
+      albumCount: 1,
+      trackCount: 1,
+      imageUrl: null,
+    );
+
+    test('offline artist discovery distinguishes artists with the same name',
+        () async {
+      final cacheStore = _MockCacheStore();
+      final client = _MockJellyfinClient();
+      final playback = _MockPlaybackController();
+      final sessionStore = _MockSessionStore();
+      final settingsStore = _MockSettingsStore();
+      final state = buildState(
+        cacheStore: cacheStore,
+        client: client,
+        playback: playback,
+        sessionStore: sessionStore,
+        settingsStore: settingsStore,
+      );
+      addTearDown(state.dispose);
+
+      final trackB = _track(
+        'artist-b-track',
+        artists: const ['Shared Name'],
+        artistIds: const ['artist-b'],
+      );
+      when(() => cacheStore.loadCachedAudioEntries()).thenAnswer(
+        (_) async => [
+          CachedAudioEntry(
+            streamUrl: trackB.streamUrl,
+            title: trackB.title,
+            album: trackB.album,
+            artists: trackB.artists,
+            cachedAt: DateTime(2024),
+            bytes: 1024,
+            mediaItem: trackB,
+          ),
+        ],
+      );
+      when(() => cacheStore.loadArtistTracks(any()))
+          .thenAnswer((_) async => const <MediaItem>[]);
+      when(() => cacheStore.loadArtists())
+          .thenAnswer((_) async => const [artistA, artistB]);
+
+      await state.makeTrackAvailableOffline(trackB);
+
+      expect(await state.isArtistPinned(artistA), isFalse);
+      expect(await state.isArtistPinned(artistB), isTrue);
+      expect(await state.loadOfflineArtists(), const [artistB]);
     });
   });
 
