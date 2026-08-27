@@ -611,10 +611,6 @@ class _LayoutSettings extends StatelessWidget {
             subtitle: 'Show Home in the sidebar.',
           ),
           _SidebarToggleSpec(
-            item: SidebarItem.settings,
-            subtitle: 'Show Settings in the sidebar.',
-          ),
-          _SidebarToggleSpec(
             item: SidebarItem.servers,
             subtitle: 'Show the current-server switcher when available.',
           ),

@@ -448,8 +448,7 @@ void main() {
     );
   });
 
-  test('fetchAlbumTracks filters by album id and keeps a parent fallback',
-      () async {
+  test('fetchAlbumTracks scopes tracks to the album container', () async {
     final client = _MockHttpClient();
     final jellyfin = JellyfinClient(httpClient: client);
     jellyfin.updateSession(
@@ -474,6 +473,7 @@ void main() {
               'Id': 'track-1',
               'Name': 'Track 1',
               'Album': 'Morning Focus',
+              'AlbumId': 'album-1',
               'Artists': ['Jordan'],
               'RunTimeTicks': 1800000000,
               'Container': 'mp3',
@@ -496,12 +496,17 @@ void main() {
         headers: any(named: 'headers'),
       ),
     ).captured.single as Uri;
-    expect(firstUri.queryParameters['AlbumIds'], 'album-1');
-    expect(firstUri.queryParameters['ParentId'], isNull);
+    expect(firstUri.queryParameters['ParentId'], 'album-1');
+    expect(firstUri.queryParameters['AlbumIds'], isNull);
+    expect(
+      firstUri.queryParameters['SortBy'],
+      'ParentIndexNumber,IndexNumber,SortName',
+    );
+    expect(firstUri.queryParameters['SortOrder'], 'Ascending');
     expect(firstUri.queryParameters['Fields'], isNot(contains('Container')));
   });
 
-  test('fetchAlbumTracks falls back to parent filtering when needed', () async {
+  test('fetchAlbumTracks does not broaden an empty album response', () async {
     final client = _MockHttpClient();
     final jellyfin = JellyfinClient(httpClient: client);
     jellyfin.updateSession(
@@ -513,38 +518,23 @@ void main() {
       ),
     );
 
-    var requestCount = 0;
     when(
       () => client.get(
         any(),
         headers: any(named: 'headers'),
       ),
-    ).thenAnswer((invocation) async {
-      requestCount += 1;
-      final uri = invocation.positionalArguments.first as Uri;
-      if (uri.queryParameters['AlbumIds'] != null) {
-        return http.Response(jsonEncode({'Items': []}), 200);
-      }
-      return http.Response(
-        jsonEncode({
-          'Items': [
-            {
-              'Id': 'track-1',
-              'Name': 'Track 1',
-              'Album': 'Morning Focus',
-              'Artists': ['Jordan'],
-              'RunTimeTicks': 1800000000,
-            }
-          ]
-        }),
-        200,
-      );
-    });
+    ).thenAnswer(
+      (_) async => http.Response(jsonEncode({'Items': []}), 200),
+    );
 
     final tracks = await jellyfin.fetchAlbumTracks('album-1');
 
-    expect(requestCount, 2);
-    expect(tracks, hasLength(1));
-    expect(tracks.single.id, 'track-1');
+    expect(tracks, isEmpty);
+    verify(
+      () => client.get(
+        any(),
+        headers: any(named: 'headers'),
+      ),
+    ).called(1);
   });
 }

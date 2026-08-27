@@ -64,20 +64,34 @@ void main() {
     expect(order.last, HomeSection.recentlyAddedAlbums);
   });
 
-  test('settings store saves sidebar visibility', () async {
-    SharedPreferences.setMockInitialValues({});
+  test('settings store always shows Settings despite legacy preferences',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      'settings_sidebar_visibility': jsonEncode({
+        'home': false,
+        'settings': false,
+        'queue': true,
+      }),
+    });
     final store = SettingsStore();
+
+    final visibility = await store.loadSidebarVisibility();
+
+    expect(visibility[SidebarItem.home], isFalse);
+    expect(visibility[SidebarItem.settings], isTrue);
+    expect(visibility[SidebarItem.queue], isTrue);
 
     await store.saveSidebarVisibility({
       SidebarItem.home: true,
       SidebarItem.settings: false,
       SidebarItem.queue: true,
     });
-    final visibility = await store.loadSidebarVisibility();
+    final preferences = await SharedPreferences.getInstance();
+    final persisted = jsonDecode(
+      preferences.getString('settings_sidebar_visibility')!,
+    ) as Map<String, dynamic>;
 
-    expect(visibility[SidebarItem.home], isTrue);
-    expect(visibility[SidebarItem.settings], isFalse);
-    expect(visibility[SidebarItem.queue], isTrue);
+    expect(persisted, isNot(contains('settings')));
   });
 
   test('settings store defaults to SF Pro Display font family', () async {

@@ -59,6 +59,13 @@ const Set<ConnectivityResult> _networkConnectivityWhitelist = {
   ConnectivityResult.ethernet,
 };
 
+List<MediaItem> _tracksForAlbumId(
+  Iterable<MediaItem> tracks,
+  String albumId,
+) {
+  return tracks.where((track) => track.albumId == albumId).toList();
+}
+
 /// Central application state and Jellyfin coordination.
 class AppState extends ChangeNotifier {
   /// Creates the shared application state.
@@ -838,7 +845,13 @@ class AppState extends ChangeNotifier {
       _homeSectionVisibility[section] ?? true;
 
   /// Returns whether a sidebar item should be shown.
+  ///
+  /// Settings is always available. The server switcher defaults to visible
+  /// when there is more than one destination unless the user overrides it.
   bool isSidebarItemVisible(SidebarItem item) {
+    if (item == SidebarItem.settings) {
+      return true;
+    }
     if (item == SidebarItem.servers && !_sidebarVisibility.containsKey(item)) {
       return savedDestinationCount > 1;
     }
@@ -1697,13 +1710,12 @@ class AppState extends ChangeNotifier {
     if (_pinnedAudio.isEmpty) {
       return [];
     }
-    final normalized = album.name.trim().toLowerCase();
     final cachedEntries = await _cacheStore.loadCachedAudioEntries();
     final matches = cachedEntries
         .where(
           (entry) =>
               _pinnedAudio.contains(entry.streamUrl) &&
-              entry.album.trim().toLowerCase() == normalized,
+              entry.mediaItem?.albumId == album.id,
         )
         .toList()
       ..sort((a, b) => a.title.compareTo(b.title));
@@ -1714,15 +1726,12 @@ class AppState extends ChangeNotifier {
     if (_pinnedAudio.isEmpty) {
       return [];
     }
-    final normalized = artist.name.trim().toLowerCase();
     final cachedEntries = await _cacheStore.loadCachedAudioEntries();
     final matches = cachedEntries.where((entry) {
       if (!_pinnedAudio.contains(entry.streamUrl)) {
         return false;
       }
-      return entry.artists.any(
-        (name) => name.trim().toLowerCase() == normalized,
-      );
+      return entry.mediaItem?.artistIds.contains(artist.id) ?? false;
     }).toList()
       ..sort((a, b) {
         final albumCompare = a.album.compareTo(b.album);

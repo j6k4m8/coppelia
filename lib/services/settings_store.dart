@@ -502,6 +502,9 @@ class SettingsStore {
     }
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
     for (final item in SidebarItem.values) {
+      if (item == SidebarItem.settings) {
+        continue;
+      }
       final value = decoded[item.storageKey];
       if (value is bool) {
         visibility[item] = value;
@@ -517,7 +520,8 @@ class SettingsStore {
     final preferences = await SharedPreferences.getInstance();
     final payload = <String, bool>{
       for (final item in SidebarItem.values)
-        if (item != SidebarItem.servers || visibility.containsKey(item))
+        if (item != SidebarItem.settings &&
+            (item != SidebarItem.servers || visibility.containsKey(item)))
           item.storageKey: visibility[item] ?? true,
     };
     await preferences.setString(_sidebarVisibilityKey, jsonEncode(payload));

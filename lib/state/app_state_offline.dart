@@ -809,6 +809,7 @@ extension AppStateOfflineExtension on AppState {
       loadCached: _cacheStore.loadAlbumTracks,
       fetchRemote: _client.fetchAlbumTracks,
       saveCached: _cacheStore.saveAlbumTracks,
+      includesTrack: (track) => track.albumId == album.id,
     );
   }
 
@@ -836,8 +837,15 @@ extension AppStateOfflineExtension on AppState {
     required Future<List<MediaItem>> Function(String id) fetchRemote,
     required Future<void> Function(String id, List<MediaItem> tracks)
         saveCached,
+    bool Function(MediaItem track)? includesTrack,
   }) async {
-    final cached = await loadCached(id);
+    List<MediaItem> includedTracks(List<MediaItem> tracks) {
+      return includesTrack == null
+          ? tracks
+          : tracks.where(includesTrack).toList();
+    }
+
+    final cached = includedTracks(await loadCached(id));
     if (cached.isNotEmpty) {
       return cached;
     }
@@ -845,7 +853,7 @@ extension AppStateOfflineExtension on AppState {
       return [];
     }
     try {
-      final tracks = await fetchRemote(id);
+      final tracks = includedTracks(await fetchRemote(id));
       await saveCached(id, tracks);
       return tracks;
     } catch (_) {
@@ -872,16 +880,18 @@ extension AppStateOfflineExtension on AppState {
     if (_pinnedAudio.isEmpty) {
       return false;
     }
-    final tracks = await _cacheStore.loadAlbumTracks(album.id);
+    final tracks = _tracksForAlbumId(
+      await _cacheStore.loadAlbumTracks(album.id),
+      album.id,
+    );
     if (tracks.isNotEmpty) {
       return tracks.any(_isTrackPinnedInMemory);
     }
     final cachedEntries = await _cacheStore.loadCachedAudioEntries();
-    final albumName = album.name.trim().toLowerCase();
     return cachedEntries.any(
       (entry) =>
           _pinnedAudio.contains(entry.streamUrl) &&
-          entry.album.trim().toLowerCase() == albumName,
+          entry.mediaItem?.albumId == album.id,
     );
   }
 
@@ -895,13 +905,10 @@ extension AppStateOfflineExtension on AppState {
       return tracks.any(_isTrackPinnedInMemory);
     }
     final cachedEntries = await _cacheStore.loadCachedAudioEntries();
-    final artistName = artist.name.trim().toLowerCase();
     return cachedEntries.any(
       (entry) =>
           _pinnedAudio.contains(entry.streamUrl) &&
-          entry.artists.any(
-            (name) => name.trim().toLowerCase() == artistName,
-          ),
+          (entry.mediaItem?.artistIds.contains(artist.id) ?? false),
     );
   }
 
@@ -911,18 +918,17 @@ extension AppStateOfflineExtension on AppState {
       return [];
     }
     final cachedEntries = await _cacheStore.loadCachedAudioEntries();
-    final pinnedAlbums = cachedEntries
+    final pinnedAlbumIds = cachedEntries
         .where((entry) => _pinnedAudio.contains(entry.streamUrl))
-        .map((entry) => entry.album.trim().toLowerCase())
-        .where((name) => name.isNotEmpty)
+        .map((entry) => entry.mediaItem?.albumId)
+        .whereType<String>()
         .toSet();
-    if (pinnedAlbums.isEmpty) {
+    if (pinnedAlbumIds.isEmpty) {
       return [];
     }
     final albums = await _cacheStore.loadAlbums();
     final offline = albums
-        .where(
-            (album) => pinnedAlbums.contains(album.name.trim().toLowerCase()))
+        .where((album) => pinnedAlbumIds.contains(album.id))
         .toList()
       ..sort((a, b) => a.name.compareTo(b.name));
     return offline;
@@ -934,25 +940,16 @@ extension AppStateOfflineExtension on AppState {
       return [];
     }
     final cachedEntries = await _cacheStore.loadCachedAudioEntries();
-    final pinnedArtists = <String>{};
-    for (final entry in cachedEntries) {
-      if (!_pinnedAudio.contains(entry.streamUrl)) {
-        continue;
-      }
-      for (final artist in entry.artists) {
-        final normalized = artist.trim().toLowerCase();
-        if (normalized.isNotEmpty) {
-          pinnedArtists.add(normalized);
-        }
-      }
-    }
-    if (pinnedArtists.isEmpty) {
+    final pinnedArtistIds = cachedEntries
+        .where((entry) => _pinnedAudio.contains(entry.streamUrl))
+        .expand((entry) => entry.mediaItem?.artistIds ?? const <String>[])
+        .toSet();
+    if (pinnedArtistIds.isEmpty) {
       return [];
     }
     final artists = await _cacheStore.loadArtists();
     final offline = artists
-        .where((artist) =>
-            pinnedArtists.contains(artist.name.trim().toLowerCase()))
+        .where((artist) => pinnedArtistIds.contains(artist.id))
         .toList()
       ..sort((a, b) => a.name.compareTo(b.name));
     return offline;
@@ -1101,7 +1098,10 @@ extension AppStateOfflineExtension on AppState {
           await _cacheStore.loadPlaylistTracks(_selectedPlaylist!.id);
     }
     if (_selectedAlbum != null) {
-      final cached = await _cacheStore.loadAlbumTracks(_selectedAlbum!.id);
+      final cached = _tracksForAlbumId(
+        await _cacheStore.loadAlbumTracks(_selectedAlbum!.id),
+        _selectedAlbum!.id,
+      );
       final filtered = _filterPinnedTracks(cached);
       _albumTracks = filtered.isNotEmpty
           ? filtered

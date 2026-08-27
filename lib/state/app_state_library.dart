@@ -1470,7 +1470,10 @@ extension AppStateLibraryExtension on AppState {
     _offlineOnlyFilter = offlineOnly;
     clearSearch(notify: false);
     _notify();
-    final cached = await _cacheStore.loadAlbumTracks(album.id);
+    final cached = _tracksForAlbumId(
+      await _cacheStore.loadAlbumTracks(album.id),
+      album.id,
+    );
     if (_selectedAlbum?.id != album.id) {
       return;
     }
@@ -1532,30 +1535,7 @@ extension AppStateLibraryExtension on AppState {
   }
 
   List<MediaItem> _cachedLibraryTracksForAlbum(Album album) {
-    final idMatches =
-        _libraryTracks.where((track) => track.albumId == album.id).toList();
-    if (idMatches.isNotEmpty) {
-      return idMatches;
-    }
-
-    final normalizedAlbum = album.name.trim().toLowerCase();
-    final titleMatches = _libraryTracks
-        .where((track) => track.album.trim().toLowerCase() == normalizedAlbum)
-        .toList();
-    if (titleMatches.isEmpty) {
-      return const [];
-    }
-
-    final normalizedArtist = album.artistName.trim().toLowerCase();
-    if (normalizedArtist.isEmpty || normalizedArtist == 'unknown artist') {
-      return titleMatches;
-    }
-    final artistMatches = titleMatches.where((track) {
-      return track.artists.any(
-        (artist) => artist.trim().toLowerCase() == normalizedArtist,
-      );
-    }).toList();
-    return artistMatches.isNotEmpty ? artistMatches : titleMatches;
+    return _tracksForAlbumId(_libraryTracks, album.id);
   }
 
   /// Loads an album and starts playback.
