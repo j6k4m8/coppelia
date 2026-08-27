@@ -171,7 +171,7 @@ void main() {
     expect(restored, isEmpty);
   });
 
-  test('clearOfflineAudioState clears offline pin metadata', () async {
+  test('clearScope clears offline pin metadata', () async {
     SharedPreferences.setMockInitialValues({});
     final cacheStore = CacheStore();
     const track = MediaItem(
@@ -184,11 +184,12 @@ void main() {
       streamUrl: 'https://demo.jellyfin.org/Audio/track-clear/stream',
     );
 
+    cacheStore.activateScope('server-one');
     await cacheStore.savePinnedAudio({track.streamUrl});
     await cacheStore.savePinnedAudioItems([track]);
     await cacheStore.saveWholeLibraryPinnedAudio({track.streamUrl});
 
-    await cacheStore.clearOfflineAudioState();
+    await cacheStore.clearScope('server-one');
 
     expect(await cacheStore.loadPinnedAudio(), isEmpty);
     expect(await cacheStore.loadPinnedAudioItems(), isEmpty);
@@ -391,10 +392,4 @@ class _FakePathProvider extends PathProviderPlatform {
       Directory.systemTemp.path;
 }
 
-class _LoopbackHttpOverrides extends HttpOverrides {
-  @override
-  // ignore: unnecessary_overrides
-  HttpClient createHttpClient(SecurityContext? context) {
-    return super.createHttpClient(context);
-  }
-}
+class _LoopbackHttpOverrides extends HttpOverrides {}

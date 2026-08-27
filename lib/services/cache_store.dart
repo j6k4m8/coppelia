@@ -802,12 +802,6 @@ class CacheStore {
     await _saveCachedAudioEntries(const {}, scope: scope);
   }
 
-  /// Clears cached audio plus offline pin metadata for account sign-out.
-  Future<void> clearOfflineAudioState() async {
-    final scope = _scope;
-    await _clearOfflineAudioStateForScope(scope);
-  }
-
   Future<void> _clearOfflineAudioStateForScope(String? scope) async {
     await _clearAudioCacheForScope(scope);
     final preferences = await SharedPreferences.getInstance();

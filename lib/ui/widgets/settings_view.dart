@@ -2664,17 +2664,35 @@ class _AddressDetails {
   final String url;
 }
 
-Future<_ServerLoginDetails?> _showServerLoginDialog(
-    BuildContext context) async {
-  final nameController = TextEditingController();
-  final urlController = TextEditingController();
-  final usernameController = TextEditingController();
-  final passwordController = TextEditingController();
+Future<_ServerLoginDetails?> _showServerLoginDialog(BuildContext context) {
+  var name = '';
+  var url = '';
+  var username = '';
+  var password = '';
   String? error;
-  final result = await showDialog<_ServerLoginDetails>(
+  return showDialog<_ServerLoginDetails>(
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setState) {
+        void submit() {
+          final normalizedUrl = url.trim();
+          final normalizedUsername = username.trim();
+          if (normalizedUrl.isEmpty || normalizedUsername.isEmpty) {
+            setState(
+              () => error = 'Server URL and username are required.',
+            );
+            return;
+          }
+          Navigator.of(context).pop(
+            _ServerLoginDetails(
+              name: name,
+              url: normalizedUrl,
+              username: normalizedUsername,
+              password: password,
+            ),
+          );
+        }
+
         return AlertDialog(
           title: const Text('Add server'),
           content: SizedBox(
@@ -2682,8 +2700,8 @@ Future<_ServerLoginDetails?> _showServerLoginDialog(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: nameController,
+                TextFormField(
+                  onChanged: (value) => name = value,
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Server name (optional)',
@@ -2691,8 +2709,8 @@ Future<_ServerLoginDetails?> _showServerLoginDialog(
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: urlController,
+                TextFormField(
+                  onChanged: (value) => url = value,
                   keyboardType: TextInputType.url,
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
@@ -2701,34 +2719,16 @@ Future<_ServerLoginDetails?> _showServerLoginDialog(
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: usernameController,
+                TextFormField(
+                  onChanged: (value) => username = value,
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(labelText: 'Username'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: passwordController,
+                TextFormField(
+                  onChanged: (value) => password = value,
                   obscureText: true,
-                  onSubmitted: (_) {
-                    final url = urlController.text.trim();
-                    final username = usernameController.text.trim();
-                    final password = passwordController.text;
-                    if (url.isEmpty || username.isEmpty) {
-                      setState(
-                        () => error = 'Server URL and username are required.',
-                      );
-                      return;
-                    }
-                    Navigator.of(context).pop(
-                      _ServerLoginDetails(
-                        name: nameController.text,
-                        url: url,
-                        username: username,
-                        password: password,
-                      ),
-                    );
-                  },
+                  onFieldSubmitted: (_) => submit(),
                   decoration: const InputDecoration(
                     labelText: 'Password (optional)',
                   ),
@@ -2750,25 +2750,7 @@ Future<_ServerLoginDetails?> _showServerLoginDialog(
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () {
-                final url = urlController.text.trim();
-                final username = usernameController.text.trim();
-                final password = passwordController.text;
-                if (url.isEmpty || username.isEmpty) {
-                  setState(
-                    () => error = 'Server URL and username are required.',
-                  );
-                  return;
-                }
-                Navigator.of(context).pop(
-                  _ServerLoginDetails(
-                    name: nameController.text,
-                    url: url,
-                    username: username,
-                    password: password,
-                  ),
-                );
-              },
+              onPressed: submit,
               child: const Text('Add server'),
             ),
           ],
@@ -2776,24 +2758,30 @@ Future<_ServerLoginDetails?> _showServerLoginDialog(
       },
     ),
   );
-  nameController.dispose();
-  urlController.dispose();
-  usernameController.dispose();
-  passwordController.dispose();
-  return result;
 }
 
 Future<_AddressDetails?> _showAddressDialog(
   BuildContext context, {
   ServerAddress? address,
-}) async {
-  final nameController = TextEditingController(text: address?.name);
-  final urlController = TextEditingController(text: address?.url);
+}) {
+  var name = address?.name ?? '';
+  var url = address?.url ?? '';
   String? error;
-  final result = await showDialog<_AddressDetails>(
+  return showDialog<_AddressDetails>(
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setState) {
+        void submit() {
+          final normalizedUrl = url.trim();
+          if (normalizedUrl.isEmpty) {
+            setState(() => error = 'Server URL is required.');
+            return;
+          }
+          Navigator.of(context).pop(
+            _AddressDetails(name: name, url: normalizedUrl),
+          );
+        }
+
         return AlertDialog(
           title: Text(address == null ? 'Add address' : 'Edit address'),
           content: SizedBox(
@@ -2806,8 +2794,9 @@ Future<_AddressDetails?> _showAddressDialog(
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: nameController,
+                TextFormField(
+                  initialValue: name,
+                  onChanged: (value) => name = value,
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Address label (optional)',
@@ -2815,19 +2804,11 @@ Future<_AddressDetails?> _showAddressDialog(
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: urlController,
+                TextFormField(
+                  initialValue: url,
+                  onChanged: (value) => url = value,
                   keyboardType: TextInputType.url,
-                  onSubmitted: (_) {
-                    final url = urlController.text.trim();
-                    if (url.isEmpty) {
-                      setState(() => error = 'Server URL is required.');
-                      return;
-                    }
-                    Navigator.of(context).pop(
-                      _AddressDetails(name: nameController.text, url: url),
-                    );
-                  },
+                  onFieldSubmitted: (_) => submit(),
                   decoration: const InputDecoration(
                     labelText: 'Server URL',
                     hintText: 'https://jellyfin.example.com',
@@ -2850,16 +2831,7 @@ Future<_AddressDetails?> _showAddressDialog(
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () {
-                final url = urlController.text.trim();
-                if (url.isEmpty) {
-                  setState(() => error = 'Server URL is required.');
-                  return;
-                }
-                Navigator.of(context).pop(
-                  _AddressDetails(name: nameController.text, url: url),
-                );
-              },
+              onPressed: submit,
               child: Text(address == null ? 'Add address' : 'Save'),
             ),
           ],
@@ -2867,9 +2839,6 @@ Future<_AddressDetails?> _showAddressDialog(
       },
     ),
   );
-  nameController.dispose();
-  urlController.dispose();
-  return result;
 }
 
 Future<String?> _showTextDialog(
@@ -2878,16 +2847,17 @@ Future<String?> _showTextDialog(
   required String label,
   required String initialValue,
   required String action,
-}) async {
-  final controller = TextEditingController(text: initialValue);
-  final result = await showDialog<String>(
+}) {
+  var value = initialValue;
+  return showDialog<String>(
     context: context,
     builder: (context) => AlertDialog(
       title: Text(title),
-      content: TextField(
-        controller: controller,
+      content: TextFormField(
+        initialValue: value,
+        onChanged: (next) => value = next,
         autofocus: true,
-        onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
+        onFieldSubmitted: (value) => Navigator.of(context).pop(value.trim()),
         decoration: InputDecoration(labelText: label),
       ),
       actions: [
@@ -2896,14 +2866,12 @@ Future<String?> _showTextDialog(
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+          onPressed: () => Navigator.of(context).pop(value.trim()),
           child: Text(action),
         ),
       ],
     ),
   );
-  controller.dispose();
-  return result;
 }
 
 Future<bool?> _confirm(

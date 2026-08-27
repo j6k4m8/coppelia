@@ -6,8 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:coppelia/models/auth_session.dart';
 import 'package:coppelia/models/saved_server.dart';
 import 'package:coppelia/services/server_store.dart';
-import 'package:coppelia/services/settings_store.dart';
-import 'package:coppelia/state/sidebar_item.dart';
 
 const _legacySession = AuthSession(
   accessToken: 'secret-access-token',
@@ -252,21 +250,5 @@ void main() {
     final restored = await ServerStore().activate(first.server.id);
 
     expect(restored?.session.accessToken, _legacySession.accessToken);
-  });
-
-  test('the sidebar server switcher has a dynamic default and saved override',
-      () async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsStore();
-
-    final defaults = await settings.loadSidebarVisibility();
-    expect(defaults.containsKey(SidebarItem.servers), isFalse);
-
-    await settings.saveSidebarVisibility({
-      ...defaults,
-      SidebarItem.servers: false,
-    });
-    final restored = await settings.loadSidebarVisibility();
-    expect(restored[SidebarItem.servers], isFalse);
   });
 }

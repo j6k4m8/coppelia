@@ -25,7 +25,6 @@ import 'package:coppelia/services/server_store.dart';
 import 'package:coppelia/services/settings_store.dart';
 import 'package:coppelia/state/app_state.dart';
 import 'package:coppelia/state/library_view.dart';
-import 'package:coppelia/state/sidebar_item.dart';
 
 class _MockCacheStore extends Mock implements CacheStore {}
 
@@ -239,9 +238,6 @@ void main() {
         .thenAnswer((_) async => const <SmartList>[]);
     when(() => settingsStore.saveSidebarVisibility(any()))
         .thenAnswer((_) async {});
-    when(
-      () => cacheStore.clearOfflineAudioState(),
-    ).thenAnswer((_) async {});
     when(
       () => cacheStore.savePlaybackResumeState(null),
     ).thenAnswer((_) async {});
@@ -548,9 +544,6 @@ void main() {
       expect(state.activeServer?.id, _remoteSavedServer.id);
       expect(state.session?.accessToken, remoteSession.accessToken);
       expect(state.session?.serverUrl, remoteSession.serverUrl);
-      expect(state.isSidebarItemVisible(SidebarItem.servers), isTrue);
-      await state.setSidebarItemVisible(SidebarItem.servers, false);
-      expect(state.isSidebarItemVisible(SidebarItem.servers), isFalse);
       verify(() => playback.clearQueue(keepCurrent: false)).called(1);
       verify(() => client.updateSession(remoteSession)).called(1);
       verify(() => cacheStore.activateScope(_remoteSavedServer.id)).called(1);

@@ -14,7 +14,8 @@
 
 ---
 
-> [!IMPORTANT] > **I'm looking for users who are interested in testing the app for Android so I can list it on the Play Store. If you're interested, please reach out to coppelia-android-test@matelsky.com :)**
+> [!IMPORTANT]
+> **I'm looking for users who are interested in testing the app for Android so I can list it on the Play Store. If you're interested, please reach out to coppelia-android-test@matelsky.com :)**
 
 ---
 

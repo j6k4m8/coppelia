@@ -94,6 +94,23 @@ void main() {
     expect(persisted, isNot(contains('settings')));
   });
 
+  test('server switcher preference is absent by default and persists overrides',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SettingsStore();
+
+    final defaults = await store.loadSidebarVisibility();
+    expect(defaults, isNot(contains(SidebarItem.servers)));
+
+    await store.saveSidebarVisibility({
+      ...defaults,
+      SidebarItem.servers: false,
+    });
+
+    final restored = await store.loadSidebarVisibility();
+    expect(restored[SidebarItem.servers], isFalse);
+  });
+
   test('settings store defaults to SF Pro Display font family', () async {
     SharedPreferences.setMockInitialValues({});
     final store = SettingsStore();
