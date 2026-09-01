@@ -9,7 +9,7 @@ url: https://github.com/j6k4m8/coppelia
 build_arch: x86_64
 
 requires:
-  - mpv
+  - mpv-libs
   - gtk3
 
 keywords:
