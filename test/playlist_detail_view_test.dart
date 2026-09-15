@@ -22,7 +22,7 @@ void main() {
     test('returns disabled make state for empty playlist', () {
       final state = derivePlaylistOfflineActionState(
         playlistTracks: const [],
-        pinnedAudio: const {},
+        isTrackPinned: (_) => false,
         downloadQueue: const [],
       );
 
@@ -36,7 +36,7 @@ void main() {
       final track = _track('1');
       final state = derivePlaylistOfflineActionState(
         playlistTracks: [track],
-        pinnedAudio: {track.streamUrl},
+        isTrackPinned: (candidate) => candidate.id == track.id,
         downloadQueue: [
           DownloadTask(
             track: track,
@@ -56,7 +56,7 @@ void main() {
       final track = _track('2');
       final state = derivePlaylistOfflineActionState(
         playlistTracks: [track],
-        pinnedAudio: const {},
+        isTrackPinned: (_) => false,
         downloadQueue: [
           DownloadTask(
             track: track,
@@ -78,7 +78,7 @@ void main() {
       final second = _track('4');
       final state = derivePlaylistOfflineActionState(
         playlistTracks: [first, second],
-        pinnedAudio: {first.streamUrl, second.streamUrl},
+        isTrackPinned: (_) => true,
         downloadQueue: const [],
       );
 
@@ -93,7 +93,7 @@ void main() {
       final unrelatedTrack = _track('other');
       final state = derivePlaylistOfflineActionState(
         playlistTracks: [playlistTrack],
-        pinnedAudio: const {},
+        isTrackPinned: (_) => false,
         downloadQueue: [
           DownloadTask(
             track: unrelatedTrack,

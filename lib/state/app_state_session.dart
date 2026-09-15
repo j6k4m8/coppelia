@@ -140,7 +140,6 @@ extension AppStateSessionExtension on AppState {
       await _activateStoredServer(
         stored,
         refresh: true,
-        restoreCachedData: false,
         serverGeneration: transition,
       );
       return true;
@@ -353,7 +352,6 @@ extension AppStateSessionExtension on AppState {
   Future<void> _activateStoredServer(
     StoredServerSession stored, {
     required bool refresh,
-    bool restoreCachedData = true,
     int? serverGeneration,
   }) async {
     final generation = serverGeneration ?? _captureServerGeneration();
@@ -362,24 +360,22 @@ extension AppStateSessionExtension on AppState {
     }
     _activateServerScope(stored);
     _clearServerState();
-    if (restoreCachedData) {
-      _smartLists = await _settingsStore.loadSmartLists();
+    _smartLists = await _settingsStore.loadSmartLists();
+    if (!_isCurrentServerGeneration(generation)) return;
+    final storedPinnedAudio = await _cacheStore.loadPinnedAudio();
+    if (!_isCurrentServerGeneration(generation)) return;
+    _pinnedAudio = storedPinnedAudio.toSet();
+    unawaited(refreshMediaCacheBytes());
+    await _loadCachedLibrary();
+    if (!_isCurrentServerGeneration(generation)) return;
+    if (_offlineMode) {
+      await _applyOfflineModeData();
       if (!_isCurrentServerGeneration(generation)) return;
-      final storedPinnedAudio = await _cacheStore.loadPinnedAudio();
-      if (!_isCurrentServerGeneration(generation)) return;
-      _pinnedAudio = storedPinnedAudio.toSet();
-      unawaited(refreshMediaCacheBytes());
-      await _loadCachedLibrary();
-      if (!_isCurrentServerGeneration(generation)) return;
-      if (_offlineMode) {
-        await _applyOfflineModeData();
-        if (!_isCurrentServerGeneration(generation)) return;
-      } else {
-        unawaited(_resumePinnedDownloads());
-      }
-      await _restorePlaybackResumeState();
-      if (!_isCurrentServerGeneration(generation)) return;
+    } else {
+      unawaited(_resumePinnedDownloads());
     }
+    await _restorePlaybackResumeState();
+    if (!_isCurrentServerGeneration(generation)) return;
     unawaited(_maybeUpdateNowPlayingPalette(_nowPlaying));
     if (refresh && !_offlineMode) {
       await refreshLibrary();
@@ -415,6 +411,8 @@ extension AppStateSessionExtension on AppState {
   void _clearServerState() {
     _libraryError = null;
     _isLoadingLibrary = false;
+    _pinnedAudio = {};
+    _smartLists = [];
     _selectedPlaylist = null;
     _selectedSmartList = null;
     _selectedView = LibraryView.home;

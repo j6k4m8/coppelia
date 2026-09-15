@@ -202,26 +202,31 @@ extension AppStateOfflineExtension on AppState {
     List<MediaItem> tracks,
   ) async {
     final normalizedTracks = _deduplicateTracksForOffline(tracks);
+    final generation = _captureServerGeneration();
+    const emptyResult = WholeLibraryOfflineResult(
+      trackCount: 0,
+      newlyPinnedCount: 0,
+      newlyQueuedCount: 0,
+      retriedFailedCount: 0,
+      alreadyPinnedCount: 0,
+      wholeLibraryPinnedTrackCount: 0,
+    );
     if (normalizedTracks.isEmpty) {
-      return const WholeLibraryOfflineResult(
-        trackCount: 0,
-        newlyPinnedCount: 0,
-        newlyQueuedCount: 0,
-        retriedFailedCount: 0,
-        alreadyPinnedCount: 0,
-        wholeLibraryPinnedTrackCount: 0,
-      );
+      return emptyResult;
     }
 
     final cachedEntries = await _cacheStore.loadCachedAudioEntries();
+    if (!_isCurrentServerGeneration(generation)) return emptyResult;
     final cachedUrls = cachedEntries.map((entry) => entry.streamUrl).toSet();
     _cachedAudio = cachedUrls;
 
     final nextPinnedAudio = Set<String>.from(_pinnedAudio);
+    final storedWholeLibraryPins =
+        await _cacheStore.loadWholeLibraryPinnedAudio();
+    if (!_isCurrentServerGeneration(generation)) return emptyResult;
     final nextWholeLibraryPinnedAudio =
-        Set<String>.from(await _cacheStore.loadWholeLibraryPinnedAudio());
+        Set<String>.from(storedWholeLibraryPins);
     final pinnedItemsToSave = <MediaItem>[];
-    final pinnedItemsToForget = <String>{};
     var newlyPinnedCount = 0;
     var newlyQueuedCount = 0;
     var retriedFailedCount = 0;
@@ -233,21 +238,15 @@ extension AppStateOfflineExtension on AppState {
         _cancelledOfflineRequests.remove(key);
       }
 
+      final pinKey = _canonicalStreamUrlForStreamUrl(track.streamUrl);
       final wasPinned = keys.any(nextPinnedAudio.contains);
       if (wasPinned) {
         alreadyPinnedCount += 1;
       } else {
-        nextPinnedAudio.add(track.streamUrl);
-        nextWholeLibraryPinnedAudio.add(track.streamUrl);
+        nextPinnedAudio.add(pinKey);
+        nextWholeLibraryPinnedAudio.add(pinKey);
         pinnedItemsToSave.add(track);
         newlyPinnedCount += 1;
-      }
-
-      for (final key in keys.where((key) => key != track.streamUrl)) {
-        if (nextPinnedAudio.remove(key)) {
-          pinnedItemsToForget.add(key);
-        }
-        nextWholeLibraryPinnedAudio.remove(key);
       }
 
       if (keys.any(cachedUrls.contains)) {
@@ -284,15 +283,16 @@ extension AppStateOfflineExtension on AppState {
       newlyQueuedCount += 1;
     }
 
+    if (!_isCurrentServerGeneration(generation)) return emptyResult;
     _pinnedAudio = nextPinnedAudio;
     await _cacheStore.savePinnedAudio(_pinnedAudio);
+    if (!_isCurrentServerGeneration(generation)) return emptyResult;
     if (pinnedItemsToSave.isNotEmpty) {
       await _cacheStore.savePinnedAudioItems(pinnedItemsToSave);
-    }
-    if (pinnedItemsToForget.isNotEmpty) {
-      await _cacheStore.forgetPinnedAudioItems(pinnedItemsToForget);
+      if (!_isCurrentServerGeneration(generation)) return emptyResult;
     }
     await _cacheStore.saveWholeLibraryPinnedAudio(nextWholeLibraryPinnedAudio);
+    if (!_isCurrentServerGeneration(generation)) return emptyResult;
 
     _refreshSelectedSmartList();
     unawaited(refreshMediaCacheBytes());
@@ -325,9 +325,12 @@ extension AppStateOfflineExtension on AppState {
       keysToRemove.addAll(_offlineKeysForStreamUrl(streamUrl));
     }
 
+    bool removesStreamUrl(String streamUrl) =>
+        _offlineKeysForStreamUrl(streamUrl).any(keysToRemove.contains);
+
     _pinnedAudio.removeWhere(keysToRemove.contains);
     _downloadQueue.removeWhere((task) {
-      if (!keysToRemove.contains(task.track.streamUrl)) {
+      if (!removesStreamUrl(task.track.streamUrl)) {
         return false;
       }
       _downloadStatusByUrl.remove(task.track.streamUrl);
@@ -335,9 +338,9 @@ extension AppStateOfflineExtension on AppState {
       return true;
     });
     _downloadStatusByUrl
-        .removeWhere((streamUrl, _) => keysToRemove.contains(streamUrl));
+        .removeWhere((streamUrl, _) => removesStreamUrl(streamUrl));
     _downloadProgressTimestamps
-        .removeWhere((streamUrl, _) => keysToRemove.contains(streamUrl));
+        .removeWhere((streamUrl, _) => removesStreamUrl(streamUrl));
     _cancelledOfflineRequests.addAll(keysToRemove);
 
     await _cacheStore.savePinnedAudio(_pinnedAudio);
@@ -456,7 +459,7 @@ extension AppStateOfflineExtension on AppState {
     bool requiresWifi = false,
   }) async {
     final normalized = _normalizeTrackForOffline(track);
-    _cancelledOfflineRequests.remove(normalized.streamUrl);
+    _clearCancelledOfflineRequest(normalized.streamUrl);
     final existingIndex = _indexOfDownload(normalized.streamUrl);
     if (existingIndex != null) {
       final existing = _downloadQueue[existingIndex];
@@ -468,7 +471,7 @@ extension AppStateOfflineExtension on AppState {
     final cached = await _cacheStore.isAudioCached(normalized);
     if (cached) {
       await _cacheStore.touchCachedAudio(normalized);
-      _cachedAudio.add(normalized.streamUrl);
+      _cachedAudio.addAll(_offlineKeysForTrack(normalized));
       return;
     }
     _addDownloadTask(
@@ -491,14 +494,15 @@ extension AppStateOfflineExtension on AppState {
     var queuedAny = false;
     for (final track in pinnedTracks) {
       final normalized = _normalizeTrackForOffline(track);
-      if (!_pinnedAudio.contains(normalized.streamUrl)) {
+      final keys = _offlineKeysForTrack(normalized);
+      if (!keys.any(_pinnedAudio.contains)) {
         continue;
       }
-      if (_cachedAudio.contains(normalized.streamUrl)) {
+      if (keys.any(_cachedAudio.contains)) {
         continue;
       }
       if (await _cacheStore.isAudioCached(normalized)) {
-        _cachedAudio.add(normalized.streamUrl);
+        _cachedAudio.addAll(keys);
         continue;
       }
       if (_indexOfDownload(normalized.streamUrl) != null) {
@@ -589,6 +593,14 @@ extension AppStateOfflineExtension on AppState {
     return false;
   }
 
+  bool _isOfflineRequestCancelled(String streamUrl) =>
+      _offlineKeysForStreamUrl(streamUrl)
+          .any(_cancelledOfflineRequests.contains);
+
+  void _clearCancelledOfflineRequest(String streamUrl) {
+    _cancelledOfflineRequests.removeAll(_offlineKeysForStreamUrl(streamUrl));
+  }
+
   void _removeDownload(String streamUrl) {
     final index = _indexOfDownload(streamUrl);
     if (index == null) {
@@ -657,8 +669,8 @@ extension AppStateOfflineExtension on AppState {
         if (!_isCurrentServerGeneration(serverGeneration)) {
           return;
         }
-        if (_cancelledOfflineRequests.contains(streamUrl)) {
-          _cancelledOfflineRequests.remove(streamUrl);
+        if (_isOfflineRequestCancelled(streamUrl)) {
+          _clearCancelledOfflineRequest(streamUrl);
           _removeDownload(streamUrl);
           return;
         }
@@ -670,7 +682,7 @@ extension AppStateOfflineExtension on AppState {
             downloadedBytes: response.downloaded,
           );
         } else if (response is FileInfo) {
-          _cachedAudio.add(streamUrl);
+          _cachedAudio.addAll(_offlineKeysForStreamUrl(streamUrl));
           _removeDownload(streamUrl);
           unawaited(refreshMediaCacheBytes());
         }
@@ -679,8 +691,8 @@ extension AppStateOfflineExtension on AppState {
       if (!_isCurrentServerGeneration(serverGeneration)) {
         return;
       }
-      if (_cancelledOfflineRequests.contains(streamUrl)) {
-        _cancelledOfflineRequests.remove(streamUrl);
+      if (_isOfflineRequestCancelled(streamUrl)) {
+        _clearCancelledOfflineRequest(streamUrl);
         _removeDownload(streamUrl);
         return;
       }
@@ -771,31 +783,36 @@ extension AppStateOfflineExtension on AppState {
     required bool pinned,
     bool requiresWifi = false,
   }) async {
+    // Stop as soon as the active server changes: a later iteration would
+    // normalize against the new session and write into the wrong scope.
+    final generation = _captureServerGeneration();
     for (final track in tracks) {
+      if (!_isCurrentServerGeneration(generation)) return;
       final normalized = _normalizeTrackForOffline(track);
-      final keys = _offlineKeysForTrack(track);
+      final keys = {
+        ..._offlineKeysForTrack(track),
+        ..._offlineKeysForTrack(normalized),
+      };
       if (pinned) {
-        for (final key in keys) {
-          _cancelledOfflineRequests.remove(key);
-        }
+        _cancelledOfflineRequests.removeAll(keys);
         await _cacheStore.setPinnedAudioItem(normalized, true);
+        if (!_isCurrentServerGeneration(generation)) return;
         await _cacheStore.setWholeLibraryPinnedAudio(
             normalized.streamUrl, false);
-        _pinnedAudio.add(normalized.streamUrl);
-        for (final key in keys.where((key) => key != normalized.streamUrl)) {
-          await _cacheStore.setPinnedAudio(key, false);
-          await _cacheStore.setWholeLibraryPinnedAudio(key, false);
-          _pinnedAudio.remove(key);
-        }
+        if (!_isCurrentServerGeneration(generation)) return;
+        _pinnedAudio.add(_canonicalStreamUrlForStreamUrl(normalized.streamUrl));
         await _queueDownload(normalized, requiresWifi: requiresWifi);
       } else {
-        for (final key in keys) {
-          _cancelledOfflineRequests.add(key);
-          await _cacheStore.setPinnedAudio(key, false);
-          await _cacheStore.setWholeLibraryPinnedAudio(key, false);
-          _pinnedAudio.remove(key);
-          _removeDownload(key);
-        }
+        // The store maps every URL form of a track to one key, so one write
+        // per store is enough; the in-memory sets hold all forms.
+        _cancelledOfflineRequests.addAll(keys);
+        await _cacheStore.setPinnedAudio(normalized.streamUrl, false);
+        if (!_isCurrentServerGeneration(generation)) return;
+        await _cacheStore.setWholeLibraryPinnedAudio(
+            normalized.streamUrl, false);
+        if (!_isCurrentServerGeneration(generation)) return;
+        _pinnedAudio.removeAll(keys);
+        keys.forEach(_removeDownload);
       }
     }
     _refreshSelectedSmartList();

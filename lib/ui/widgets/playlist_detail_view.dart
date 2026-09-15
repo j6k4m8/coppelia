@@ -39,7 +39,7 @@ class PlaylistOfflineActionState {
 
 PlaylistOfflineActionState derivePlaylistOfflineActionState({
   required List<MediaItem> playlistTracks,
-  required Set<String> pinnedAudio,
+  required bool Function(MediaItem track) isTrackPinned,
   required List<DownloadTask> downloadQueue,
 }) {
   final playlistTrackUrls =
@@ -48,8 +48,7 @@ PlaylistOfflineActionState derivePlaylistOfflineActionState({
       .where((task) => playlistTrackUrls.contains(task.track.streamUrl))
       .toList();
   final canDownload = playlistTracks.isNotEmpty;
-  final allTracksPinned = canDownload &&
-      playlistTracks.every((track) => pinnedAudio.contains(track.streamUrl));
+  final allTracksPinned = canDownload && playlistTracks.every(isTrackPinned);
   final isOfflineReady = allTracksPinned && relatedDownloads.isEmpty;
   final isOfflinePending = relatedDownloads.any(
     (task) => task.status != DownloadStatus.failed,
@@ -119,16 +118,14 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
     }
     final canEdit =
         state.session != null && !state.offlineMode && !state.offlineOnlyFilter;
-    final pinned = state.pinnedAudio;
     final fullPlaylistTracks = state.playlistTracks;
-    final offlineTracks = fullPlaylistTracks
-        .where((track) => pinned.contains(track.streamUrl))
-        .toList();
+    final offlineTracks =
+        fullPlaylistTracks.where(state.isTrackPinnedInMemory).toList();
     final displayTracks =
         state.offlineOnlyFilter ? offlineTracks : fullPlaylistTracks;
     final offlineState = derivePlaylistOfflineActionState(
       playlistTracks: fullPlaylistTracks,
-      pinnedAudio: pinned,
+      isTrackPinned: state.isTrackPinnedInMemory,
       downloadQueue: state.downloadQueue,
     );
     final offlineOnPressed = offlineState.canDownload

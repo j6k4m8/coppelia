@@ -515,7 +515,7 @@ class AppState extends ChangeNotifier {
   /// True while Smart List results are loading.
   bool get isLoadingSmartList => _isLoadingSmartList;
 
-  /// Pinned audio stream URLs.
+  /// Cache keys of tracks pinned for offline playback.
   Set<String> get pinnedAudio => Set.unmodifiable(_pinnedAudio);
 
   /// Active download queue for offline audio.
@@ -1218,6 +1218,9 @@ class AppState extends ChangeNotifier {
     return _offlineKeysForTrack(track).any(_pinnedAudio.contains);
   }
 
+  /// Returns whether a track is pinned, using in-memory pin state only.
+  bool isTrackPinnedInMemory(MediaItem track) => _isTrackPinnedInMemory(track);
+
   bool _isTrackOfflineReadyInMemory(MediaItem track) {
     final keys = _offlineKeysForTrack(track);
     return keys.any(_pinnedAudio.contains) && keys.any(_cachedAudio.contains);
@@ -1228,21 +1231,25 @@ class AppState extends ChangeNotifier {
     if (mediaItem != null) {
       return mediaItem;
     }
-    final uri = Uri.tryParse(entry.streamUrl);
-    final itemId = _extractStreamItemId(entry.streamUrl);
-    final origin = uri?.origin ?? '';
-    final imageUrl = origin.isNotEmpty
-        ? '$origin/Items/$itemId/Images/Primary?fillWidth=500&quality=90'
-        : null;
-    return MediaItem(
+    // Entries without stored metadata predate the mediaItem field. Their key
+    // is a cache key rather than a URL, so derive the item from the legacy
+    // stream URL when one was recorded during migration.
+    final sourceUrl = entry.legacyCacheKey ?? entry.streamUrl;
+    final itemId = _extractStreamItemId(sourceUrl);
+    final hasItemId = itemId != sourceUrl;
+    final serverUrl = _session?.serverUrl;
+    final track = MediaItem(
       id: itemId,
       title: entry.title,
       album: entry.album,
       artists: entry.artists,
       duration: Duration.zero,
-      imageUrl: imageUrl,
-      streamUrl: entry.streamUrl,
+      imageUrl: hasItemId && serverUrl != null
+          ? '$serverUrl/Items/$itemId/Images/Primary?fillWidth=500&quality=90'
+          : null,
+      streamUrl: sourceUrl,
     );
+    return hasItemId ? _normalizeTrackForOffline(track) : track;
   }
 
   /// Releases audio resources.

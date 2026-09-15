@@ -47,10 +47,8 @@ class AlbumDetailView extends StatelessWidget {
     final isFavorite = state.isFavoriteAlbum(album.id);
     final isFavoriteUpdating = state.isFavoriteAlbumUpdating(album.id);
     final canDownload = state.albumTracks.isNotEmpty;
-    final pinned = state.pinnedAudio;
-    final offlineTracks = state.albumTracks
-        .where((track) => pinned.contains(track.streamUrl))
-        .toList();
+    final offlineTracks =
+        state.albumTracks.where(state.isTrackPinnedInMemory).toList();
     final albumTrackUrls =
         state.albumTracks.map((track) => track.streamUrl).toSet();
     final relatedDownloads = state.downloadQueue
@@ -58,8 +56,8 @@ class AlbumDetailView extends StatelessWidget {
         .toList();
     final displayTracks =
         state.offlineOnlyFilter ? offlineTracks : state.albumTracks;
-    final allTracksPinned = canDownload &&
-        state.albumTracks.every((track) => pinned.contains(track.streamUrl));
+    final allTracksPinned =
+        canDownload && state.albumTracks.every(state.isTrackPinnedInMemory);
     final isOfflineReady = allTracksPinned && relatedDownloads.isEmpty;
     final isOfflinePending = relatedDownloads.any(
       (task) => task.status != DownloadStatus.failed,

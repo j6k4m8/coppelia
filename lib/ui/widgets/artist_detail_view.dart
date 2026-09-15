@@ -49,9 +49,7 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
     final albums = _albumsForArtist(state.albums, artist.name);
     final hasAlbums = albums.isNotEmpty;
     final tracks = state.artistTracks;
-    final pinned = state.pinnedAudio;
-    final offlineTracks =
-        tracks.where((track) => pinned.contains(track.streamUrl)).toList();
+    final offlineTracks = tracks.where(state.isTrackPinnedInMemory).toList();
     final artistTrackUrls = tracks.map((track) => track.streamUrl).toSet();
     final relatedDownloads = state.downloadQueue
         .where((task) => artistTrackUrls.contains(task.track.streamUrl))
@@ -66,8 +64,8 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
         (albums.isNotEmpty ? albums.first.imageUrl : null) ??
         (tracks.isNotEmpty ? tracks.first.imageUrl : null);
 
-    final allTracksPinned = tracks.isNotEmpty &&
-        tracks.every((track) => pinned.contains(track.streamUrl));
+    final allTracksPinned =
+        tracks.isNotEmpty && tracks.every(state.isTrackPinnedInMemory);
     final isOfflineReady = allTracksPinned && relatedDownloads.isEmpty;
     final isOfflinePending = relatedDownloads.any(
       (task) => task.status != DownloadStatus.failed,
