@@ -26,13 +26,18 @@ class _MockServerStore extends Mock implements ServerStore {}
 
 class _MockSettingsStore extends Mock implements SettingsStore {}
 
+/// Points the cache manager at a directory private to this test file, so
+/// concurrently running suites do not share its database or files.
 class _FakePathProvider extends PathProviderPlatform {
-  @override
-  Future<String?> getTemporaryPath() async => Directory.systemTemp.path;
+  _FakePathProvider(this.root);
+
+  final Directory root;
 
   @override
-  Future<String?> getApplicationSupportPath() async =>
-      Directory.systemTemp.path;
+  Future<String?> getTemporaryPath() async => root.path;
+
+  @override
+  Future<String?> getApplicationSupportPath() async => root.path;
 }
 
 const _homeServer = SavedServer(
@@ -164,9 +169,17 @@ Future<void> _waitUntil(bool Function() condition) async {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  PathProviderPlatform.instance = _FakePathProvider();
+  final root = Directory.systemTemp.createTempSync('coppelia_pin_test_');
+  PathProviderPlatform.instance = _FakePathProvider(root);
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
+  tearDownAll(() {
+    try {
+      root.deleteSync(recursive: true);
+    } on FileSystemException {
+      // Best effort; the OS reclaims the temp directory either way.
+    }
+  });
 
   setUpAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

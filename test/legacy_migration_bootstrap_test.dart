@@ -25,13 +25,18 @@ class _MockJellyfinClient extends Mock implements JellyfinClient {}
 
 class _MockPlaybackController extends Mock implements PlaybackController {}
 
+/// Points the cache manager at a directory private to this test file, so
+/// concurrently running suites do not share its database or files.
 class _FakePathProvider extends PathProviderPlatform {
-  @override
-  Future<String?> getTemporaryPath() async => Directory.systemTemp.path;
+  _FakePathProvider(this.root);
+
+  final Directory root;
 
   @override
-  Future<String?> getApplicationSupportPath() async =>
-      Directory.systemTemp.path;
+  Future<String?> getTemporaryPath() async => root.path;
+
+  @override
+  Future<String?> getApplicationSupportPath() async => root.path;
 }
 
 /// Lets the seeded legacy download reach the loopback server; the test
@@ -43,9 +48,17 @@ class _LoopbackHttpOverrides extends HttpOverrides {}
 /// carry over without re-downloading anything.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  PathProviderPlatform.instance = _FakePathProvider();
+  final root = Directory.systemTemp.createTempSync('coppelia_migration_test_');
+  PathProviderPlatform.instance = _FakePathProvider(root);
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
+  tearDownAll(() {
+    try {
+      root.deleteSync(recursive: true);
+    } on FileSystemException {
+      // Best effort; the OS reclaims the temp directory either way.
+    }
+  });
 
   setUpAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -88,6 +101,15 @@ void main() {
         await legacyStore
             .downloadAudioWithProgress(legacyTrack)
             .firstWhere((response) => response is FileInfo);
+        // The cache manager reports the file before it commits the index
+        // row that a fresh instance reads. Wait for that row to appear.
+        final probe = CacheStore();
+        final deadline = DateTime.now().add(const Duration(seconds: 5));
+        while (!await probe.isAudioCached(legacyTrack) &&
+            DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 25));
+        }
+        expect(await probe.isAudioCached(legacyTrack), isTrue);
         await legacyStore.savePinnedAudio({legacyTrack.streamUrl});
         await legacyStore.savePinnedAudioItems([legacyTrack]);
         await legacyStore.savePlaylists(const [
