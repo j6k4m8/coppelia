@@ -101,15 +101,16 @@ void main() {
         await legacyStore
             .downloadAudioWithProgress(legacyTrack)
             .firstWhere((response) => response is FileInfo);
-        // The cache manager reports the file before it commits the index
-        // row that a fresh instance reads. Wait for that row to appear.
-        final probe = CacheStore();
-        final deadline = DateTime.now().add(const Duration(seconds: 5));
-        while (!await probe.isAudioCached(legacyTrack) &&
+        // On desktop the cache manager keeps its index in memory and flushes
+        // it to disk on a timer, and a new instance reads that file only once
+        // when it opens. Poll with fresh instances until the flush has landed
+        // so the restarted store below can find the download.
+        final deadline = DateTime.now().add(const Duration(seconds: 15));
+        while (!await CacheStore().isAudioCached(legacyTrack) &&
             DateTime.now().isBefore(deadline)) {
-          await Future<void>.delayed(const Duration(milliseconds: 25));
+          await Future<void>.delayed(const Duration(milliseconds: 200));
         }
-        expect(await probe.isAudioCached(legacyTrack), isTrue);
+        expect(await CacheStore().isAudioCached(legacyTrack), isTrue);
         await legacyStore.savePinnedAudio({legacyTrack.streamUrl});
         await legacyStore.savePinnedAudioItems([legacyTrack]);
         await legacyStore.savePlaylists(const [
