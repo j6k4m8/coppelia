@@ -23,6 +23,7 @@ import '../models/media_item.dart';
 import '../models/playback_resume_state.dart';
 import '../models/playlist.dart';
 import '../models/search_results.dart';
+import '../models/saved_server.dart';
 import '../models/smart_list.dart';
 import '../models/track_status_icon_state.dart';
 import '../models/whole_library_offline.dart';
@@ -32,8 +33,8 @@ import '../services/log_service.dart';
 import '../services/now_playing_service.dart';
 import '../services/playback_controller.dart';
 import '../services/search_service.dart';
+import '../services/server_store.dart';
 import '../services/settings_store.dart';
-import '../services/session_store.dart';
 import 'browse_layout.dart';
 import 'accent_color_source.dart';
 import 'home_section.dart';
@@ -65,6 +66,9 @@ List<MediaItem> _tracksForAlbumId(
   return tracks.where((track) => track.albumId == albumId).toList();
 }
 
+/// Identifies work by both transition and session, including address changes.
+typedef _ServerGeneration = ({int revision, AuthSession? session});
+
 /// Central application state and Jellyfin coordination.
 class AppState extends ChangeNotifier {
   /// Creates the shared application state.
@@ -72,12 +76,12 @@ class AppState extends ChangeNotifier {
     required CacheStore cacheStore,
     required JellyfinClient client,
     required PlaybackController playback,
-    required SessionStore sessionStore,
+    required ServerStore serverStore,
     required SettingsStore settingsStore,
   })  : _cacheStore = cacheStore,
         _client = client,
         _playback = playback,
-        _sessionStore = sessionStore,
+        _serverStore = serverStore,
         _settingsStore = settingsStore {
     _bindPlayback();
     _bindNowPlaying();
@@ -87,13 +91,17 @@ class AppState extends ChangeNotifier {
   final JellyfinClient _client;
   final PlaybackController _playback;
   final NowPlayingService _nowPlayingService = NowPlayingService();
-  final SessionStore _sessionStore;
+  final ServerStore _serverStore;
   final SettingsStore _settingsStore;
 
   AuthSession? _session;
+  List<SavedServer> _savedServers = [];
+  SavedServer? _activeServer;
+  int _serverGeneration = 0;
   bool _isBootstrapping = true;
   bool _isLoadingLibrary = false;
   String? _authError;
+  String? _libraryError;
   Playlist? _selectedPlaylist;
   LibraryView _selectedView = LibraryView.home;
   Album? _selectedAlbum;
@@ -143,10 +151,11 @@ class AppState extends ChangeNotifier {
   final Set<String> _favoriteAlbumUpdatesInFlight = {};
   final Set<String> _favoriteArtistUpdatesInFlight = {};
   final Set<String> _favoriteTrackUpdatesInFlight = {};
+  // Offline sets and lookup maps use cache keys; DownloadTask retains its URL.
   Set<String> _pinnedAudio = {};
   Set<String> _cachedAudio = {};
   final List<DownloadTask> _downloadQueue = [];
-  final Map<String, DownloadStatus> _downloadStatusByUrl = {};
+  final Map<String, DownloadStatus> _downloadStatusByKey = {};
   final Map<String, DateTime> _downloadProgressTimestamps = {};
   final Set<String> _cancelledOfflineRequests = {};
   bool _isProcessingDownloads = false;
@@ -176,6 +185,19 @@ class AppState extends ChangeNotifier {
   final ValueNotifier<int> _pinnedCacheBytesNotifier = ValueNotifier(0);
   final Random _random = Random();
   int _playRequestId = 0;
+
+  /// Invalidates asynchronous work owned by the previous server profile.
+  _ServerGeneration _beginServerTransition() {
+    _serverGeneration += 1;
+    _playRequestId += 1;
+    return _captureServerGeneration();
+  }
+
+  _ServerGeneration _captureServerGeneration() =>
+      (revision: _serverGeneration, session: _session);
+
+  bool _isCurrentServerGeneration(_ServerGeneration generation) =>
+      generation == _captureServerGeneration();
 
   void _updatePlaybackProgress({
     Duration? position,
@@ -359,7 +381,8 @@ class AppState extends ChangeNotifier {
     HomeSection.values,
   );
   Map<SidebarItem, bool> _sidebarVisibility = {
-    for (final item in SidebarItem.values) item: true,
+    for (final item in SidebarItem.values)
+      if (item != SidebarItem.servers) item: true,
   };
   double _sidebarWidth = 240;
   bool _sidebarCollapsed = false;
@@ -397,6 +420,18 @@ class AppState extends ChangeNotifier {
   /// Current authenticated session.
   AuthSession? get session => _session;
 
+  /// Saved Jellyfin servers available on this device.
+  List<SavedServer> get savedServers => List.unmodifiable(_savedServers);
+
+  /// Active saved server, when a session is available.
+  SavedServer? get activeServer => _activeServer;
+
+  /// Number of selectable server and address destinations.
+  int get savedDestinationCount => _savedServers.fold<int>(
+        0,
+        (count, server) => count + server.addresses.length,
+      );
+
   /// True while the app restores cached state.
   bool get isBootstrapping => _isBootstrapping;
 
@@ -405,6 +440,9 @@ class AppState extends ChangeNotifier {
 
   /// Error message from the last authentication attempt.
   String? get authError => _authError;
+
+  /// Most recent non-auth library refresh failure for the active server.
+  String? get libraryError => _libraryError;
 
   /// Available playlists for the user.
   List<Playlist> get playlists => List.unmodifiable(_playlists);
@@ -483,7 +521,7 @@ class AppState extends ChangeNotifier {
   /// True while Smart List results are loading.
   bool get isLoadingSmartList => _isLoadingSmartList;
 
-  /// Pinned audio stream URLs.
+  /// Cache keys of tracks pinned for offline playback.
   Set<String> get pinnedAudio => Set.unmodifiable(_pinnedAudio);
 
   /// Active download queue for offline audio.
@@ -670,49 +708,24 @@ class AppState extends ChangeNotifier {
 
   /// O(1) lookup for timestamp status icon state by stream URL.
   TrackStatusIconState trackStatusForStreamUrl(String streamUrl) {
-    final keys = _offlineKeysForStreamUrl(streamUrl);
-    for (final key in keys) {
-      final status = _downloadStatusByUrl[key];
-      if (status == null) {
-        continue;
-      }
+    final key = _audioKey(streamUrl);
+    final status = _downloadStatusByKey[key];
+    if (status != null) {
       return status == DownloadStatus.failed
           ? TrackStatusIconState.none
           : TrackStatusIconState.inQueue;
     }
-    final isPinned = keys.any(_pinnedAudio.contains);
-    final isCached = keys.any(_cachedAudio.contains);
-    if (isPinned && isCached) {
-      return TrackStatusIconState.downloaded;
+    if (!_pinnedAudio.contains(key)) {
+      return TrackStatusIconState.none;
     }
-    if (isPinned) {
-      return TrackStatusIconState.inQueue;
-    }
-    return TrackStatusIconState.none;
+    return _cachedAudio.contains(key)
+        ? TrackStatusIconState.downloaded
+        : TrackStatusIconState.inQueue;
   }
 
   /// O(1) lookup for timestamp status icon state by track.
-  TrackStatusIconState trackStatusForTrack(MediaItem track) {
-    final keys = _offlineKeysForTrack(track);
-    for (final key in keys) {
-      final status = _downloadStatusByUrl[key];
-      if (status == null) {
-        continue;
-      }
-      return status == DownloadStatus.failed
-          ? TrackStatusIconState.none
-          : TrackStatusIconState.inQueue;
-    }
-    final isPinned = keys.any(_pinnedAudio.contains);
-    final isCached = keys.any(_cachedAudio.contains);
-    if (isPinned && isCached) {
-      return TrackStatusIconState.downloaded;
-    }
-    if (isPinned) {
-      return TrackStatusIconState.inQueue;
-    }
-    return TrackStatusIconState.none;
-  }
+  TrackStatusIconState trackStatusForTrack(MediaItem track) =>
+      trackStatusForStreamUrl(track.streamUrl);
 
   /// True when playback telemetry is enabled.
   bool get telemetryPlaybackEnabled => _telemetryPlayback;
@@ -814,10 +827,17 @@ class AppState extends ChangeNotifier {
 
   /// Returns whether a sidebar item should be shown.
   ///
-  /// Settings is intentionally always available so its own visibility controls
-  /// can never leave the app without a route back to Settings.
-  bool isSidebarItemVisible(SidebarItem item) =>
-      item == SidebarItem.settings || (_sidebarVisibility[item] ?? true);
+  /// Settings is always available. The server switcher defaults to visible
+  /// when there is more than one destination unless the user overrides it.
+  bool isSidebarItemVisible(SidebarItem item) {
+    if (item == SidebarItem.settings) {
+      return true;
+    }
+    if (item == SidebarItem.servers && !_sidebarVisibility.containsKey(item)) {
+      return savedDestinationCount > 1;
+    }
+    return _sidebarVisibility[item] ?? true;
+  }
 
   /// Returns a saved scroll offset for a key.
   double loadScrollOffset(String key) => _scrollOffsets[key] ?? 0;
@@ -875,6 +895,7 @@ class AppState extends ChangeNotifier {
     List<MediaItem> orderedTracks,
     Object error,
   ) async {
+    final generation = _captureServerGeneration();
     if (!_isPlaylistOrderUnsupported(error)) {
       return _requestErrorMessage(
         error,
@@ -893,16 +914,21 @@ class AppState extends ChangeNotifier {
         playlistId: playlist.id,
         entryIds: entryIds,
       );
+      if (!_isCurrentServerGeneration(generation)) return null;
       await _client.addToPlaylist(
         playlistId: playlist.id,
         itemIds: orderedTracks.map((track) => track.id).toList(),
       );
+      if (!_isCurrentServerGeneration(generation)) return null;
       final refreshed = await _client.fetchPlaylistTracks(playlist.id);
+      if (!_isCurrentServerGeneration(generation)) return null;
       _playlistTracks = refreshed;
       await _cacheStore.savePlaylistTracks(playlist.id, refreshed);
+      if (!_isCurrentServerGeneration(generation)) return null;
       notifyListeners();
       return null;
     } catch (fallbackError) {
+      if (!_isCurrentServerGeneration(generation)) return null;
       return _requestErrorMessage(
         fallbackError,
         fallback: 'Unable to reorder playlist.',
@@ -1071,7 +1097,7 @@ class AppState extends ChangeNotifier {
 
   /// Adds a track to the end of the queue.
   Future<void> enqueueTrack(MediaItem track) async {
-    if (_offlineMode && !_isTrackPinnedInMemory(track)) {
+    if (_offlineMode && !isTrackPinnedInMemory(track)) {
       return;
     }
     if (_queue.isEmpty) {
@@ -1090,7 +1116,7 @@ class AppState extends ChangeNotifier {
 
   /// Inserts a track to play next.
   Future<void> playNext(MediaItem track) async {
-    if (_offlineMode && !_isTrackPinnedInMemory(track)) {
+    if (_offlineMode && !isTrackPinnedInMemory(track)) {
       return;
     }
     if (_queue.isEmpty) {
@@ -1157,43 +1183,16 @@ class AppState extends ChangeNotifier {
     return segments[index + 1];
   }
 
-  String _canonicalStreamUrlForStreamUrl(String streamUrl) {
-    final session = _session;
-    if (session == null) {
-      return streamUrl;
-    }
-    final itemId = _extractStreamItemId(streamUrl);
-    if (itemId == streamUrl) {
-      return streamUrl;
-    }
-    final canonical = _client.buildStreamUrl(
-      itemId: itemId,
-      userId: session.userId,
-    );
-    return canonical.isEmpty ? streamUrl : canonical;
-  }
+  String _audioKey(String streamUrl) =>
+      _cacheStore.audioKeyForStreamUrl(streamUrl);
 
-  MediaItem _normalizeTrackForOffline(MediaItem track) {
-    return _normalizeTrackForPlayback(track);
-  }
-
-  Set<String> _offlineKeysForStreamUrl(String streamUrl) {
-    final canonical = _canonicalStreamUrlForStreamUrl(streamUrl);
-    return {streamUrl, canonical};
-  }
-
-  Set<String> _offlineKeysForTrack(MediaItem track) {
-    final canonical = _canonicalStreamUrlForStreamUrl(track.streamUrl);
-    return {track.streamUrl, canonical};
-  }
-
-  bool _isTrackPinnedInMemory(MediaItem track) {
-    return _offlineKeysForTrack(track).any(_pinnedAudio.contains);
-  }
+  /// Returns whether a track is pinned, using in-memory pin state only.
+  bool isTrackPinnedInMemory(MediaItem track) =>
+      _pinnedAudio.contains(_audioKey(track.streamUrl));
 
   bool _isTrackOfflineReadyInMemory(MediaItem track) {
-    final keys = _offlineKeysForTrack(track);
-    return keys.any(_pinnedAudio.contains) && keys.any(_cachedAudio.contains);
+    final key = _audioKey(track.streamUrl);
+    return _pinnedAudio.contains(key) && _cachedAudio.contains(key);
   }
 
   MediaItem _mediaItemFromCachedEntry(CachedAudioEntry entry) {
@@ -1201,21 +1200,25 @@ class AppState extends ChangeNotifier {
     if (mediaItem != null) {
       return mediaItem;
     }
-    final uri = Uri.tryParse(entry.streamUrl);
-    final itemId = _extractStreamItemId(entry.streamUrl);
-    final origin = uri?.origin ?? '';
-    final imageUrl = origin.isNotEmpty
-        ? '$origin/Items/$itemId/Images/Primary?fillWidth=500&quality=90'
-        : null;
-    return MediaItem(
+    // Entries without stored metadata predate the mediaItem field. Their key
+    // is a cache key rather than a URL, so derive the item from the legacy
+    // stream URL when one was recorded during migration.
+    final sourceUrl = entry.legacyCacheKey ?? entry.cacheKey;
+    final itemId = _extractStreamItemId(sourceUrl);
+    final hasItemId = itemId != sourceUrl;
+    final serverUrl = _session?.serverUrl;
+    final track = MediaItem(
       id: itemId,
       title: entry.title,
       album: entry.album,
       artists: entry.artists,
       duration: Duration.zero,
-      imageUrl: imageUrl,
-      streamUrl: entry.streamUrl,
+      imageUrl: hasItemId && serverUrl != null
+          ? '$serverUrl/Items/$itemId/Images/Primary?fillWidth=500&quality=90'
+          : null,
+      streamUrl: sourceUrl,
     );
+    return hasItemId ? _normalizeTrackForPlayback(track) : track;
   }
 
   /// Releases audio resources.
@@ -1320,17 +1323,19 @@ class AppState extends ChangeNotifier {
     if (_session == null) {
       return;
     }
+    final generation = _captureServerGeneration();
     final resume = await _cacheStore.loadPlaybackResumeState();
-    if (resume == null) {
+    if (!_isCurrentServerGeneration(generation) || resume == null) {
       return;
     }
-    _queue = [resume.track];
-    _nowPlaying = resume.track;
+    final track = _normalizeTrackForPlayback(resume.track);
+    _queue = [track];
+    _nowPlaying = track;
     _updatePlaybackProgress(
       position: resume.position,
-      duration: resume.track.duration,
+      duration: track.duration,
     );
-    _playSessionId = _buildPlaySessionId(resume.track);
+    _playSessionId = _buildPlaySessionId(track);
     _reportedStartSessionId = null;
     _reportedStopSessionId = null;
     _lastProgressReportAt = null;
@@ -1347,7 +1352,9 @@ class AppState extends ChangeNotifier {
     } catch (_) {
       // Ignore failures when restoring playback state.
     }
-    _updateNowPlayingInfo(force: true);
+    if (_isCurrentServerGeneration(generation)) {
+      _updateNowPlayingInfo(force: true);
+    }
   }
 
   void _persistPlaybackResumeState({bool force = false}) {
@@ -1676,7 +1683,7 @@ class AppState extends ChangeNotifier {
     if (_pinnedAudio.isEmpty) {
       return [];
     }
-    return tracks.where(_isTrackPinnedInMemory).toList();
+    return tracks.where(isTrackPinnedInMemory).toList();
   }
 
   Future<List<MediaItem>> _offlineTracksForAlbum(Album album) async {
@@ -1687,7 +1694,7 @@ class AppState extends ChangeNotifier {
     final matches = cachedEntries
         .where(
           (entry) =>
-              _pinnedAudio.contains(entry.streamUrl) &&
+              _pinnedAudio.contains(entry.cacheKey) &&
               entry.mediaItem?.albumId == album.id,
         )
         .toList()
@@ -1701,7 +1708,7 @@ class AppState extends ChangeNotifier {
     }
     final cachedEntries = await _cacheStore.loadCachedAudioEntries();
     final matches = cachedEntries.where((entry) {
-      if (!_pinnedAudio.contains(entry.streamUrl)) {
+      if (!_pinnedAudio.contains(entry.cacheKey)) {
         return false;
       }
       return entry.mediaItem?.artistIds.contains(artist.id) ?? false;
@@ -1720,88 +1727,43 @@ class AppState extends ChangeNotifier {
     List<MediaItem> tracks,
     MediaItem track,
   ) async {
-    final logService = await LogService.instance;
+    final generation = _captureServerGeneration();
     final requestId = ++_playRequestId;
-    final formatInfo = track.container != null || track.codec != null
-        ? ' [container=${track.container ?? "unknown"}, codec=${track.codec ?? "unknown"}'
-            '${track.bitrate != null ? ", bitrate=${track.bitrate}" : ""}'
-            '${track.sampleRate != null ? ", sampleRate=${track.sampleRate}Hz" : ""}]'
-        : '';
-    await logService.info(
-        '_playFromList[$requestId]: Starting with ${tracks.length} tracks, playing "${track.title}"$formatInfo');
-
+    bool isStale() =>
+        !_isCurrentServerGeneration(generation) ||
+        _isPlayRequestStale(requestId);
     final index = tracks.indexWhere((item) => item.id == track.id);
-    if (index < 0) {
-      await logService
-          .warning('_playFromList[$requestId]: Track not found in list');
-      return;
-    }
-
-    await logService.info(
-        '_playFromList[$requestId]: Track index $index, normalizing tracks');
+    if (index < 0) return;
     final normalized = _normalizeTracksForPlayback(tracks);
     final playbackTrack = normalized[index];
-
-    await logService
-        .info('_playFromList[$requestId]: Refreshing cache status for track');
     await _refreshNowPlayingCacheStatus(playbackTrack);
-    if (_isPlayRequestStale(requestId)) {
-      await logService.info(
-          '_playFromList[$requestId]: Stale request after cache refresh; aborting');
-      return;
-    }
+    if (isStale()) return;
 
-    final previousQueue = List<MediaItem>.from(_queue);
+    final previousQueue = _queue;
     _queue = normalized;
     _isApplyingQueueUpdate = true;
     _lastHandledCurrentIndex = null;
     _lastHandledCurrentTrackId = null;
-
-    await logService.info(
-        '_playFromList[$requestId]: Setting queue with ${_queue.length} tracks at index $index');
     final didSetQueue = await _performPlaybackAction(
       () => _playback.setQueue(
-        _queue,
+        normalized,
         startIndex: index,
         cacheStore: _cacheStore,
         headers: _playbackHeaders(),
       ),
       'set queue',
     );
+    if (isStale()) return;
     _isApplyingQueueUpdate = false;
-    await logService.info(
-        '_playFromList[$requestId]: Queue setup ${didSetQueue ? "successful" : "failed"}');
-    if (_isPlayRequestStale(requestId)) {
-      await logService.info(
-          '_playFromList[$requestId]: Stale request after set queue; aborting');
-      return;
-    }
     if (!didSetQueue) {
-      await logService.warning(
-          '_playFromList[$requestId]: Failed to set queue, restoring previous queue');
       _queue = previousQueue;
-      if (_isPreparingPlayback) {
-        _isPreparingPlayback = false;
-      }
-      notifyListeners();
+      _isPreparingPlayback = false;
+      _notify();
       return;
     }
-
-    await logService
-        .info('_playFromList[$requestId]: Priming now playing track state');
-    _setNowPlaying(
-      playbackTrack,
-      forceRestart: true,
-    );
+    _setNowPlaying(playbackTrack, forceRestart: true);
     _rememberCurrentIndexEvent(index, playbackTrack);
-
-    await logService.info('_playFromList[$requestId]: Initiating play command');
-    final didPlay = await _performPlaybackAction(
-      () => _playback.play(),
-      'play',
-    );
-    await logService.info(
-        '_playFromList[$requestId]: Play command ${didPlay ? "successful" : "failed"}');
+    await _performPlaybackAction(() => _playback.play(), 'play');
   }
 
   Map<String, String>? _playbackHeaders() {
@@ -1858,13 +1820,11 @@ class AppState extends ChangeNotifier {
     Future<void> Function() action,
     String label,
   ) async {
-    final logService = await LogService.instance;
-    await logService.info('Playback action: $label - starting');
     try {
       await action();
-      await logService.info('Playback action: $label - completed successfully');
       return true;
     } catch (error, stackTrace) {
+      final logService = await LogService.instance;
       await logService.error(
           'Playback action: $label - failed', error, stackTrace);
       debugPrint('Playback $label failed: $error');
@@ -1873,6 +1833,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _refreshNowPlayingCacheStatus(MediaItem? track) async {
+    final generation = _captureServerGeneration();
     if (track == null) {
       final shouldNotify = _isNowPlayingCached || _isPreparingPlayback;
       _isNowPlayingCached = false;
@@ -1883,8 +1844,9 @@ class AppState extends ChangeNotifier {
       return;
     }
     final isCached = await _cacheStore.isAudioCached(track);
+    if (!_isCurrentServerGeneration(generation)) return;
     if (isCached) {
-      _cachedAudio.addAll(_offlineKeysForTrack(track));
+      _cachedAudio.add(_audioKey(track.streamUrl));
     }
     // Don't reassert "preparing" if the player has already reached ready —
     // the player-state listener may have just cleared it, and there's no

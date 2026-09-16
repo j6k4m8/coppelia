@@ -4,13 +4,13 @@ import 'package:provider/provider.dart';
 import '../../core/color_tokens.dart';
 import '../../models/album.dart';
 import '../../core/formatters.dart';
-import '../../models/download_task.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'album_context_menu.dart';
 import 'app_snack.dart';
 import 'collection_detail_view.dart';
 import 'collection_header.dart';
+import 'collection_offline_action.dart';
 import 'library_card.dart';
 import 'section_header.dart';
 
@@ -49,13 +49,12 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
     final albums = _albumsForArtist(state.albums, artist.name);
     final hasAlbums = albums.isNotEmpty;
     final tracks = state.artistTracks;
-    final pinned = state.pinnedAudio;
-    final offlineTracks =
-        tracks.where((track) => pinned.contains(track.streamUrl)).toList();
-    final artistTrackUrls = tracks.map((track) => track.streamUrl).toSet();
-    final relatedDownloads = state.downloadQueue
-        .where((task) => artistTrackUrls.contains(task.track.streamUrl))
-        .toList();
+    final offlineTracks = tracks.where(state.isTrackPinnedInMemory).toList();
+    final offlineState = CollectionOfflineActionState.forTracks(
+      tracks: tracks,
+      isTrackPinned: state.isTrackPinnedInMemory,
+      downloadQueue: state.downloadQueue,
+    );
     final displayTracks = state.offlineOnlyFilter ? offlineTracks : tracks;
     final subtitle = formatArtistSubtitle(
       artist,
@@ -66,33 +65,8 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
         (albums.isNotEmpty ? albums.first.imageUrl : null) ??
         (tracks.isNotEmpty ? tracks.first.imageUrl : null);
 
-    final allTracksPinned = tracks.isNotEmpty &&
-        tracks.every((track) => pinned.contains(track.streamUrl));
-    final isOfflineReady = allTracksPinned && relatedDownloads.isEmpty;
-    final isOfflinePending = relatedDownloads.any(
-      (task) => task.status != DownloadStatus.failed,
-    );
-    final hasFailedDownloads = relatedDownloads.any(
-      (task) => task.status == DownloadStatus.failed,
-    );
-    final offlineLabel = isOfflinePending
-        ? 'Making Available Offline...'
-        : isOfflineReady
-            ? 'Remove from Offline'
-            : hasFailedDownloads
-                ? 'Retry Offline Download'
-                : 'Make Available Offline';
-    final offlineTooltip = isOfflinePending
-        ? 'Cancel Offline Request'
-        : isOfflineReady
-            ? 'Remove from Offline'
-            : hasFailedDownloads
-                ? 'Retry Offline Download'
-                : 'Make Available Offline';
-    final offlineIcon =
-        isOfflineReady ? Icons.download_done_rounded : Icons.download_rounded;
-    final offlineOnPressed = tracks.isNotEmpty
-        ? () => (isOfflineReady || isOfflinePending)
+    final offlineOnPressed = offlineState.canDownload
+        ? () => (offlineState.isOfflineReady || offlineState.isOfflinePending)
             ? state.unpinArtistOffline(artist)
             : state.makeArtistAvailableOffline(artist)
         : null;
@@ -150,10 +124,10 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
                   ),
         ),
         HeaderActionSpec(
-          icon: offlineIcon,
-          label: offlineLabel,
-          tooltip: offlineTooltip,
-          isLoading: isOfflinePending,
+          icon: offlineState.icon,
+          label: offlineState.label,
+          tooltip: offlineState.tooltip,
+          isLoading: offlineState.isOfflinePending,
           outlined: true,
           onPressed: offlineOnPressed,
         ),
@@ -189,7 +163,7 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
         ),
         OutlinedButton.icon(
           onPressed: offlineOnPressed,
-          icon: isOfflinePending
+          icon: offlineState.isOfflinePending
               ? SizedBox(
                   width: 16,
                   height: 16,
@@ -198,8 +172,8 @@ class _ArtistDetailViewState extends State<ArtistDetailView> {
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 )
-              : Icon(offlineIcon),
-          label: Text(offlineLabel),
+              : Icon(offlineState.icon),
+          label: Text(offlineState.label),
         ),
       ],
     );

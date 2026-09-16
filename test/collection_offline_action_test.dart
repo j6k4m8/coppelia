@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:coppelia/models/download_task.dart';
 import 'package:coppelia/models/media_item.dart';
-import 'package:coppelia/ui/widgets/playlist_detail_view.dart';
+import 'package:coppelia/ui/widgets/collection_offline_action.dart';
 
 MediaItem _track(String id) {
   return MediaItem(
@@ -18,11 +18,11 @@ MediaItem _track(String id) {
 }
 
 void main() {
-  group('derivePlaylistOfflineActionState', () {
+  group('CollectionOfflineActionState.forTracks', () {
     test('returns disabled make state for empty playlist', () {
-      final state = derivePlaylistOfflineActionState(
-        playlistTracks: const [],
-        pinnedAudio: const {},
+      final state = CollectionOfflineActionState.forTracks(
+        tracks: const [],
+        isTrackPinned: (_) => false,
         downloadQueue: const [],
       );
 
@@ -34,9 +34,9 @@ void main() {
 
     test('returns pending state when a related download is queued', () {
       final track = _track('1');
-      final state = derivePlaylistOfflineActionState(
-        playlistTracks: [track],
-        pinnedAudio: {track.streamUrl},
+      final state = CollectionOfflineActionState.forTracks(
+        tracks: [track],
+        isTrackPinned: (candidate) => candidate.id == track.id,
         downloadQueue: [
           DownloadTask(
             track: track,
@@ -54,9 +54,9 @@ void main() {
 
     test('returns retry state when related downloads are failed only', () {
       final track = _track('2');
-      final state = derivePlaylistOfflineActionState(
-        playlistTracks: [track],
-        pinnedAudio: const {},
+      final state = CollectionOfflineActionState.forTracks(
+        tracks: [track],
+        isTrackPinned: (_) => false,
         downloadQueue: [
           DownloadTask(
             track: track,
@@ -76,9 +76,9 @@ void main() {
     test('returns remove state when all tracks pinned and no downloads', () {
       final first = _track('3');
       final second = _track('4');
-      final state = derivePlaylistOfflineActionState(
-        playlistTracks: [first, second],
-        pinnedAudio: {first.streamUrl, second.streamUrl},
+      final state = CollectionOfflineActionState.forTracks(
+        tracks: [first, second],
+        isTrackPinned: (_) => true,
         downloadQueue: const [],
       );
 
@@ -91,9 +91,9 @@ void main() {
     test('ignores unrelated downloads when deriving playlist state', () {
       final playlistTrack = _track('5');
       final unrelatedTrack = _track('other');
-      final state = derivePlaylistOfflineActionState(
-        playlistTracks: [playlistTrack],
-        pinnedAudio: const {},
+      final state = CollectionOfflineActionState.forTracks(
+        tracks: [playlistTrack],
+        isTrackPinned: (_) => false,
         downloadQueue: [
           DownloadTask(
             track: unrelatedTrack,

@@ -6,6 +6,7 @@ extension AppStateLibraryExtension on AppState {
     Playlist playlist, {
     bool offlineOnly = false,
   }) async {
+    final generation = _captureServerGeneration();
     _recordDetailEntry();
     final isSamePlaylist = _selectedPlaylist?.id == playlist.id;
     _selectedPlaylist = playlist;
@@ -20,7 +21,8 @@ extension AppStateLibraryExtension on AppState {
     clearSearch(notify: false);
     _notify();
     final cached = await _cacheStore.loadPlaylistTracks(playlist.id);
-    if (_selectedPlaylist?.id != playlist.id) {
+    if (!_isCurrentServerGeneration(generation) ||
+        _selectedPlaylist?.id != playlist.id) {
       return;
     }
     if (cached.isNotEmpty) {
@@ -32,7 +34,8 @@ extension AppStateLibraryExtension on AppState {
     }
     try {
       final tracks = await _client.fetchPlaylistTracks(playlist.id);
-      if (_selectedPlaylist?.id != playlist.id) {
+      if (!_isCurrentServerGeneration(generation) ||
+          _selectedPlaylist?.id != playlist.id) {
         return;
       }
       _playlistTracks = tracks;
@@ -45,52 +48,31 @@ extension AppStateLibraryExtension on AppState {
 
   /// Loads a playlist and starts playback without navigating.
   Future<void> playPlaylist(Playlist playlist) async {
-    final logService = await LogService.instance;
-    await logService.info(
-      'playPlaylist: Starting "${playlist.name}" (${playlist.id}), offline=$_offlineMode',
-    );
-
-    List<MediaItem> tracks = const [];
+    final generation = _captureServerGeneration();
+    List<MediaItem> tracks;
     if (_offlineMode) {
-      await logService
-          .info('playPlaylist: Loading cached tracks for offline mode');
       tracks = await _cacheStore.loadPlaylistTracks(playlist.id);
-      final filtered = _filterPinnedTracks(tracks);
-      if (filtered.isEmpty) {
-        await logService.warning(
-          'playPlaylist: No pinned tracks available in offline mode',
-        );
-        return;
+      if (!_isCurrentServerGeneration(generation)) return;
+      tracks = _filterPinnedTracks(tracks);
+    } else {
+      try {
+        tracks = await _client.fetchPlaylistTracks(playlist.id);
+        if (!_isCurrentServerGeneration(generation)) return;
+        await _cacheStore.savePlaylistTracks(playlist.id, tracks);
+      } catch (_) {
+        if (!_isCurrentServerGeneration(generation)) return;
+        tracks = await _cacheStore.loadPlaylistTracks(playlist.id);
       }
-      await logService
-          .info('playPlaylist: Playing ${filtered.length} pinned tracks');
-      await _playFromList(filtered, filtered.first);
-      return;
     }
-    try {
-      await logService.info('playPlaylist: Fetching tracks from server');
-      tracks = await _client.fetchPlaylistTracks(playlist.id);
-      await logService
-          .info('playPlaylist: Fetched ${tracks.length} tracks, caching');
-      await _cacheStore.savePlaylistTracks(playlist.id, tracks);
-    } catch (error, stackTrace) {
-      await logService.error(
-        'playPlaylist: Failed to fetch from server, trying cache',
-        error,
-        stackTrace,
-      );
-      tracks = await _cacheStore.loadPlaylistTracks(playlist.id);
-    }
-    if (tracks.isEmpty) {
-      await logService.warning('playPlaylist: No tracks available');
-      return;
-    }
+    if (!_isCurrentServerGeneration(generation) || tracks.isEmpty) return;
     await _playFromList(tracks, tracks.first);
   }
 
   /// Builds and plays a Smart List without navigating.
   Future<void> playSmartList(SmartList list) async {
+    final generation = _captureServerGeneration();
     await _ensureSmartListSourceLoaded();
+    if (!_isCurrentServerGeneration(generation)) return;
     final tracks = _buildSmartListTracks(list);
     if (tracks.isEmpty) {
       return;
@@ -148,6 +130,7 @@ extension AppStateLibraryExtension on AppState {
 
   /// Updates a Smart List definition.
   Future<void> updateSmartList(SmartList list) async {
+    final generation = _captureServerGeneration();
     final index = _smartLists.indexWhere((entry) => entry.id == list.id);
     if (index == -1) {
       return;
@@ -158,6 +141,7 @@ extension AppStateLibraryExtension on AppState {
       (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
     );
     await _settingsStore.saveSmartLists(_smartLists);
+    if (!_isCurrentServerGeneration(generation)) return;
     if (_selectedSmartList?.id == list.id) {
       _selectedSmartList = list;
       await _loadSmartListTracks(list);
@@ -167,8 +151,10 @@ extension AppStateLibraryExtension on AppState {
 
   /// Deletes a Smart List.
   Future<void> deleteSmartList(SmartList list) async {
+    final generation = _captureServerGeneration();
     _smartLists = _smartLists.where((entry) => entry.id != list.id).toList();
     await _settingsStore.saveSmartLists(_smartLists);
+    if (!_isCurrentServerGeneration(generation)) return;
     if (_selectedSmartList?.id == list.id) {
       clearSmartListSelection();
     } else {
@@ -181,6 +167,7 @@ extension AppStateLibraryExtension on AppState {
     required String name,
     List<MediaItem> initialTracks = const [],
   }) async {
+    final generation = _captureServerGeneration();
     if (_session == null || _offlineMode) {
       return null;
     }
@@ -193,6 +180,7 @@ extension AppStateLibraryExtension on AppState {
         name: trimmed,
         itemIds: initialTracks.map((track) => track.id).toList(),
       );
+      if (!_isCurrentServerGeneration(generation)) return null;
       final created = playlist.id.isEmpty
           ? Playlist(
               id: playlist.id,
@@ -203,11 +191,14 @@ extension AppStateLibraryExtension on AppState {
           : playlist;
       _playlists = [..._playlists, created]..sort(_comparePlaylists);
       await _cacheStore.savePlaylists(_playlists);
+      if (!_isCurrentServerGeneration(generation)) return null;
       _updatePlaylistStats(1);
       _notifyListenersLater();
       if (created.id.isNotEmpty && initialTracks.isNotEmpty) {
         final tracks = await _client.fetchPlaylistTracks(created.id);
+        if (!_isCurrentServerGeneration(generation)) return null;
         await _cacheStore.savePlaylistTracks(created.id, tracks);
+        if (!_isCurrentServerGeneration(generation)) return null;
         if (_selectedPlaylist?.id == created.id) {
           _playlistTracks = tracks;
           _notify();
@@ -215,12 +206,14 @@ extension AppStateLibraryExtension on AppState {
       }
       return created;
     } catch (_) {
+      if (!_isCurrentServerGeneration(generation)) return null;
       return null;
     }
   }
 
   /// Renames an existing playlist.
   Future<String?> renamePlaylist(Playlist playlist, String name) async {
+    final generation = _captureServerGeneration();
     if (_session == null || _offlineMode) {
       return 'Playlists are unavailable offline.';
     }
@@ -240,17 +233,21 @@ extension AppStateLibraryExtension on AppState {
         .toList()
       ..sort(_comparePlaylists);
     await _cacheStore.savePlaylists(_playlists);
+    if (!_isCurrentServerGeneration(generation)) return null;
     _notify();
     try {
       await _client.renamePlaylist(playlistId: playlist.id, name: trimmed);
+      if (!_isCurrentServerGeneration(generation)) return null;
       if (_selectedPlaylist?.id == playlist.id) {
         _selectedPlaylist = updated;
         _notify();
       }
       return null;
     } catch (error) {
+      if (!_isCurrentServerGeneration(generation)) return null;
       _playlists = previous;
       await _cacheStore.savePlaylists(_playlists);
+      if (!_isCurrentServerGeneration(generation)) return null;
       _notify();
       return _requestErrorMessage(
         error,
@@ -261,12 +258,14 @@ extension AppStateLibraryExtension on AppState {
 
   /// Deletes a playlist.
   Future<String?> deletePlaylist(Playlist playlist) async {
+    final generation = _captureServerGeneration();
     if (_session == null || _offlineMode) {
       return 'Playlists are unavailable offline.';
     }
     final previous = _playlists;
     _playlists = _playlists.where((item) => item.id != playlist.id).toList();
     await _cacheStore.savePlaylists(_playlists);
+    if (!_isCurrentServerGeneration(generation)) return null;
     _updatePlaylistStats(-1);
     if (_selectedPlaylist?.id == playlist.id) {
       clearPlaylistSelection();
@@ -275,10 +274,13 @@ extension AppStateLibraryExtension on AppState {
     }
     try {
       await _client.deletePlaylist(playlist.id);
+      if (!_isCurrentServerGeneration(generation)) return null;
       return null;
     } catch (error) {
+      if (!_isCurrentServerGeneration(generation)) return null;
       _playlists = previous;
       await _cacheStore.savePlaylists(_playlists);
+      if (!_isCurrentServerGeneration(generation)) return null;
       _updatePlaylistStats(1);
       _notify();
       return _requestErrorMessage(
@@ -301,6 +303,7 @@ extension AppStateLibraryExtension on AppState {
     Playlist playlist,
     List<MediaItem> tracks,
   ) async {
+    final generation = _captureServerGeneration();
     if (_session == null || _offlineMode || tracks.isEmpty) {
       return 'Playlists are unavailable offline.';
     }
@@ -309,15 +312,19 @@ extension AppStateLibraryExtension on AppState {
         playlistId: playlist.id,
         itemIds: tracks.map((track) => track.id).toList(),
       );
+      if (!_isCurrentServerGeneration(generation)) return null;
       if (_selectedPlaylist?.id == playlist.id) {
         final refreshed = await _client.fetchPlaylistTracks(playlist.id);
+        if (!_isCurrentServerGeneration(generation)) return null;
         _playlistTracks = refreshed;
         await _cacheStore.savePlaylistTracks(playlist.id, refreshed);
+        if (!_isCurrentServerGeneration(generation)) return null;
         _notify();
       }
       _updatePlaylistTrackCount(playlist, tracks.length);
       return null;
     } catch (error) {
+      if (!_isCurrentServerGeneration(generation)) return null;
       return _requestErrorMessage(
         error,
         fallback: 'Unable to add to playlist.',
@@ -330,6 +337,7 @@ extension AppStateLibraryExtension on AppState {
     MediaItem track,
     Playlist playlist,
   ) async {
+    final generation = _captureServerGeneration();
     if (_session == null || _offlineMode) {
       return 'Playlists are unavailable offline.';
     }
@@ -340,6 +348,7 @@ extension AppStateLibraryExtension on AppState {
             track.playlistItemId == null ? const [] : [track.playlistItemId!],
         itemIds: track.playlistItemId == null ? [track.id] : const [],
       );
+      if (!_isCurrentServerGeneration(generation)) return null;
       if (_selectedPlaylist?.id == playlist.id) {
         final updated = List<MediaItem>.from(_playlistTracks);
         if (track.playlistItemId != null) {
@@ -354,11 +363,13 @@ extension AppStateLibraryExtension on AppState {
         }
         _playlistTracks = updated;
         await _cacheStore.savePlaylistTracks(playlist.id, updated);
+        if (!_isCurrentServerGeneration(generation)) return null;
         _notify();
       }
       _updatePlaylistTrackCount(playlist, -1);
       return null;
     } catch (error) {
+      if (!_isCurrentServerGeneration(generation)) return null;
       return _requestErrorMessage(
         error,
         fallback: 'Unable to remove from playlist.',
@@ -371,6 +382,7 @@ extension AppStateLibraryExtension on AppState {
     Playlist playlist,
     List<MediaItem> orderedTracks,
   ) async {
+    final generation = _captureServerGeneration();
     if (_session == null || _offlineMode) {
       return 'Playlists are unavailable offline.';
     }
@@ -382,24 +394,29 @@ extension AppStateLibraryExtension on AppState {
     final previous = _playlistTracks;
     _playlistTracks = orderedTracks;
     await _cacheStore.savePlaylistTracks(playlist.id, orderedTracks);
+    if (!_isCurrentServerGeneration(generation)) return null;
     _notify();
     try {
       await _client.reorderPlaylist(
         playlistId: playlist.id,
         entryIds: entryIds.whereType<String>().toList(),
       );
+      if (!_isCurrentServerGeneration(generation)) return null;
       return null;
     } catch (error) {
+      if (!_isCurrentServerGeneration(generation)) return null;
       final fallback = await _attemptPlaylistRebuildReorder(
         playlist,
         orderedTracks,
         error,
       );
+      if (!_isCurrentServerGeneration(generation)) return null;
       if (fallback == null) {
         return null;
       }
       _playlistTracks = previous;
       await _cacheStore.savePlaylistTracks(playlist.id, previous);
+      if (!_isCurrentServerGeneration(generation)) return null;
       _notify();
       return fallback;
     }
@@ -567,6 +584,7 @@ extension AppStateLibraryExtension on AppState {
     );
 
     try {
+      if (!_isSearchRequestActive(requestId, trimmed)) return;
       final results = await _client.searchLibrary(trimmed);
       if (!_isSearchRequestActive(requestId, trimmed)) {
         return;
@@ -581,6 +599,7 @@ extension AppStateLibraryExtension on AppState {
       }
       await LogService.instance
           .then((log) => log.error('Search: Failed', error, stackTrace));
+      if (!_isSearchRequestActive(requestId, trimmed)) return;
       _searchResults = const SearchResults();
     } finally {
       if (_isSearchRequestActive(requestId, trimmed)) {
@@ -658,6 +677,7 @@ extension AppStateLibraryExtension on AppState {
     if (_playlists.isEmpty) {
       try {
         final playlists = await _client.fetchPlaylists();
+        if (!_isSearchRequestActive(requestId, query)) return;
         _playlists = playlists;
         await _cacheStore.savePlaylists(playlists);
         if (!_isSearchRequestActive(requestId, query)) {
@@ -748,13 +768,17 @@ extension AppStateLibraryExtension on AppState {
 
   /// Loads albums, using cached results when possible.
   Future<void> loadAlbums() async {
+    final generation = _captureServerGeneration();
     final cached = await _cacheStore.loadAlbums();
+    if (!_isCurrentServerGeneration(generation)) return;
     if (cached.isNotEmpty) {
       _albums = cached;
       _notify();
     }
     if (_offlineMode) {
-      _albums = await loadOfflineAlbums();
+      final offline = await loadOfflineAlbums();
+      if (!_isCurrentServerGeneration(generation)) return;
+      _albums = offline;
       _notify();
       return;
     }
@@ -763,13 +787,17 @@ extension AppStateLibraryExtension on AppState {
 
   /// Loads artists, using cached results when possible.
   Future<void> loadArtists() async {
+    final generation = _captureServerGeneration();
     final cached = await _cacheStore.loadArtists();
+    if (!_isCurrentServerGeneration(generation)) return;
     if (cached.isNotEmpty) {
       _artists = cached;
       _notify();
     }
     if (_offlineMode) {
-      _artists = await loadOfflineArtists();
+      final offline = await loadOfflineArtists();
+      if (!_isCurrentServerGeneration(generation)) return;
+      _artists = offline;
       _notify();
       return;
     }
@@ -778,7 +806,9 @@ extension AppStateLibraryExtension on AppState {
 
   /// Loads genres, using cached results when possible.
   Future<void> loadGenres() async {
+    final generation = _captureServerGeneration();
     final cached = await _cacheStore.loadGenres();
+    if (!_isCurrentServerGeneration(generation)) return;
     if (cached.isNotEmpty) {
       _genres = cached;
       _notify();
@@ -791,11 +821,13 @@ extension AppStateLibraryExtension on AppState {
 
   /// Loads paginated tracks for the library browse view.
   Future<void> loadLibraryTracks({bool reset = false}) async {
+    final generation = _captureServerGeneration();
     if (_session == null) {
       return;
     }
     if (_offlineMode) {
       final offlineTracks = await loadOfflineTracks();
+      if (!_isCurrentServerGeneration(generation)) return;
       _libraryTracks = offlineTracks;
       _tracksOffset = offlineTracks.length;
       _hasMoreTracks = false;
@@ -819,13 +851,18 @@ extension AppStateLibraryExtension on AppState {
       _notify();
     }
     _isLoadingTracks = true;
-    _tracksLoadCompleter = Completer<void>();
+    final completion = Completer<void>();
+    _tracksLoadCompleter = completion;
     _notify();
     try {
       final tracks = await _client.fetchLibraryTracks(
         startIndex: _tracksOffset,
         limit: AppState._tracksPageSize,
       );
+      if (!_isCurrentServerGeneration(generation) ||
+          _tracksLoadCompleter != completion) {
+        return;
+      }
       if (reset) {
         _libraryTracks = tracks;
       } else {
@@ -842,10 +879,13 @@ extension AppStateLibraryExtension on AppState {
     } catch (_) {
       // Ignore load failures; keep whatever tracks we already have.
     } finally {
-      _isLoadingTracks = false;
-      _tracksLoadCompleter?.complete();
-      _tracksLoadCompleter = null;
-      _notify();
+      completion.complete();
+      if (_isCurrentServerGeneration(generation) &&
+          _tracksLoadCompleter == completion) {
+        _isLoadingTracks = false;
+        _tracksLoadCompleter = null;
+        _notify();
+      }
     }
   }
 
@@ -905,6 +945,7 @@ extension AppStateLibraryExtension on AppState {
 
   /// Loads the Jump in shelf picks.
   Future<void> loadJumpIn({bool force = false}) async {
+    final generation = _captureServerGeneration();
     if (_offlineMode) {
       if (_isLoadingJumpIn) {
         return;
@@ -936,13 +977,16 @@ extension AppStateLibraryExtension on AppState {
         getRandomAlbum(),
         getRandomArtist(),
       ]);
+      if (!_isCurrentServerGeneration(generation)) return;
       _jumpInTrack = results[0] as MediaItem? ?? _jumpInTrack;
       _jumpInAlbum = results[1] as Album? ?? _jumpInAlbum;
       _jumpInArtist = results[2] as Artist? ?? _jumpInArtist;
       _lastJumpInRefreshAt = DateTime.now();
     } finally {
-      _isLoadingJumpIn = false;
-      _notify();
+      if (_isCurrentServerGeneration(generation)) {
+        _isLoadingJumpIn = false;
+        _notify();
+      }
     }
   }
 
@@ -959,13 +1003,16 @@ extension AppStateLibraryExtension on AppState {
 
   /// Loads favorite albums.
   Future<void> loadFavoriteAlbums() async {
+    final generation = _captureServerGeneration();
     final cached = await _cacheStore.loadFavoriteAlbums();
+    if (!_isCurrentServerGeneration(generation)) return;
     if (cached.isNotEmpty) {
       _favoriteAlbums = cached;
       _notify();
     }
     if (_offlineMode) {
       final offlineAlbums = await loadOfflineAlbums();
+      if (!_isCurrentServerGeneration(generation)) return;
       final offlineIds = offlineAlbums.map((album) => album.id).toSet();
       _favoriteAlbums =
           cached.where((album) => offlineIds.contains(album.id)).toList();
@@ -977,13 +1024,16 @@ extension AppStateLibraryExtension on AppState {
 
   /// Loads favorite artists.
   Future<void> loadFavoriteArtists() async {
+    final generation = _captureServerGeneration();
     final cached = await _cacheStore.loadFavoriteArtists();
+    if (!_isCurrentServerGeneration(generation)) return;
     if (cached.isNotEmpty) {
       _favoriteArtists = cached;
       _notify();
     }
     if (_offlineMode) {
       final offlineArtists = await loadOfflineArtists();
+      if (!_isCurrentServerGeneration(generation)) return;
       final offlineIds = offlineArtists.map((artist) => artist.id).toSet();
       _favoriteArtists =
           cached.where((artist) => offlineIds.contains(artist.id)).toList();
@@ -995,7 +1045,9 @@ extension AppStateLibraryExtension on AppState {
 
   /// Loads favorite tracks.
   Future<void> loadFavoriteTracks() async {
+    final generation = _captureServerGeneration();
     final cached = await _cacheStore.loadFavoriteTracks();
+    if (!_isCurrentServerGeneration(generation)) return;
     if (cached.isNotEmpty) {
       _favoriteTracks = cached;
       _notify();
@@ -1009,11 +1061,13 @@ extension AppStateLibraryExtension on AppState {
   }
 
   Future<void> _loadSmartListTracks(SmartList list) async {
+    final generation = _captureServerGeneration();
     _isLoadingSmartList = true;
     _notify();
 
     if (!_offlineMode && _libraryTracks.isEmpty && !_isLoadingTracks) {
       await _loadCachedLibraryTrackSnapshot();
+      if (!_isCurrentServerGeneration(generation)) return;
     }
     if (_libraryTracks.isNotEmpty) {
       _smartListTracks = _buildSmartListTracks(list);
@@ -1021,6 +1075,7 @@ extension AppStateLibraryExtension on AppState {
     }
 
     await _ensureSmartListSourceLoaded();
+    if (!_isCurrentServerGeneration(generation)) return;
     if (_selectedSmartList?.id != list.id) {
       return;
     }
@@ -1030,6 +1085,7 @@ extension AppStateLibraryExtension on AppState {
   }
 
   Future<void> _ensureSmartListSourceLoaded() async {
+    final generation = _captureServerGeneration();
     if (_offlineMode) {
       if (_libraryTracks.isEmpty) {
         await loadLibraryTracks();
@@ -1038,16 +1094,19 @@ extension AppStateLibraryExtension on AppState {
     }
     if (_isLoadingTracks) {
       await _tracksLoadCompleter?.future;
+      if (!_isCurrentServerGeneration(generation)) return;
       await _loadRemainingLibraryTracks();
       return;
     }
     if (_libraryTracks.isEmpty && await _loadCachedLibraryTrackSnapshot()) {
       return;
     }
+    if (!_isCurrentServerGeneration(generation)) return;
     await _loadRemainingLibraryTracks();
   }
 
   Future<void> _refreshSmartListSource() async {
+    final generation = _captureServerGeneration();
     if (_offlineMode || _session == null) {
       return;
     }
@@ -1055,7 +1114,9 @@ extension AppStateLibraryExtension on AppState {
     final previousOffset = _tracksOffset;
     final previousHasMore = _hasMoreTracks;
     await loadLibraryTracks(reset: true);
+    if (!_isCurrentServerGeneration(generation)) return;
     await _loadRemainingLibraryTracks();
+    if (!_isCurrentServerGeneration(generation)) return;
     if (_libraryTracks.isEmpty && _hasMoreTracks && previousTracks.isNotEmpty) {
       _libraryTracks = previousTracks;
       _tracksOffset = previousOffset;
@@ -1066,10 +1127,12 @@ extension AppStateLibraryExtension on AppState {
   }
 
   Future<void> _loadRemainingLibraryTracks() async {
+    final generation = _captureServerGeneration();
     while (_hasMoreTracks) {
       final beforeOffset = _tracksOffset;
       final beforeHasMore = _hasMoreTracks;
       await loadLibraryTracks();
+      if (!_isCurrentServerGeneration(generation)) return;
       if (_tracksOffset == beforeOffset && _hasMoreTracks == beforeHasMore) {
         break;
       }
@@ -1077,7 +1140,9 @@ extension AppStateLibraryExtension on AppState {
   }
 
   Future<bool> _loadCachedLibraryTrackSnapshot() async {
+    final generation = _captureServerGeneration();
     final cached = await _cacheStore.loadLibraryTracks();
+    if (!_isCurrentServerGeneration(generation)) return false;
     if (cached.isEmpty) {
       return false;
     }
@@ -1453,6 +1518,7 @@ extension AppStateLibraryExtension on AppState {
 
   /// Selects an album and loads its tracks.
   Future<void> selectAlbum(Album album, {bool offlineOnly = false}) async {
+    final generation = _captureServerGeneration();
     _recordDetailEntry();
     final isSameAlbum = _selectedAlbum?.id == album.id;
     _selectedPlaylist = null;
@@ -1474,7 +1540,8 @@ extension AppStateLibraryExtension on AppState {
       await _cacheStore.loadAlbumTracks(album.id),
       album.id,
     );
-    if (_selectedAlbum?.id != album.id) {
+    if (!_isCurrentServerGeneration(generation) ||
+        _selectedAlbum?.id != album.id) {
       return;
     }
     if (cached.isNotEmpty) {
@@ -1487,6 +1554,7 @@ extension AppStateLibraryExtension on AppState {
       // detail page remains playable while the refresh runs.
       if (_libraryTracks.isEmpty) {
         await _loadCachedLibraryTrackSnapshot();
+        if (!_isCurrentServerGeneration(generation)) return;
       }
       final localTracks = _cachedLibraryTracksForAlbum(album);
       if (localTracks.isNotEmpty) {
@@ -1500,7 +1568,8 @@ extension AppStateLibraryExtension on AppState {
         _albumTracks = filtered;
       } else {
         final tracks = await _offlineTracksForAlbum(album);
-        if (_selectedAlbum?.id != album.id) {
+        if (!_isCurrentServerGeneration(generation) ||
+            _selectedAlbum?.id != album.id) {
           return;
         }
         _albumTracks = tracks;
@@ -1510,7 +1579,8 @@ extension AppStateLibraryExtension on AppState {
     }
     try {
       final tracks = await _client.fetchAlbumTracks(album.id);
-      if (_selectedAlbum?.id != album.id) {
+      if (!_isCurrentServerGeneration(generation) ||
+          _selectedAlbum?.id != album.id) {
         return;
       }
       // An empty refresh must not erase tracks recovered from the local
@@ -1540,24 +1610,19 @@ extension AppStateLibraryExtension on AppState {
 
   /// Loads an album and starts playback.
   Future<void> playAlbum(Album album) async {
-    final logService = await LogService.instance;
-    await logService.info(
-      'playAlbum: Starting "${album.name}" (${album.id}), offline=$_offlineMode',
-    );
-
+    final generation = _captureServerGeneration();
     await selectAlbum(album);
+    if (!_isCurrentServerGeneration(generation)) return;
     final tracks =
         _offlineMode ? _filterPinnedTracks(_albumTracks) : _albumTracks;
     if (tracks.isNotEmpty) {
-      await logService.info('playAlbum: Playing ${tracks.length} tracks');
       await _playFromList(tracks, tracks.first);
-    } else {
-      await logService.warning('playAlbum: No tracks available');
     }
   }
 
   /// Selects an artist and loads their tracks.
   Future<void> selectArtist(Artist artist, {bool offlineOnly = false}) async {
+    final generation = _captureServerGeneration();
     _recordDetailEntry();
     final isSameArtist = _selectedArtist?.id == artist.id;
     _selectedPlaylist = null;
@@ -1576,7 +1641,8 @@ extension AppStateLibraryExtension on AppState {
     clearSearch(notify: false);
     _notify();
     final cached = await _cacheStore.loadArtistTracks(artist.id);
-    if (_selectedArtist?.id != artist.id) {
+    if (!_isCurrentServerGeneration(generation) ||
+        _selectedArtist?.id != artist.id) {
       return;
     }
     if (cached.isNotEmpty) {
@@ -1589,7 +1655,8 @@ extension AppStateLibraryExtension on AppState {
         _artistTracks = filtered;
       } else {
         final tracks = await _offlineTracksForArtist(artist);
-        if (_selectedArtist?.id != artist.id) {
+        if (!_isCurrentServerGeneration(generation) ||
+            _selectedArtist?.id != artist.id) {
           return;
         }
         _artistTracks = tracks;
@@ -1599,7 +1666,8 @@ extension AppStateLibraryExtension on AppState {
     }
     try {
       final tracks = await _client.fetchArtistTracks(artist.id);
-      if (_selectedArtist?.id != artist.id) {
+      if (!_isCurrentServerGeneration(generation) ||
+          _selectedArtist?.id != artist.id) {
         return;
       }
       _artistTracks = tracks;
@@ -1612,7 +1680,9 @@ extension AppStateLibraryExtension on AppState {
 
   /// Loads an artist and starts playback.
   Future<void> playArtist(Artist artist) async {
+    final generation = _captureServerGeneration();
     await selectArtist(artist);
+    if (!_isCurrentServerGeneration(generation)) return;
     final tracks =
         _offlineMode ? _filterPinnedTracks(_artistTracks) : _artistTracks;
     if (tracks.isNotEmpty) {
@@ -1622,6 +1692,7 @@ extension AppStateLibraryExtension on AppState {
 
   /// Selects a genre and loads its tracks.
   Future<void> selectGenre(Genre genre) async {
+    final generation = _captureServerGeneration();
     _recordDetailEntry();
     final isSameGenre = _selectedGenre?.id == genre.id;
     _selectedPlaylist = null;
@@ -1639,7 +1710,8 @@ extension AppStateLibraryExtension on AppState {
     clearSearch(notify: false);
     _notify();
     final cached = await _cacheStore.loadGenreTracks(genre.id);
-    if (_selectedGenre?.id != genre.id) {
+    if (!_isCurrentServerGeneration(generation) ||
+        _selectedGenre?.id != genre.id) {
       return;
     }
     if (cached.isNotEmpty) {
@@ -1651,7 +1723,8 @@ extension AppStateLibraryExtension on AppState {
     }
     try {
       final tracks = await _client.fetchGenreTracks(genre.id);
-      if (_selectedGenre?.id != genre.id) {
+      if (!_isCurrentServerGeneration(generation) ||
+          _selectedGenre?.id != genre.id) {
         return;
       }
       _genreTracks = tracks;
@@ -1664,7 +1737,9 @@ extension AppStateLibraryExtension on AppState {
 
   /// Loads a genre and starts playback.
   Future<void> playGenre(Genre genre) async {
+    final generation = _captureServerGeneration();
     await selectGenre(genre);
+    if (!_isCurrentServerGeneration(generation)) return;
     final tracks =
         _offlineMode ? _filterPinnedTracks(_genreTracks) : _genreTracks;
     if (tracks.isNotEmpty) {
@@ -1738,39 +1813,44 @@ extension AppStateLibraryExtension on AppState {
     }
   }
 
-  Future<void> _loadAlbums() async {
+  Future<void> _loadAlbums({_ServerGeneration? serverGeneration}) async {
     await _loadRemoteCollection(
       collectionName: 'albums',
       fetch: _client.fetchAlbums,
       assign: (albums) => _albums = albums,
       save: _cacheStore.saveAlbums,
+      serverGeneration: serverGeneration,
     );
   }
 
-  Future<void> _loadArtists() async {
+  Future<void> _loadArtists({_ServerGeneration? serverGeneration}) async {
     await _loadRemoteCollection(
       collectionName: 'artists',
       fetch: _client.fetchArtists,
       assign: (artists) => _artists = artists,
       save: _cacheStore.saveArtists,
+      serverGeneration: serverGeneration,
     );
   }
 
-  Future<void> _loadGenres() async {
+  Future<void> _loadGenres({_ServerGeneration? serverGeneration}) async {
     await _loadRemoteCollection(
       collectionName: 'genres',
       fetch: _client.fetchGenres,
       assign: (genres) => _genres = genres,
       save: _cacheStore.saveGenres,
+      serverGeneration: serverGeneration,
     );
   }
 
-  Future<void> _loadFavoriteAlbums() async {
+  Future<void> _loadFavoriteAlbums(
+      {_ServerGeneration? serverGeneration}) async {
     await _loadRemoteCollection(
       collectionName: 'favorite albums',
       fetch: _client.fetchFavoriteAlbums,
       assign: (albums) => _favoriteAlbums = albums,
       save: _cacheStore.saveFavoriteAlbums,
+      serverGeneration: serverGeneration,
       afterLoad: () async {
         if (_autoDownloadFavoritesEnabled && _autoDownloadFavoriteAlbums) {
           unawaited(_prefetchFavoriteDownloads(albumsOnly: true));
@@ -1779,12 +1859,14 @@ extension AppStateLibraryExtension on AppState {
     );
   }
 
-  Future<void> _loadFavoriteArtists() async {
+  Future<void> _loadFavoriteArtists(
+      {_ServerGeneration? serverGeneration}) async {
     await _loadRemoteCollection(
       collectionName: 'favorite artists',
       fetch: _client.fetchFavoriteArtists,
       assign: (artists) => _favoriteArtists = artists,
       save: _cacheStore.saveFavoriteArtists,
+      serverGeneration: serverGeneration,
       shouldApply: (artists) => artists.isNotEmpty || _favoriteArtists.isEmpty,
       afterLoad: () async {
         if (_autoDownloadFavoritesEnabled && _autoDownloadFavoriteArtists) {
@@ -1794,12 +1876,14 @@ extension AppStateLibraryExtension on AppState {
     );
   }
 
-  Future<void> _loadFavoriteTracks() async {
+  Future<void> _loadFavoriteTracks(
+      {_ServerGeneration? serverGeneration}) async {
     await _loadRemoteCollection(
       collectionName: 'favorite tracks',
       fetch: _client.fetchFavoriteTracks,
       assign: (tracks) => _favoriteTracks = tracks,
       save: _cacheStore.saveFavoriteTracks,
+      serverGeneration: serverGeneration,
       afterLoad: () async {
         if (_autoDownloadFavoritesEnabled && _autoDownloadFavoriteTracks) {
           unawaited(_prefetchFavoriteDownloads(tracksOnly: true));
@@ -1813,21 +1897,31 @@ extension AppStateLibraryExtension on AppState {
     required Future<List<T>> Function() fetch,
     required void Function(List<T> values) assign,
     required Future<void> Function(List<T> values) save,
+    _ServerGeneration? serverGeneration,
     bool Function(List<T> values)? shouldApply,
     Future<void> Function()? afterLoad,
   }) async {
-    if (_session == null || _offlineMode) {
+    final generation = serverGeneration ?? _captureServerGeneration();
+    if (_session == null ||
+        _offlineMode ||
+        !_isCurrentServerGeneration(generation)) {
       return;
     }
     try {
       _isLoadingLibrary = true;
       _notify();
       final values = await fetch();
+      if (!_isCurrentServerGeneration(generation)) {
+        return;
+      }
       if (shouldApply == null || shouldApply(values)) {
         assign(values);
         await save(values);
       }
     } catch (error, stackTrace) {
+      if (!_isCurrentServerGeneration(generation)) {
+        return;
+      }
       await LogService.instance.then(
         (log) => log.error(
           'Library: Failed to refresh $collectionName',
@@ -1837,10 +1931,12 @@ extension AppStateLibraryExtension on AppState {
       );
       // Use cached results when available.
     } finally {
-      _isLoadingLibrary = false;
-      _notify();
-      if (afterLoad != null) {
-        await afterLoad();
+      if (_isCurrentServerGeneration(generation)) {
+        _isLoadingLibrary = false;
+        _notify();
+        if (afterLoad != null) {
+          await afterLoad();
+        }
       }
     }
   }

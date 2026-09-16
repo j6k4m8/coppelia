@@ -138,6 +138,7 @@ extension AppStateFavoritesExtension on AppState {
     Future<bool?> Function()? confirmRemote,
     String? serverMismatchMessage,
   }) async {
+    final generation = _captureServerGeneration();
     if (inFlight.contains(itemId) || wasFavorite == isFavorite) {
       return null;
     }
@@ -147,35 +148,44 @@ extension AppStateFavoritesExtension on AppState {
     _notify();
     if (_offlineMode) {
       await persistLocal();
+      if (!_isCurrentServerGeneration(generation)) return null;
       inFlight.remove(itemId);
       _notify();
       return null;
     }
     try {
       await _client.setFavorite(itemId: itemId, isFavorite: isFavorite);
+      if (!_isCurrentServerGeneration(generation)) return null;
       await persistLocal();
+      if (!_isCurrentServerGeneration(generation)) return null;
       _refreshSelectedSmartList();
       unawaited(syncOffline(isFavorite));
       final confirmed = confirmRemote == null ? null : await confirmRemote();
+      if (!_isCurrentServerGeneration(generation)) return null;
       if (confirmed != null && confirmed != isFavorite) {
         applyLocal(wasFavorite);
         await persistLocal();
+        if (!_isCurrentServerGeneration(generation)) return null;
         _refreshSelectedSmartList();
         _notify();
         return serverMismatchMessage ?? fallbackMessage;
       }
       return null;
     } catch (error) {
+      if (!_isCurrentServerGeneration(generation)) return null;
       applyLocal(wasFavorite);
       await persistLocal();
+      if (!_isCurrentServerGeneration(generation)) return null;
       _refreshSelectedSmartList();
       return _requestErrorMessage(
         error,
         fallback: fallbackMessage,
       );
     } finally {
-      inFlight.remove(itemId);
-      _notify();
+      if (_isCurrentServerGeneration(generation)) {
+        inFlight.remove(itemId);
+        _notify();
+      }
     }
   }
 

@@ -17,10 +17,8 @@ class GenreDetailView extends StatelessWidget {
     if (genre == null) {
       return const SizedBox.shrink();
     }
-    final pinned = state.pinnedAudio;
-    final offlineTracks = state.genreTracks
-        .where((track) => pinned.contains(track.streamUrl))
-        .toList();
+    final offlineTracks =
+        state.genreTracks.where(state.isTrackPinnedInMemory).toList();
     final displayTracks =
         state.offlineOnlyFilter ? offlineTracks : state.genreTracks;
 

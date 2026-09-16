@@ -148,16 +148,19 @@ extension AppStateOfflineExtension on AppState {
   /// Builds preview data for downloading the whole library offline.
   Future<WholeLibraryOfflinePreview?>
       prepareWholeLibraryOfflinePreview() async {
+    final generation = _captureServerGeneration();
     if (_session == null || _offlineMode) {
       return null;
     }
     final tracks = await _loadAllLibraryTracksForOfflineAction();
+    if (!_isCurrentServerGeneration(generation)) return null;
     if (tracks.isEmpty) {
       return null;
     }
     final cachedEntries = await _cacheStore.loadCachedAudioEntries();
-    final cachedBytesByUrl = <String, int>{
-      for (final entry in cachedEntries) entry.streamUrl: entry.bytes,
+    if (!_isCurrentServerGeneration(generation)) return null;
+    final cachedBytesByKey = <String, int>{
+      for (final entry in cachedEntries) entry.cacheKey: entry.bytes,
     };
     final knownBitrates = tracks
         .map((track) => track.bitrate)
@@ -172,7 +175,7 @@ extension AppStateOfflineExtension on AppState {
     var estimatedRemainingBytes = 0;
     var cachedTrackCount = 0;
     for (final track in tracks) {
-      final cachedBytes = cachedBytesByUrl[track.streamUrl];
+      final cachedBytes = cachedBytesByKey[_audioKey(track.streamUrl)];
       if (cachedBytes != null) {
         estimatedTotalBytes += cachedBytes;
         cachedTrackCount += 1;
@@ -184,6 +187,7 @@ extension AppStateOfflineExtension on AppState {
     }
     final wholeLibraryPinnedTrackCount =
         (await _cacheStore.loadWholeLibraryPinnedAudio()).length;
+    if (!_isCurrentServerGeneration(generation)) return null;
     return WholeLibraryOfflinePreview(
       tracks: tracks,
       trackCount: tracks.length,
@@ -202,60 +206,54 @@ extension AppStateOfflineExtension on AppState {
     List<MediaItem> tracks,
   ) async {
     final normalizedTracks = _deduplicateTracksForOffline(tracks);
+    final generation = _captureServerGeneration();
+    const emptyResult = WholeLibraryOfflineResult(
+      trackCount: 0,
+      newlyPinnedCount: 0,
+      newlyQueuedCount: 0,
+      retriedFailedCount: 0,
+      alreadyPinnedCount: 0,
+      wholeLibraryPinnedTrackCount: 0,
+    );
     if (normalizedTracks.isEmpty) {
-      return const WholeLibraryOfflineResult(
-        trackCount: 0,
-        newlyPinnedCount: 0,
-        newlyQueuedCount: 0,
-        retriedFailedCount: 0,
-        alreadyPinnedCount: 0,
-        wholeLibraryPinnedTrackCount: 0,
-      );
+      return emptyResult;
     }
 
     final cachedEntries = await _cacheStore.loadCachedAudioEntries();
-    final cachedUrls = cachedEntries.map((entry) => entry.streamUrl).toSet();
-    _cachedAudio = cachedUrls;
+    if (!_isCurrentServerGeneration(generation)) return emptyResult;
+    final cachedKeys = cachedEntries.map((entry) => entry.cacheKey).toSet();
+    _cachedAudio = cachedKeys;
 
     final nextPinnedAudio = Set<String>.from(_pinnedAudio);
+    final storedWholeLibraryPins =
+        await _cacheStore.loadWholeLibraryPinnedAudio();
+    if (!_isCurrentServerGeneration(generation)) return emptyResult;
     final nextWholeLibraryPinnedAudio =
-        Set<String>.from(await _cacheStore.loadWholeLibraryPinnedAudio());
+        Set<String>.from(storedWholeLibraryPins);
     final pinnedItemsToSave = <MediaItem>[];
-    final pinnedItemsToForget = <String>{};
     var newlyPinnedCount = 0;
     var newlyQueuedCount = 0;
     var retriedFailedCount = 0;
     var alreadyPinnedCount = 0;
 
     for (final track in normalizedTracks) {
-      final keys = _offlineKeysForTrack(track);
-      for (final key in keys) {
-        _cancelledOfflineRequests.remove(key);
-      }
-
-      final wasPinned = keys.any(nextPinnedAudio.contains);
+      final key = _audioKey(track.streamUrl);
+      _cancelledOfflineRequests.remove(key);
+      final wasPinned = nextPinnedAudio.contains(key);
       if (wasPinned) {
         alreadyPinnedCount += 1;
       } else {
-        nextPinnedAudio.add(track.streamUrl);
-        nextWholeLibraryPinnedAudio.add(track.streamUrl);
+        nextPinnedAudio.add(key);
+        nextWholeLibraryPinnedAudio.add(key);
         pinnedItemsToSave.add(track);
         newlyPinnedCount += 1;
       }
 
-      for (final key in keys.where((key) => key != track.streamUrl)) {
-        if (nextPinnedAudio.remove(key)) {
-          pinnedItemsToForget.add(key);
-        }
-        nextWholeLibraryPinnedAudio.remove(key);
-      }
-
-      if (keys.any(cachedUrls.contains)) {
-        _cachedAudio.addAll(keys);
+      if (cachedKeys.contains(key)) {
         continue;
       }
 
-      final existingIndex = _indexOfDownloadForKeys(keys);
+      final existingIndex = _indexOfDownload(track.streamUrl);
       if (existingIndex != null) {
         final existing = _downloadQueue[existingIndex];
         if (existing.status == DownloadStatus.failed) {
@@ -284,15 +282,16 @@ extension AppStateOfflineExtension on AppState {
       newlyQueuedCount += 1;
     }
 
+    if (!_isCurrentServerGeneration(generation)) return emptyResult;
     _pinnedAudio = nextPinnedAudio;
     await _cacheStore.savePinnedAudio(_pinnedAudio);
+    if (!_isCurrentServerGeneration(generation)) return emptyResult;
     if (pinnedItemsToSave.isNotEmpty) {
       await _cacheStore.savePinnedAudioItems(pinnedItemsToSave);
-    }
-    if (pinnedItemsToForget.isNotEmpty) {
-      await _cacheStore.forgetPinnedAudioItems(pinnedItemsToForget);
+      if (!_isCurrentServerGeneration(generation)) return emptyResult;
     }
     await _cacheStore.saveWholeLibraryPinnedAudio(nextWholeLibraryPinnedAudio);
+    if (!_isCurrentServerGeneration(generation)) return emptyResult;
 
     _refreshSelectedSmartList();
     unawaited(refreshMediaCacheBytes());
@@ -320,24 +319,14 @@ extension AppStateOfflineExtension on AppState {
       return const WholeLibraryOfflineRemovalResult(removedTrackCount: 0);
     }
 
-    final keysToRemove = <String>{};
-    for (final streamUrl in wholeLibraryPinnedAudio) {
-      keysToRemove.addAll(_offlineKeysForStreamUrl(streamUrl));
-    }
-
-    _pinnedAudio.removeWhere(keysToRemove.contains);
-    _downloadQueue.removeWhere((task) {
-      if (!keysToRemove.contains(task.track.streamUrl)) {
-        return false;
-      }
-      _downloadStatusByUrl.remove(task.track.streamUrl);
-      _downloadProgressTimestamps.remove(task.track.streamUrl);
-      return true;
-    });
-    _downloadStatusByUrl
-        .removeWhere((streamUrl, _) => keysToRemove.contains(streamUrl));
+    final keysToRemove = wholeLibraryPinnedAudio.map(_audioKey).toSet();
+    _pinnedAudio.removeAll(keysToRemove);
+    _downloadQueue.removeWhere(
+      (task) => keysToRemove.contains(_audioKey(task.track.streamUrl)),
+    );
+    _downloadStatusByKey.removeWhere((key, _) => keysToRemove.contains(key));
     _downloadProgressTimestamps
-        .removeWhere((streamUrl, _) => keysToRemove.contains(streamUrl));
+        .removeWhere((key, _) => keysToRemove.contains(key));
     _cancelledOfflineRequests.addAll(keysToRemove);
 
     await _cacheStore.savePinnedAudio(_pinnedAudio);
@@ -390,6 +379,7 @@ extension AppStateOfflineExtension on AppState {
     if (!_autoDownloadFavoritesEnabled) {
       return;
     }
+    final generation = _captureServerGeneration();
     final shouldAlbums =
         _autoDownloadFavoriteAlbums && !artistsOnly && !tracksOnly;
     final shouldArtists =
@@ -398,6 +388,7 @@ extension AppStateOfflineExtension on AppState {
         _autoDownloadFavoriteTracks && !albumsOnly && !artistsOnly;
     if (shouldAlbums) {
       for (final album in _favoriteAlbums) {
+        if (!_isCurrentServerGeneration(generation)) return;
         await makeAlbumAvailableOffline(
           album,
           requiresWifi: _autoDownloadFavoritesWifiOnly,
@@ -406,6 +397,7 @@ extension AppStateOfflineExtension on AppState {
     }
     if (shouldArtists) {
       for (final artist in _favoriteArtists) {
+        if (!_isCurrentServerGeneration(generation)) return;
         await makeArtistAvailableOffline(
           artist,
           requiresWifi: _autoDownloadFavoritesWifiOnly,
@@ -414,6 +406,7 @@ extension AppStateOfflineExtension on AppState {
     }
     if (shouldTracks) {
       for (final track in _favoriteTracks) {
+        if (!_isCurrentServerGeneration(generation)) return;
         await makeTrackAvailableOffline(
           track,
           requiresWifi: _autoDownloadFavoritesWifiOnly,
@@ -423,40 +416,35 @@ extension AppStateOfflineExtension on AppState {
   }
 
   int? _indexOfDownload(String streamUrl) {
+    final key = _audioKey(streamUrl);
     final index = _downloadQueue.indexWhere(
-      (task) => task.track.streamUrl == streamUrl,
-    );
-    return index == -1 ? null : index;
-  }
-
-  int? _indexOfDownloadForKeys(Set<String> streamUrls) {
-    final index = _downloadQueue.indexWhere(
-      (task) => streamUrls.contains(task.track.streamUrl),
+      (task) => _audioKey(task.track.streamUrl) == key,
     );
     return index == -1 ? null : index;
   }
 
   void _addDownloadTask(DownloadTask task) {
     _downloadQueue.add(task);
-    _downloadStatusByUrl[task.track.streamUrl] = task.status;
+    _downloadStatusByKey[_audioKey(task.track.streamUrl)] = task.status;
   }
 
   void _replaceDownloadTaskAt(int index, DownloadTask task) {
     _downloadQueue[index] = task;
-    _downloadStatusByUrl[task.track.streamUrl] = task.status;
+    _downloadStatusByKey[_audioKey(task.track.streamUrl)] = task.status;
   }
 
   void _removeDownloadTaskAt(int index) {
     final removed = _downloadQueue.removeAt(index);
-    _downloadStatusByUrl.remove(removed.track.streamUrl);
+    _downloadStatusByKey.remove(_audioKey(removed.track.streamUrl));
   }
 
   Future<void> _queueDownload(
     MediaItem track, {
     bool requiresWifi = false,
   }) async {
-    final normalized = _normalizeTrackForOffline(track);
-    _cancelledOfflineRequests.remove(normalized.streamUrl);
+    final generation = _captureServerGeneration();
+    final normalized = _normalizeTrackForPlayback(track);
+    _clearCancelledOfflineRequest(normalized.streamUrl);
     final existingIndex = _indexOfDownload(normalized.streamUrl);
     if (existingIndex != null) {
       final existing = _downloadQueue[existingIndex];
@@ -466,11 +454,17 @@ extension AppStateOfflineExtension on AppState {
       return;
     }
     final cached = await _cacheStore.isAudioCached(normalized);
-    if (cached) {
-      await _cacheStore.touchCachedAudio(normalized);
-      _cachedAudio.add(normalized.streamUrl);
+    if (!_isCurrentServerGeneration(generation) ||
+        _isOfflineRequestCancelled(normalized.streamUrl)) {
       return;
     }
+    if (cached) {
+      await _cacheStore.touchCachedAudio(normalized);
+      if (!_isCurrentServerGeneration(generation)) return;
+      _cachedAudio.add(_audioKey(normalized.streamUrl));
+      return;
+    }
+    if (_indexOfDownload(normalized.streamUrl) != null) return;
     _addDownloadTask(
       DownloadTask(
         track: normalized,
@@ -487,18 +481,24 @@ extension AppStateOfflineExtension on AppState {
     if (_offlineMode) {
       return;
     }
+    final generation = _captureServerGeneration();
     final pinnedTracks = await _cacheStore.loadPinnedAudioItems();
+    if (!_isCurrentServerGeneration(generation)) return;
     var queuedAny = false;
     for (final track in pinnedTracks) {
-      final normalized = _normalizeTrackForOffline(track);
-      if (!_pinnedAudio.contains(normalized.streamUrl)) {
+      final normalized = _normalizeTrackForPlayback(track);
+      final key = _audioKey(normalized.streamUrl);
+      if (!_pinnedAudio.contains(key)) {
         continue;
       }
-      if (_cachedAudio.contains(normalized.streamUrl)) {
+      if (_cachedAudio.contains(key)) {
         continue;
       }
-      if (await _cacheStore.isAudioCached(normalized)) {
-        _cachedAudio.add(normalized.streamUrl);
+      final cached = await _cacheStore.isAudioCached(normalized);
+      if (!_isCurrentServerGeneration(generation)) return;
+      if (!_pinnedAudio.contains(key)) continue;
+      if (cached) {
+        _cachedAudio.add(key);
         continue;
       }
       if (_indexOfDownload(normalized.streamUrl) != null) {
@@ -578,15 +578,23 @@ extension AppStateOfflineExtension on AppState {
     double? currentProgress,
   ) {
     final now = DateTime.now();
-    final last = _downloadProgressTimestamps[streamUrl];
+    final key = _audioKey(streamUrl);
+    final last = _downloadProgressTimestamps[key];
     final pivot = currentProgress ?? 0.0;
     if (last != null &&
         now.difference(last) < const Duration(milliseconds: 250) &&
         (newProgress - pivot).abs() < 0.01) {
       return true;
     }
-    _downloadProgressTimestamps[streamUrl] = now;
+    _downloadProgressTimestamps[key] = now;
     return false;
+  }
+
+  bool _isOfflineRequestCancelled(String streamUrl) =>
+      _cancelledOfflineRequests.contains(_audioKey(streamUrl));
+
+  void _clearCancelledOfflineRequest(String streamUrl) {
+    _cancelledOfflineRequests.remove(_audioKey(streamUrl));
   }
 
   void _removeDownload(String streamUrl) {
@@ -595,7 +603,7 @@ extension AppStateOfflineExtension on AppState {
       return;
     }
     _removeDownloadTaskAt(index);
-    _downloadProgressTimestamps.remove(streamUrl);
+    _downloadProgressTimestamps.remove(_audioKey(streamUrl));
     _notify();
   }
 
@@ -603,11 +611,12 @@ extension AppStateOfflineExtension on AppState {
     if (_isProcessingDownloads || _downloadsPaused) {
       return;
     }
+    final serverGeneration = _captureServerGeneration();
     _isProcessingDownloads = true;
     try {
       _resetWaitingDownloads();
       while (true) {
-        if (_downloadsPaused) {
+        if (_downloadsPaused || !_isCurrentServerGeneration(serverGeneration)) {
           break;
         }
         DownloadTask? next;
@@ -618,6 +627,9 @@ extension AppStateOfflineExtension on AppState {
           final canDownload = await _canDownloadOverNetwork(
             requireWifi: task.requiresWifi,
           );
+          if (!_isCurrentServerGeneration(serverGeneration)) {
+            break;
+          }
           if (canDownload) {
             next = task;
             break;
@@ -630,14 +642,20 @@ extension AppStateOfflineExtension on AppState {
         if (next == null) {
           break;
         }
-        await _downloadTrack(next);
+        await _downloadTrack(next, serverGeneration);
       }
     } finally {
-      _isProcessingDownloads = false;
+      if (_isCurrentServerGeneration(serverGeneration)) {
+        _isProcessingDownloads = false;
+      }
     }
   }
 
-  Future<void> _downloadTrack(DownloadTask task) async {
+  Future<void> _downloadTrack(
+      DownloadTask task, _ServerGeneration serverGeneration) async {
+    if (!_isCurrentServerGeneration(serverGeneration)) {
+      return;
+    }
     final streamUrl = task.track.streamUrl;
     _updateDownloadTask(streamUrl, status: DownloadStatus.downloading);
     try {
@@ -645,8 +663,11 @@ extension AppStateOfflineExtension on AppState {
         task.track,
         headers: _playbackHeaders(),
       )) {
-        if (_cancelledOfflineRequests.contains(streamUrl)) {
-          _cancelledOfflineRequests.remove(streamUrl);
+        if (!_isCurrentServerGeneration(serverGeneration)) {
+          return;
+        }
+        if (_isOfflineRequestCancelled(streamUrl)) {
+          _clearCancelledOfflineRequest(streamUrl);
           _removeDownload(streamUrl);
           return;
         }
@@ -658,14 +679,17 @@ extension AppStateOfflineExtension on AppState {
             downloadedBytes: response.downloaded,
           );
         } else if (response is FileInfo) {
-          _cachedAudio.add(streamUrl);
+          _cachedAudio.add(_audioKey(streamUrl));
           _removeDownload(streamUrl);
           unawaited(refreshMediaCacheBytes());
         }
       }
     } catch (error) {
-      if (_cancelledOfflineRequests.contains(streamUrl)) {
-        _cancelledOfflineRequests.remove(streamUrl);
+      if (!_isCurrentServerGeneration(serverGeneration)) {
+        return;
+      }
+      if (_isOfflineRequestCancelled(streamUrl)) {
+        _clearCancelledOfflineRequest(streamUrl);
         _removeDownload(streamUrl);
         return;
       }
@@ -699,7 +723,9 @@ extension AppStateOfflineExtension on AppState {
     Playlist playlist, {
     bool requiresWifi = false,
   }) async {
+    final generation = _captureServerGeneration();
     final tracks = await _loadPlaylistTracksForOffline(playlist);
+    if (!_isCurrentServerGeneration(generation)) return;
     await _setTracksAvailableOffline(
       tracks,
       pinned: true,
@@ -709,7 +735,9 @@ extension AppStateOfflineExtension on AppState {
 
   /// Removes a playlist from offline pinning.
   Future<void> unpinPlaylistOffline(Playlist playlist) async {
+    final generation = _captureServerGeneration();
     final tracks = await _loadPlaylistTracksForOffline(playlist);
+    if (!_isCurrentServerGeneration(generation)) return;
     await _setTracksAvailableOffline(tracks, pinned: false);
   }
 
@@ -718,7 +746,9 @@ extension AppStateOfflineExtension on AppState {
     Album album, {
     bool requiresWifi = false,
   }) async {
+    final generation = _captureServerGeneration();
     final tracks = await _loadAlbumTracksForOffline(album);
+    if (!_isCurrentServerGeneration(generation)) return;
     await _setTracksAvailableOffline(
       tracks,
       pinned: true,
@@ -728,7 +758,9 @@ extension AppStateOfflineExtension on AppState {
 
   /// Removes an album from offline pinning.
   Future<void> unpinAlbumOffline(Album album) async {
+    final generation = _captureServerGeneration();
     final tracks = await _loadAlbumTracksForOffline(album);
+    if (!_isCurrentServerGeneration(generation)) return;
     await _setTracksAvailableOffline(tracks, pinned: false);
   }
 
@@ -737,7 +769,9 @@ extension AppStateOfflineExtension on AppState {
     Artist artist, {
     bool requiresWifi = false,
   }) async {
+    final generation = _captureServerGeneration();
     final tracks = await _loadArtistTracksForOffline(artist);
+    if (!_isCurrentServerGeneration(generation)) return;
     await _setTracksAvailableOffline(
       tracks,
       pinned: true,
@@ -747,7 +781,9 @@ extension AppStateOfflineExtension on AppState {
 
   /// Removes an artist from offline pinning.
   Future<void> unpinArtistOffline(Artist artist) async {
+    final generation = _captureServerGeneration();
     final tracks = await _loadArtistTracksForOffline(artist);
+    if (!_isCurrentServerGeneration(generation)) return;
     await _setTracksAvailableOffline(tracks, pinned: false);
   }
 
@@ -756,31 +792,31 @@ extension AppStateOfflineExtension on AppState {
     required bool pinned,
     bool requiresWifi = false,
   }) async {
+    // Stop as soon as the active server changes: a later iteration would
+    // normalize against the new session and write into the wrong scope.
+    final generation = _captureServerGeneration();
     for (final track in tracks) {
-      final normalized = _normalizeTrackForOffline(track);
-      final keys = _offlineKeysForTrack(track);
+      if (!_isCurrentServerGeneration(generation)) return;
+      final normalized = _normalizeTrackForPlayback(track);
+      final key = _audioKey(normalized.streamUrl);
       if (pinned) {
-        for (final key in keys) {
-          _cancelledOfflineRequests.remove(key);
-        }
+        _cancelledOfflineRequests.remove(key);
         await _cacheStore.setPinnedAudioItem(normalized, true);
+        if (!_isCurrentServerGeneration(generation)) return;
         await _cacheStore.setWholeLibraryPinnedAudio(
             normalized.streamUrl, false);
-        _pinnedAudio.add(normalized.streamUrl);
-        for (final key in keys.where((key) => key != normalized.streamUrl)) {
-          await _cacheStore.setPinnedAudio(key, false);
-          await _cacheStore.setWholeLibraryPinnedAudio(key, false);
-          _pinnedAudio.remove(key);
-        }
+        if (!_isCurrentServerGeneration(generation)) return;
+        _pinnedAudio.add(key);
         await _queueDownload(normalized, requiresWifi: requiresWifi);
       } else {
-        for (final key in keys) {
-          _cancelledOfflineRequests.add(key);
-          await _cacheStore.setPinnedAudio(key, false);
-          await _cacheStore.setWholeLibraryPinnedAudio(key, false);
-          _pinnedAudio.remove(key);
-          _removeDownload(key);
-        }
+        _cancelledOfflineRequests.add(key);
+        await _cacheStore.setPinnedAudio(normalized.streamUrl, false);
+        if (!_isCurrentServerGeneration(generation)) return;
+        await _cacheStore.setWholeLibraryPinnedAudio(
+            normalized.streamUrl, false);
+        if (!_isCurrentServerGeneration(generation)) return;
+        _pinnedAudio.remove(key);
+        _removeDownload(normalized.streamUrl);
       }
     }
     _refreshSelectedSmartList();
@@ -830,7 +866,9 @@ extension AppStateOfflineExtension on AppState {
           : tracks.where(includesTrack).toList();
     }
 
+    final generation = _captureServerGeneration();
     final cached = includedTracks(await loadCached(id));
+    if (!_isCurrentServerGeneration(generation)) return [];
     if (cached.isNotEmpty) {
       return cached;
     }
@@ -839,7 +877,9 @@ extension AppStateOfflineExtension on AppState {
     }
     try {
       final tracks = includedTracks(await fetchRemote(id));
+      if (!_isCurrentServerGeneration(generation)) return [];
       await saveCached(id, tracks);
+      if (!_isCurrentServerGeneration(generation)) return [];
       return tracks;
     } catch (_) {
       return [];
@@ -848,16 +888,10 @@ extension AppStateOfflineExtension on AppState {
 
   /// Returns whether a track is pinned for offline playback.
   Future<bool> isTrackPinned(MediaItem track) async {
-    final keys = _offlineKeysForTrack(track);
-    if (_pinnedAudio.isNotEmpty) {
-      return keys.any(_pinnedAudio.contains);
-    }
-    for (final key in keys) {
-      if (await _cacheStore.isPinnedAudio(key)) {
-        return true;
-      }
-    }
-    return false;
+    final key = _audioKey(track.streamUrl);
+    return _pinnedAudio.isNotEmpty
+        ? _pinnedAudio.contains(key)
+        : await _cacheStore.isPinnedAudio(key);
   }
 
   /// Returns whether any tracks in an album are pinned for offline playback.
@@ -870,12 +904,12 @@ extension AppStateOfflineExtension on AppState {
       album.id,
     );
     if (tracks.isNotEmpty) {
-      return tracks.any(_isTrackPinnedInMemory);
+      return tracks.any(isTrackPinnedInMemory);
     }
     final cachedEntries = await _cacheStore.loadCachedAudioEntries();
     return cachedEntries.any(
       (entry) =>
-          _pinnedAudio.contains(entry.streamUrl) &&
+          _pinnedAudio.contains(entry.cacheKey) &&
           entry.mediaItem?.albumId == album.id,
     );
   }
@@ -887,12 +921,12 @@ extension AppStateOfflineExtension on AppState {
     }
     final tracks = await _cacheStore.loadArtistTracks(artist.id);
     if (tracks.isNotEmpty) {
-      return tracks.any(_isTrackPinnedInMemory);
+      return tracks.any(isTrackPinnedInMemory);
     }
     final cachedEntries = await _cacheStore.loadCachedAudioEntries();
     return cachedEntries.any(
       (entry) =>
-          _pinnedAudio.contains(entry.streamUrl) &&
+          _pinnedAudio.contains(entry.cacheKey) &&
           (entry.mediaItem?.artistIds.contains(artist.id) ?? false),
     );
   }
@@ -904,7 +938,7 @@ extension AppStateOfflineExtension on AppState {
     }
     final cachedEntries = await _cacheStore.loadCachedAudioEntries();
     final pinnedAlbumIds = cachedEntries
-        .where((entry) => _pinnedAudio.contains(entry.streamUrl))
+        .where((entry) => _pinnedAudio.contains(entry.cacheKey))
         .map((entry) => entry.mediaItem?.albumId)
         .whereType<String>()
         .toSet();
@@ -926,7 +960,7 @@ extension AppStateOfflineExtension on AppState {
     }
     final cachedEntries = await _cacheStore.loadCachedAudioEntries();
     final pinnedArtistIds = cachedEntries
-        .where((entry) => _pinnedAudio.contains(entry.streamUrl))
+        .where((entry) => _pinnedAudio.contains(entry.cacheKey))
         .expand((entry) => entry.mediaItem?.artistIds ?? const <String>[])
         .toSet();
     if (pinnedArtistIds.isEmpty) {
@@ -949,7 +983,7 @@ extension AppStateOfflineExtension on AppState {
     final offline = <Playlist>[];
     for (final playlist in playlists) {
       final tracks = await _cacheStore.loadPlaylistTracks(playlist.id);
-      if (tracks.any(_isTrackPinnedInMemory)) {
+      if (tracks.any(isTrackPinnedInMemory)) {
         offline.add(playlist);
       }
     }
@@ -964,12 +998,13 @@ extension AppStateOfflineExtension on AppState {
     }
     final cached = await _cacheStore.loadCachedAudioEntries();
     return cached
-        .where((entry) => _pinnedAudio.contains(entry.streamUrl))
+        .where((entry) => _pinnedAudio.contains(entry.cacheKey))
         .map(_mediaItemFromCachedEntry)
         .toList();
   }
 
   Future<List<MediaItem>> _loadAllLibraryTracksForOfflineAction() async {
+    final generation = _captureServerGeneration();
     if (_offlineMode) {
       return loadOfflineTracks();
     }
@@ -977,8 +1012,10 @@ extension AppStateOfflineExtension on AppState {
       return const <MediaItem>[];
     }
     await _refreshSmartListSource();
+    if (!_isCurrentServerGeneration(generation)) return const <MediaItem>[];
     if (_libraryTracks.isEmpty) {
       await _loadCachedLibraryTrackSnapshot();
+      if (!_isCurrentServerGeneration(generation)) return const <MediaItem>[];
     }
     return _deduplicateTracksForOffline(_libraryTracks);
   }
@@ -986,7 +1023,7 @@ extension AppStateOfflineExtension on AppState {
   List<MediaItem> _deduplicateTracksForOffline(Iterable<MediaItem> tracks) {
     final deduplicated = <String, MediaItem>{};
     for (final track in tracks) {
-      final normalized = _normalizeTrackForOffline(track);
+      final normalized = _normalizeTrackForPlayback(track);
       deduplicated.putIfAbsent(normalized.streamUrl, () => normalized);
     }
     return deduplicated.values.toList(growable: false);
@@ -1006,102 +1043,139 @@ extension AppStateOfflineExtension on AppState {
   }
 
   Future<void> _loadCachedLibrary() async {
-    _playlists = await _cacheStore.loadPlaylists();
-    _featuredTracks = await _cacheStore.loadFeaturedTracks();
-    _albums = await _cacheStore.loadAlbums();
-    _recentlyAddedAlbums = await _cacheStore.loadRecentlyAddedAlbums();
-    _artists = await _cacheStore.loadArtists();
-    _genres = await _cacheStore.loadGenres();
-    _favoriteAlbums = await _cacheStore.loadFavoriteAlbums();
-    _favoriteArtists = await _cacheStore.loadFavoriteArtists();
-    _favoriteTracks = await _cacheStore.loadFavoriteTracks();
-    _libraryTracks = await _cacheStore.loadLibraryTracks();
+    final generation = _captureServerGeneration();
+    Future<void> load<T>(Future<T> result, void Function(T) apply) async {
+      final value = await result;
+      if (_isCurrentServerGeneration(generation)) apply(value);
+    }
+
+    await Future.wait([
+      load(_cacheStore.loadPlaylists(), (value) => _playlists = value),
+      load(
+          _cacheStore.loadFeaturedTracks(), (value) => _featuredTracks = value),
+      load(_cacheStore.loadAlbums(), (value) => _albums = value),
+      load(_cacheStore.loadRecentlyAddedAlbums(),
+          (value) => _recentlyAddedAlbums = value),
+      load(_cacheStore.loadArtists(), (value) => _artists = value),
+      load(_cacheStore.loadGenres(), (value) => _genres = value),
+      load(
+          _cacheStore.loadFavoriteAlbums(), (value) => _favoriteAlbums = value),
+      load(_cacheStore.loadFavoriteArtists(),
+          (value) => _favoriteArtists = value),
+      load(
+          _cacheStore.loadFavoriteTracks(), (value) => _favoriteTracks = value),
+      load(_cacheStore.loadLibraryTracks(), (value) => _libraryTracks = value),
+      load(_cacheStore.loadRecentTracks(), (value) => _recentTracks = value),
+      load(_cacheStore.loadPlayHistory(), (value) => _playHistory = value),
+      load(_cacheStore.loadLibraryStats(), (value) => _libraryStats = value),
+    ]);
+    if (!_isCurrentServerGeneration(generation)) return;
     if (_libraryTracks.isNotEmpty) {
       _tracksOffset = _libraryTracks.length;
       _hasMoreTracks = false;
       _libraryTracksFromOfflineSnapshot = false;
     }
-    _recentTracks = await _cacheStore.loadRecentTracks();
-    _playHistory = await _cacheStore.loadPlayHistory();
-    _libraryStats = await _cacheStore.loadLibraryStats();
     _notify();
   }
 
   Future<void> _applyOfflineModeData() async {
+    final generation = _captureServerGeneration();
     _isLoadingLibrary = true;
     clearSearch(notify: false);
     _notify();
-    _pinnedAudio = (await _cacheStore.loadPinnedAudio())
-        .map(_canonicalStreamUrlForStreamUrl)
-        .toSet();
-    final offlineTracks = await loadOfflineTracks();
-    final offlineAlbums = await loadOfflineAlbums();
-    final offlineArtists = await loadOfflineArtists();
-    final offlinePlaylists = await loadOfflinePlaylists();
-    _genres = await _cacheStore.loadGenres();
-    _libraryStats = await _cacheStore.loadLibraryStats();
-    final offlineAlbumIds = offlineAlbums.map((album) => album.id).toSet();
-    final offlineArtistIds = offlineArtists.map((artist) => artist.id).toSet();
-    _libraryTracks = offlineTracks;
-    _tracksOffset = offlineTracks.length;
+    final pins = await _cacheStore.loadPinnedAudio();
+    if (!_isCurrentServerGeneration(generation)) return;
+    _pinnedAudio = pins.map(_audioKey).toSet();
+    final (
+      tracks,
+      albums,
+      artists,
+      playlists,
+      genres,
+      stats,
+      favorites,
+      favoriteAlbums,
+      favoriteArtists
+    ) = await (
+      loadOfflineTracks(),
+      loadOfflineAlbums(),
+      loadOfflineArtists(),
+      loadOfflinePlaylists(),
+      _cacheStore.loadGenres(),
+      _cacheStore.loadLibraryStats(),
+      _cacheStore.loadFavoriteTracks(),
+      _cacheStore.loadFavoriteAlbums(),
+      _cacheStore.loadFavoriteArtists(),
+    ).wait;
+    if (!_isCurrentServerGeneration(generation)) return;
+    final albumIds = albums.map((album) => album.id).toSet();
+    final artistIds = artists.map((artist) => artist.id).toSet();
+    _libraryTracks = tracks;
+    _tracksOffset = tracks.length;
     _hasMoreTracks = false;
     _isLoadingTracks = false;
     _libraryTracksFromOfflineSnapshot = true;
-    _featuredTracks = offlineTracks;
-    _recentTracks = offlineTracks;
-    _albums = offlineAlbums;
+    _featuredTracks = tracks;
+    _recentTracks = tracks;
+    _albums = albums;
     _recentlyAddedAlbums = _recentlyAddedAlbums
-        .where((album) => offlineAlbumIds.contains(album.id))
+        .where((album) => albumIds.contains(album.id))
         .toList();
-    _artists = offlineArtists;
-    _playlists = offlinePlaylists;
-    final cachedFavorites = await _cacheStore.loadFavoriteTracks();
-    _favoriteTracks = _filterPinnedTracks(cachedFavorites);
-    final cachedFavoriteAlbums = await _cacheStore.loadFavoriteAlbums();
-    _favoriteAlbums = cachedFavoriteAlbums
-        .where((album) => offlineAlbumIds.contains(album.id))
-        .toList();
-    final cachedFavoriteArtists = await _cacheStore.loadFavoriteArtists();
-    _favoriteArtists = cachedFavoriteArtists
-        .where((artist) => offlineArtistIds.contains(artist.id))
+    _artists = artists;
+    _playlists = playlists;
+    _genres = genres;
+    _libraryStats = stats;
+    _favoriteTracks = _filterPinnedTracks(favorites);
+    _favoriteAlbums =
+        favoriteAlbums.where((album) => albumIds.contains(album.id)).toList();
+    _favoriteArtists = favoriteArtists
+        .where((artist) => artistIds.contains(artist.id))
         .toList();
     await _refreshSelectedDetailsForOfflineMode();
-    _jumpInTrack = _randomFromList(offlineTracks);
-    _jumpInAlbum = _randomFromList(offlineAlbums);
-    _jumpInArtist = _randomFromList(offlineArtists);
+    if (!_isCurrentServerGeneration(generation)) return;
+    _jumpInTrack = _randomFromList(tracks);
+    _jumpInAlbum = _randomFromList(albums);
+    _jumpInArtist = _randomFromList(artists);
     _lastJumpInRefreshAt = DateTime.now();
-    if (_selectedSmartList != null) {
-      _smartListTracks = _buildSmartListTracks(_selectedSmartList!);
-    }
+    _refreshSelectedSmartList();
     _isLoadingLibrary = false;
     _notify();
   }
 
   Future<void> _refreshSelectedDetailsForOfflineMode() async {
-    if (_selectedPlaylist != null) {
-      _playlistTracks =
-          await _cacheStore.loadPlaylistTracks(_selectedPlaylist!.id);
+    final generation = _captureServerGeneration();
+    final playlist = _selectedPlaylist;
+    final album = _selectedAlbum;
+    final artist = _selectedArtist;
+    final genre = _selectedGenre;
+    if (playlist != null) {
+      final tracks = await _cacheStore.loadPlaylistTracks(playlist.id);
+      if (!_isCurrentServerGeneration(generation)) return;
+      if (_selectedPlaylist == playlist) _playlistTracks = tracks;
     }
-    if (_selectedAlbum != null) {
-      final cached = _tracksForAlbumId(
-        await _cacheStore.loadAlbumTracks(_selectedAlbum!.id),
-        _selectedAlbum!.id,
-      );
+    if (album != null) {
+      final cached = await _cacheStore.loadAlbumTracks(album.id);
+      if (!_isCurrentServerGeneration(generation)) return;
+      final filtered = _filterPinnedTracks(_tracksForAlbumId(cached, album.id));
+      final tracks =
+          filtered.isNotEmpty ? filtered : await _offlineTracksForAlbum(album);
+      if (!_isCurrentServerGeneration(generation)) return;
+      if (_selectedAlbum == album) _albumTracks = tracks;
+    }
+    if (artist != null) {
+      final cached = await _cacheStore.loadArtistTracks(artist.id);
+      if (!_isCurrentServerGeneration(generation)) return;
       final filtered = _filterPinnedTracks(cached);
-      _albumTracks = filtered.isNotEmpty
+      final tracks = filtered.isNotEmpty
           ? filtered
-          : await _offlineTracksForAlbum(_selectedAlbum!);
+          : await _offlineTracksForArtist(artist);
+      if (!_isCurrentServerGeneration(generation)) return;
+      if (_selectedArtist == artist) _artistTracks = tracks;
     }
-    if (_selectedArtist != null) {
-      final cached = await _cacheStore.loadArtistTracks(_selectedArtist!.id);
-      final filtered = _filterPinnedTracks(cached);
-      _artistTracks = filtered.isNotEmpty
-          ? filtered
-          : await _offlineTracksForArtist(_selectedArtist!);
-    }
-    if (_selectedGenre != null) {
-      final cached = await _cacheStore.loadGenreTracks(_selectedGenre!.id);
-      _genreTracks = _filterPinnedTracks(cached);
+    if (genre != null) {
+      final cached = await _cacheStore.loadGenreTracks(genre.id);
+      if (!_isCurrentServerGeneration(generation)) return;
+      if (_selectedGenre == genre) _genreTracks = _filterPinnedTracks(cached);
     }
   }
 }

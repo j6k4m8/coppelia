@@ -7,7 +7,7 @@ import 'package:coppelia/services/cache_store.dart';
 import 'package:coppelia/services/jellyfin_client.dart';
 import 'package:coppelia/services/playback_controller.dart';
 import 'package:coppelia/services/settings_store.dart';
-import 'package:coppelia/services/session_store.dart';
+import 'package:coppelia/services/server_store.dart';
 import 'package:coppelia/state/app_state.dart';
 
 void main() {
@@ -19,7 +19,7 @@ void main() {
       cacheStore: CacheStore(),
       client: JellyfinClient(),
       playback: PlaybackController(),
-      sessionStore: SessionStore(),
+      serverStore: ServerStore(),
       settingsStore: SettingsStore(),
     );
     await appState.bootstrap();

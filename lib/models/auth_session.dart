@@ -20,7 +20,7 @@ class AuthSession {
   /// Displayable user name.
   final String userName;
 
-  /// Builds an AuthSession from stored JSON.
+  /// Restores a persisted session.
   factory AuthSession.fromJson(Map<String, dynamic> json) => AuthSession(
         accessToken: json['accessToken'] as String,
         serverUrl: json['serverUrl'] as String,
@@ -28,7 +28,7 @@ class AuthSession {
         userName: json['userName'] as String,
       );
 
-  /// Serializes this session for caching.
+  /// Serializes the session for local persistence.
   Map<String, dynamic> toJson() => {
         'accessToken': accessToken,
         'serverUrl': serverUrl,

@@ -4,17 +4,18 @@ import 'media_item.dart';
 class CachedAudioEntry {
   /// Creates a cached audio entry.
   const CachedAudioEntry({
-    required this.streamUrl,
+    required this.cacheKey,
     required this.title,
     required this.album,
     required this.artists,
     required this.cachedAt,
     required this.bytes,
     this.mediaItem,
+    this.legacyCacheKey,
   });
 
-  /// Stream URL used as cache key.
-  final String streamUrl;
+  /// Stable identity in the audio cache.
+  final String cacheKey;
 
   /// Track title.
   final String title;
@@ -33,6 +34,9 @@ class CachedAudioEntry {
 
   /// Full track metadata captured when the audio was cached.
   final MediaItem? mediaItem;
+
+  /// Original cache-manager key retained while migrating legacy downloads.
+  final String? legacyCacheKey;
 
   /// Returns a user-friendly artist label.
   String get artistLabel =>
