@@ -251,4 +251,39 @@ void main() {
 
     expect(restored?.session.accessToken, _legacySession.accessToken);
   });
+  test(
+      'removal and a later activation retain the latest selection after restart',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = ServerStore();
+    final a = await store.addAuthenticatedServer(_legacySession);
+    await store.addAuthenticatedServer(const AuthSession(
+        accessToken: 'b',
+        serverUrl: 'https://b.example.com',
+        userId: 'b',
+        userName: 'B'));
+    final c = await store.addAuthenticatedServer(const AuthSession(
+        accessToken: 'c',
+        serverUrl: 'https://c.example.com',
+        userId: 'c',
+        userName: 'C'));
+    await store.activate(a.server.id);
+    await Future.wait(
+        [store.removeServer(a.server.id), store.activate(c.server.id)]);
+    final restored = await ServerStore().bootstrap();
+    expect(restored.active?.server.id, c.server.id);
+    expect(restored.servers.map((s) => s.id), isNot(contains(a.server.id)));
+  });
+
+  test('a rejected edit does not block later saved-server operations',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = ServerStore();
+    final saved = await store.addAuthenticatedServer(_legacySession);
+    await expectLater(
+        store.removeAddress(saved.server.id, saved.server.activeAddress.id),
+        throwsStateError);
+    final renamed = await store.renameServer(saved.server.id, 'Renamed');
+    expect(renamed.single.name, 'Renamed');
+  });
 }

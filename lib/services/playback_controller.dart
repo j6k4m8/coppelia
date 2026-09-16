@@ -187,6 +187,7 @@ class _JustAudioPlaybackEngine implements _PlaybackEngine {
       : _player = player ?? AudioPlayer();
 
   final AudioPlayer _player;
+  int _queueRevision = 0;
   bool _gaplessPlayback = true;
 
   @override
@@ -240,33 +241,40 @@ class _JustAudioPlaybackEngine implements _PlaybackEngine {
     CacheStore? cacheStore,
     Map<String, String>? headers,
   }) async {
+    final revision = ++_queueRevision;
     final logService = await LogService.instance;
+    if (revision != _queueRevision) return;
     const batchSize = 20;
     final sources = <AudioSource>[];
     final startTime = DateTime.now();
 
     for (var i = 0; i < items.length; i += batchSize) {
+      if (revision != _queueRevision) return;
       final batchStart = DateTime.now();
       final end = (i + batchSize).clamp(0, items.length);
       final batch = items.sublist(i, end);
       final batchSources = await Future.wait(
         batch.map((item) => _buildSource(item, cacheStore, headers)),
       );
+      if (revision != _queueRevision) return;
       sources.addAll(batchSources);
       final batchTime = DateTime.now().difference(batchStart).inMilliseconds;
       await logService.info(
         'Queue batch ${i ~/ batchSize + 1}: '
         '${batch.length} tracks in ${batchTime}ms',
       );
+      if (revision != _queueRevision) return;
     }
 
     final totalTime = DateTime.now().difference(startTime).inMilliseconds;
     await logService.info(
       'Total queue build: ${items.length} tracks in ${totalTime}ms',
     );
+    if (revision != _queueRevision) return;
 
     if (sources.isEmpty) {
       await _player.stop();
+      if (revision != _queueRevision) return;
       await _player.clearAudioSources();
       return;
     }
@@ -310,7 +318,9 @@ class _JustAudioPlaybackEngine implements _PlaybackEngine {
     CacheStore? cacheStore,
     Map<String, String>? headers,
   }) async {
+    final revision = _queueRevision;
     final source = await _buildSource(item, cacheStore, headers);
+    if (revision != _queueRevision) return;
     await _player.addAudioSource(source);
   }
 
@@ -320,7 +330,9 @@ class _JustAudioPlaybackEngine implements _PlaybackEngine {
     CacheStore? cacheStore,
     Map<String, String>? headers,
   }) async {
+    final revision = _queueRevision;
     final source = await _buildSource(item, cacheStore, headers);
+    if (revision != _queueRevision) return;
     final insertIndex = (_player.currentIndex ?? -1) + 1;
     final queueLength = _player.audioSources.length;
     final targetIndex = insertIndex.clamp(0, queueLength);
@@ -352,6 +364,7 @@ class _JustAudioPlaybackEngine implements _PlaybackEngine {
 
   @override
   Future<void> clearQueue({bool keepCurrent = true}) async {
+    final revision = ++_queueRevision;
     final sources = _player.audioSources;
     if (sources.isEmpty) {
       await _player.stop();
@@ -365,6 +378,7 @@ class _JustAudioPlaybackEngine implements _PlaybackEngine {
       return;
     }
     await _player.stop();
+    if (revision != _queueRevision) return;
     await _player.clearAudioSources();
   }
 
@@ -423,6 +437,7 @@ class _MediaKitPlaybackEngine implements _PlaybackEngine {
   }
 
   final media_kit.Player _player;
+  int _queueRevision = 0;
   final Stopwatch _positionClock = Stopwatch()..start();
   final List<MediaItem> _queueItems = [];
   final List<StreamSubscription<dynamic>> _subscriptions = [];
@@ -504,6 +519,7 @@ class _MediaKitPlaybackEngine implements _PlaybackEngine {
     CacheStore? cacheStore,
     Map<String, String>? headers,
   }) async {
+    final revision = ++_queueRevision;
     _cacheStore = cacheStore;
     _headers = headers == null ? null : Map<String, String>.from(headers);
     _queueItems
@@ -512,7 +528,9 @@ class _MediaKitPlaybackEngine implements _PlaybackEngine {
 
     if (items.isEmpty) {
       await _player.stop();
+      if (revision != _queueRevision) return;
       await _player.open(const media_kit.Playlist([]), play: false);
+      if (revision != _queueRevision) return;
       _setPositionAnchor(Duration.zero, index: null);
       _emitAll();
       return;
@@ -527,14 +545,16 @@ class _MediaKitPlaybackEngine implements _PlaybackEngine {
       await _buildMediaList(items),
       index: targetIndex,
     );
-
+    if (revision != _queueRevision) return;
     _isLoading = true;
     _completed = false;
     _setPositionAnchor(targetPosition, index: targetIndex);
     _emitAll();
     await _player.open(playlist, play: false);
+    if (revision != _queueRevision) return;
     if (targetPosition > Duration.zero) {
       await _player.seek(targetPosition);
+      if (revision != _queueRevision) return;
     }
     _isLoading = false;
     _setPositionAnchor(targetPosition, index: targetIndex);
@@ -553,6 +573,7 @@ class _MediaKitPlaybackEngine implements _PlaybackEngine {
     CacheStore? cacheStore,
     Map<String, String>? headers,
   }) async {
+    final revision = _queueRevision;
     if (cacheStore != null) {
       _cacheStore = cacheStore;
     }
@@ -560,8 +581,10 @@ class _MediaKitPlaybackEngine implements _PlaybackEngine {
       _headers = Map<String, String>.from(headers);
     }
     final media = await _buildMedia(item, _cacheStore, _headers);
+    if (revision != _queueRevision) return;
     _queueItems.add(item);
     await _player.add(media);
+    if (revision != _queueRevision) return;
     _emitAll();
   }
 
@@ -571,6 +594,7 @@ class _MediaKitPlaybackEngine implements _PlaybackEngine {
     CacheStore? cacheStore,
     Map<String, String>? headers,
   }) async {
+    final revision = _queueRevision;
     if (cacheStore != null) {
       _cacheStore = cacheStore;
     }
@@ -579,11 +603,14 @@ class _MediaKitPlaybackEngine implements _PlaybackEngine {
     }
     final insertIndex = ((currentIndex ?? -1) + 1).clamp(0, _queueItems.length);
     final media = await _buildMedia(item, _cacheStore, _headers);
+    if (revision != _queueRevision) return;
     _queueItems.insert(insertIndex, item);
     await _player.add(media);
+    if (revision != _queueRevision) return;
     final lastIndex = _player.state.playlist.medias.length - 1;
     if (lastIndex >= 0 && insertIndex < lastIndex) {
       await _player.move(lastIndex, insertIndex);
+      if (revision != _queueRevision) return;
     }
     _emitAll();
   }
@@ -660,8 +687,10 @@ class _MediaKitPlaybackEngine implements _PlaybackEngine {
 
   @override
   Future<void> clearQueue({bool keepCurrent = true}) async {
+    final revision = ++_queueRevision;
     if (_queueItems.isEmpty) {
       await _player.stop();
+      if (revision != _queueRevision) return;
       _setPositionAnchor(Duration.zero, index: null);
       _emitAll();
       return;
@@ -674,14 +703,16 @@ class _MediaKitPlaybackEngine implements _PlaybackEngine {
       _queueItems
         ..clear()
         ..add(current);
+      final media = await _buildMedia(current, _cacheStore, _headers);
+      if (revision != _queueRevision) return;
       await _player.open(
-        media_kit.Playlist(
-          [await _buildMedia(current, _cacheStore, _headers)],
-        ),
+        media_kit.Playlist([media]),
         play: isPlaying,
       );
+      if (revision != _queueRevision) return;
       if (position > Duration.zero) {
         await _player.seek(position);
+        if (revision != _queueRevision) return;
       }
       _setPositionAnchor(position, index: 0);
       _emitAll();
@@ -689,7 +720,9 @@ class _MediaKitPlaybackEngine implements _PlaybackEngine {
     }
 
     await _player.stop();
+    if (revision != _queueRevision) return;
     await _player.open(const media_kit.Playlist([]), play: false);
+    if (revision != _queueRevision) return;
     _queueItems.clear();
     _setPositionAnchor(Duration.zero, index: null);
     _emitAll();

@@ -3,12 +3,12 @@ import 'package:provider/provider.dart';
 
 import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
-import '../../models/download_task.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import 'app_snack.dart';
 import 'collection_detail_view.dart';
 import 'collection_header.dart';
+import 'collection_offline_action.dart';
 
 /// Detail view for a single album.
 class AlbumDetailView extends StatelessWidget {
@@ -46,45 +46,18 @@ class AlbumDetailView extends StatelessWidget {
             : null);
     final isFavorite = state.isFavoriteAlbum(album.id);
     final isFavoriteUpdating = state.isFavoriteAlbumUpdating(album.id);
-    final canDownload = state.albumTracks.isNotEmpty;
     final offlineTracks =
         state.albumTracks.where(state.isTrackPinnedInMemory).toList();
-    final albumTrackUrls =
-        state.albumTracks.map((track) => track.streamUrl).toSet();
-    final relatedDownloads = state.downloadQueue
-        .where((task) => albumTrackUrls.contains(task.track.streamUrl))
-        .toList();
+    final offlineState = CollectionOfflineActionState.forTracks(
+      tracks: state.albumTracks,
+      isTrackPinned: state.isTrackPinnedInMemory,
+      downloadQueue: state.downloadQueue,
+    );
     final displayTracks =
         state.offlineOnlyFilter ? offlineTracks : state.albumTracks;
-    final allTracksPinned =
-        canDownload && state.albumTracks.every(state.isTrackPinnedInMemory);
-    final isOfflineReady = allTracksPinned && relatedDownloads.isEmpty;
-    final isOfflinePending = relatedDownloads.any(
-      (task) => task.status != DownloadStatus.failed,
-    );
-    final hasFailedDownloads = relatedDownloads.any(
-      (task) => task.status == DownloadStatus.failed,
-    );
-
     final favoriteIcon = isFavorite ? Icons.favorite : Icons.favorite_border;
-    final offlineLabel = isOfflinePending
-        ? 'Making Available Offline...'
-        : isOfflineReady
-            ? 'Remove from Offline'
-            : hasFailedDownloads
-                ? 'Retry Offline Download'
-                : 'Make Available Offline';
-    final offlineTooltip = isOfflinePending
-        ? 'Cancel Offline Request'
-        : isOfflineReady
-            ? 'Remove from Offline'
-            : hasFailedDownloads
-                ? 'Retry Offline Download'
-                : 'Make Available Offline';
-    final offlineIcon =
-        isOfflineReady ? Icons.download_done_rounded : Icons.download_rounded;
-    final offlineOnPressed = canDownload
-        ? () => (isOfflineReady || isOfflinePending)
+    final offlineOnPressed = offlineState.canDownload
+        ? () => (offlineState.isOfflineReady || offlineState.isOfflinePending)
             ? state.unpinAlbumOffline(album)
             : state.makeAlbumAvailableOffline(album)
         : null;
@@ -130,10 +103,10 @@ class AlbumDetailView extends StatelessWidget {
                   ),
         ),
         HeaderActionSpec(
-          icon: offlineIcon,
-          label: offlineLabel,
-          tooltip: offlineTooltip,
-          isLoading: isOfflinePending,
+          icon: offlineState.icon,
+          label: offlineState.label,
+          tooltip: offlineState.tooltip,
+          isLoading: offlineState.isOfflinePending,
           outlined: true,
           onPressed: offlineOnPressed,
         ),
@@ -160,7 +133,7 @@ class AlbumDetailView extends StatelessWidget {
         ),
         OutlinedButton.icon(
           onPressed: offlineOnPressed,
-          icon: isOfflinePending
+          icon: offlineState.isOfflinePending
               ? SizedBox(
                   width: 16,
                   height: 16,
@@ -169,8 +142,8 @@ class AlbumDetailView extends StatelessWidget {
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 )
-              : Icon(offlineIcon),
-          label: Text(offlineLabel),
+              : Icon(offlineState.icon),
+          label: Text(offlineState.label),
         ),
       ],
     );

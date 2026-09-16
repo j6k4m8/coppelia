@@ -9,6 +9,7 @@ import '../../state/library_view.dart';
 import '../../state/layout_density.dart';
 import '../../state/sidebar_item.dart';
 import '../../core/color_tokens.dart';
+import 'app_snack.dart';
 import 'compact_switch.dart';
 import 'corner_radius.dart';
 import 'playlist_dialogs.dart';
@@ -745,17 +746,12 @@ class _SidebarServerSwitcher extends StatelessWidget {
           onNavigate?.call();
           final refreshError = appState.libraryError;
           if (refreshError != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(refreshError)),
-            );
+            showAppSnack(context, refreshError);
           }
           return;
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(appState.authError ?? 'Could not switch servers.'),
-          ),
-        );
+        showAppSnack(
+            context, appState.authError ?? 'Could not switch servers.');
       },
       itemBuilder: (context) => destinations.map(
         (destination) {

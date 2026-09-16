@@ -27,6 +27,7 @@ import '../../state/track_list_style.dart';
 import '../../core/color_tokens.dart';
 import '../../core/app_info.dart';
 import '../../services/log_service.dart';
+import 'app_snack.dart';
 import 'compact_switch.dart';
 import 'corner_radius.dart';
 import 'glass_container.dart';
@@ -2148,23 +2149,21 @@ class _ServerSettings extends StatelessWidget {
     if (credentials == null || !context.mounted) {
       return;
     }
-    final signedIn = await state.signIn(
-      serverUrl: credentials.url,
-      username: credentials.username,
-      password: credentials.password,
-      serverName: credentials.name,
-    );
-    if (!context.mounted) {
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          signedIn
-              ? 'Added ${credentials.name.trim().isEmpty ? credentials.url : credentials.name.trim()}.'
-              : state.authError ?? 'Could not add that server.',
-        ),
-      ),
+    await runWithSnack(
+      context,
+      () async {
+        final signedIn = await state.signIn(
+          serverUrl: credentials.url,
+          username: credentials.username,
+          password: credentials.password,
+          serverName: credentials.name,
+        );
+        return signedIn
+            ? null
+            : state.authError ?? 'Could not add that server.';
+      },
+      successMessage:
+          'Added ${credentials.name.trim().isEmpty ? credentials.url : credentials.name.trim()}.',
     );
   }
 
@@ -2177,18 +2176,16 @@ class _ServerSettings extends StatelessWidget {
         state.activeServer?.activeAddress.id == addressId) {
       return;
     }
-    final switched = await state.switchServer(server.id, addressId: addressId);
-    if (!context.mounted) {
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          switched
-              ? state.libraryError ?? 'Switched to ${server.name}.'
-              : state.authError ?? 'Could not switch servers.',
-        ),
-      ),
+    await runWithSnack(
+      context,
+      () async {
+        final switched =
+            await state.switchServer(server.id, addressId: addressId);
+        return switched
+            ? state.libraryError
+            : state.authError ?? 'Could not switch servers.';
+      },
+      successMessage: 'Switched to ${server.name}.',
     );
   }
 
@@ -2215,9 +2212,7 @@ class _ServerSettings extends StatelessWidget {
       await state.addServerAddress(server.id,
           name: address.name, url: address.url);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Address added.')),
-        );
+        showAppSnack(context, 'Address added.');
       }
     } catch (error) {
       if (context.mounted) {
@@ -2253,15 +2248,11 @@ class _ServerSettings extends StatelessWidget {
         url: edited.url,
       );
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Address updated.')),
-        );
+        showAppSnack(context, 'Address updated.');
       }
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not update address: $error')),
-        );
+        showAppSnack(context, 'Could not update address: $error');
       }
     }
   }

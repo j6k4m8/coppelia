@@ -11,6 +11,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:coppelia/models/auth_session.dart';
 import 'package:coppelia/models/media_item.dart';
 import 'package:coppelia/models/saved_server.dart';
+import 'package:coppelia/models/track_status_icon_state.dart';
 import 'package:coppelia/services/cache_store.dart';
 import 'package:coppelia/services/jellyfin_client.dart';
 import 'package:coppelia/services/playback_controller.dart';
@@ -216,6 +217,16 @@ void main() {
       contains(track.id),
     );
     expect(state.downloadQueue.map((task) => task.track.id), [track.id]);
+
+    final alias = _track('alias.example.com', track.id);
+    expect(state.isTrackPinnedInMemory(alias), isTrue);
+    expect(state.trackStatusForTrack(alias), TrackStatusIconState.inQueue);
+    await state.unpinTrackOffline(alias);
+    expect(state.isTrackPinnedInMemory(track), isFalse);
+    expect(state.trackStatusForTrack(track), TrackStatusIconState.none);
+    expect(state.downloadQueue, isEmpty);
+    expect(await cacheStore.loadPinnedAudio(), isEmpty);
+    expect(await cacheStore.loadPinnedAudioItems(), isEmpty);
   });
 
   test('activating a server queues its pinned but undownloaded tracks',

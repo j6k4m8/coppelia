@@ -76,8 +76,7 @@ extension AppStateSessionExtension on AppState {
     _sidebarCollapsed = await _settingsStore.loadSidebarCollapsed();
     _smartLists = await _settingsStore.loadSmartLists();
     final storedPinnedAudio = await _cacheStore.loadPinnedAudio();
-    _pinnedAudio =
-        storedPinnedAudio.map(_canonicalStreamUrlForStreamUrl).toSet();
+    _pinnedAudio = storedPinnedAudio.map(_audioKey).toSet();
     if (!setEquals(_pinnedAudio, storedPinnedAudio)) {
       await _cacheStore.savePinnedAudio(_pinnedAudio);
     }
@@ -110,50 +109,56 @@ extension AppStateSessionExtension on AppState {
     required String password,
     String? serverName,
   }) async {
+    var transition = _captureServerGeneration();
     _authError = null;
     _notify();
-    final previousSession = _session;
     try {
       final session = await _client.authenticate(
         serverUrl: serverUrl,
         username: username,
         password: password,
       );
+      // authenticate updates the client eagerly. Keep it paired with the
+      // currently active profile until the new profile is ready to activate.
+      _restoreClientSession();
+      if (!_isCurrentServerGeneration(transition)) return false;
       final stored = await _serverStore.addAuthenticatedServer(
         session,
         name: serverName,
       );
-      final transition = _beginServerTransition();
-      if (previousSession != null) {
-        // authenticate() updates the client eagerly; restore the old session
-        // so its playback stop telemetry cannot be sent to the new server.
-        _client.updateSession(previousSession);
+      if (!_isCurrentServerGeneration(transition)) return false;
+      transition = _beginServerTransition();
+      if (_session != null) {
         await _stopForServerSwitch(transition);
       }
-      if (!_isCurrentServerGeneration(transition)) {
-        return false;
-      }
-      _savedServers = await _serverStore.loadServers();
-      if (!_isCurrentServerGeneration(transition)) {
-        return false;
-      }
+      if (!_isCurrentServerGeneration(transition)) return false;
+      final servers = await _serverStore.loadServers();
+      if (!_isCurrentServerGeneration(transition)) return false;
+      _savedServers = servers;
       await _activateStoredServer(
         stored,
         refresh: true,
         serverGeneration: transition,
       );
-      return true;
+      return transition.revision == _serverGeneration;
     } catch (error, stackTrace) {
-      if (previousSession != null) {
-        _client.updateSession(previousSession);
-      } else {
-        _client.clearSession();
-      }
+      _restoreClientSession();
       final logService = await LogService.instance;
       await logService.error('Sign in failed', error, stackTrace);
-      _authError = error.toString();
-      _notify();
+      if (_isCurrentServerGeneration(transition)) {
+        _authError = error.toString();
+        _notify();
+      }
       return false;
+    }
+  }
+
+  void _restoreClientSession() {
+    final session = _session;
+    if (session == null) {
+      _client.clearSession();
+    } else {
+      _client.updateSession(session);
     }
   }
 
@@ -185,7 +190,7 @@ extension AppStateSessionExtension on AppState {
       refresh: true,
       serverGeneration: transition,
     );
-    return true;
+    return transition.revision == _serverGeneration;
   }
 
   /// Adds a token-validated address to a saved server.
@@ -195,21 +200,11 @@ extension AppStateSessionExtension on AppState {
     required String url,
   }) async {
     final server = _savedServers.firstWhere((entry) => entry.id == serverId);
-    final stored = await _serverStore.sessionFor(server);
-    if (stored == null) {
-      throw StateError('This server needs to be signed in again.');
-    }
-    final candidate = AuthSession(
-      accessToken: stored.session.accessToken,
-      serverUrl: JellyfinClient.normalizeServerUrl(url),
-      userId: server.userId,
-      userName: server.userName,
-    );
-    await _client.validateSession(candidate);
+    final validatedUrl = await _validateServerAddress(server, url);
     _savedServers = await _serverStore.addAddress(
       server.id,
       name: name,
-      url: candidate.serverUrl,
+      url: validatedUrl,
     );
     if (_activeServer?.id == server.id) {
       _activeServer =
@@ -225,9 +220,28 @@ extension AppStateSessionExtension on AppState {
     required String name,
     required String url,
   }) async {
+    final generation = _captureServerGeneration();
     final server = _savedServers.firstWhere((entry) => entry.id == serverId);
     final updatedActiveAddress = _activeServer?.id == serverId &&
         _activeServer?.activeAddress.id == addressId;
+    final validatedUrl = await _validateServerAddress(server, url);
+    _savedServers = await _serverStore.updateAddress(
+      serverId,
+      addressId,
+      name: name,
+      url: validatedUrl,
+    );
+    if (_activeServer?.id == serverId) {
+      _activeServer = _savedServers.firstWhere((entry) => entry.id == serverId);
+    }
+    if (updatedActiveAddress && _isCurrentServerGeneration(generation)) {
+      await switchServer(serverId, addressId: addressId);
+      return;
+    }
+    _notify();
+  }
+
+  Future<String> _validateServerAddress(SavedServer server, String url) async {
     final stored = await _serverStore.sessionFor(server);
     if (stored == null) {
       throw StateError('This server needs to be signed in again.');
@@ -239,20 +253,7 @@ extension AppStateSessionExtension on AppState {
       userName: server.userName,
     );
     await _client.validateSession(candidate);
-    _savedServers = await _serverStore.updateAddress(
-      serverId,
-      addressId,
-      name: name,
-      url: candidate.serverUrl,
-    );
-    if (_activeServer?.id == serverId) {
-      _activeServer = _savedServers.firstWhere((entry) => entry.id == serverId);
-    }
-    if (updatedActiveAddress) {
-      await switchServer(serverId, addressId: addressId);
-      return;
-    }
-    _notify();
+    return candidate.serverUrl;
   }
 
   /// Renames a saved server.
@@ -266,13 +267,14 @@ extension AppStateSessionExtension on AppState {
 
   /// Removes a saved address. The final address cannot be removed.
   Future<void> removeServerAddress(String serverId, String addressId) async {
+    final generation = _captureServerGeneration();
     final removedActiveAddress = _activeServer?.id == serverId &&
         _activeServer?.activeAddress.id == addressId;
     _savedServers = await _serverStore.removeAddress(serverId, addressId);
     if (_activeServer?.id == serverId) {
       _activeServer = _savedServers.firstWhere((entry) => entry.id == serverId);
     }
-    if (removedActiveAddress) {
+    if (removedActiveAddress && _isCurrentServerGeneration(generation)) {
       await switchServer(serverId, addressId: _activeServer!.activeAddress.id);
       return;
     }
@@ -297,7 +299,8 @@ extension AppStateSessionExtension on AppState {
       next = await _serverStore.removeServer(serverId);
     } catch (_) {
       if (previous != null && _isCurrentServerGeneration(transition!)) {
-        await _activateStoredServer(previous, refresh: false);
+        await _activateStoredServer(previous,
+            refresh: false, serverGeneration: transition);
       }
       rethrow;
     }
@@ -307,6 +310,7 @@ extension AppStateSessionExtension on AppState {
       _notify();
       return;
     }
+    if (!_isCurrentServerGeneration(transition!)) return;
     if (next == null) {
       _session = null;
       _activeServer = null;
@@ -317,7 +321,8 @@ extension AppStateSessionExtension on AppState {
       _notify();
       return;
     }
-    await _activateStoredServer(next, refresh: isActive);
+    await _activateStoredServer(next,
+        refresh: true, serverGeneration: transition);
   }
 
   void _activateServerScope(StoredServerSession stored) {
@@ -352,16 +357,18 @@ extension AppStateSessionExtension on AppState {
   Future<void> _activateStoredServer(
     StoredServerSession stored, {
     required bool refresh,
-    int? serverGeneration,
+    _ServerGeneration? serverGeneration,
   }) async {
-    final generation = serverGeneration ?? _captureServerGeneration();
-    if (!_isCurrentServerGeneration(generation)) {
+    if (!_isCurrentServerGeneration(
+        serverGeneration ?? _captureServerGeneration())) {
       return;
     }
     _activateServerScope(stored);
+    final generation = _captureServerGeneration();
     _clearServerState();
-    _smartLists = await _settingsStore.loadSmartLists();
+    final smartLists = await _settingsStore.loadSmartLists();
     if (!_isCurrentServerGeneration(generation)) return;
+    _smartLists = smartLists;
     final storedPinnedAudio = await _cacheStore.loadPinnedAudio();
     if (!_isCurrentServerGeneration(generation)) return;
     _pinnedAudio = storedPinnedAudio.toSet();
@@ -385,7 +392,7 @@ extension AppStateSessionExtension on AppState {
     }
   }
 
-  Future<void> _stopForServerSwitch(int serverGeneration) async {
+  Future<void> _stopForServerSwitch(_ServerGeneration serverGeneration) async {
     final track = _nowPlaying;
     if (track != null) {
       await _cacheStore.savePlaybackResumeState(
@@ -420,12 +427,14 @@ extension AppStateSessionExtension on AppState {
     _selectedAlbum = null;
     _selectedArtist = null;
     _selectedGenre = null;
+    _searchRequestId += 1;
     _searchQuery = '';
     _searchResults = null;
     _isSearching = false;
     _isSearchLoading = false;
     _playlistTracks = [];
     _smartListTracks = [];
+    _isLoadingSmartList = false;
     _featuredTracks = [];
     _recentlyAddedAlbums = [];
     _playlists = [];
@@ -442,6 +451,9 @@ extension AppStateSessionExtension on AppState {
     _albumTracks = [];
     _artistTracks = [];
     _genreTracks = [];
+    _favoriteAlbumUpdatesInFlight.clear();
+    _favoriteArtistUpdatesInFlight.clear();
+    _favoriteTrackUpdatesInFlight.clear();
     _favoriteAlbums = [];
     _favoriteArtists = [];
     _favoriteTracks = [];
@@ -453,9 +465,12 @@ extension AppStateSessionExtension on AppState {
     _jumpInArtist = null;
     _isLoadingJumpIn = false;
     _lastJumpInRefreshAt = null;
+    _playRequestId += 1;
+    _isApplyingQueueUpdate = false;
     _queue = [];
     _downloadQueue.clear();
-    _downloadStatusByUrl.clear();
+    _downloadStatusByKey.clear();
+    _downloadProgressTimestamps.clear();
     _cancelledOfflineRequests.clear();
     _cachedAudio.clear();
     _isProcessingDownloads = false;
@@ -491,6 +506,7 @@ extension AppStateSessionExtension on AppState {
       try {
         recent = await _client.fetchRecentlyPlayedTracks();
       } catch (_) {
+        if (!_isCurrentServerGeneration(serverGeneration)) return;
         recent = await _client.fetchRecentTracks();
       }
       if (!_isCurrentServerGeneration(serverGeneration)) return;
@@ -535,6 +551,7 @@ extension AppStateSessionExtension on AppState {
       if (!_isCurrentServerGeneration(serverGeneration)) return;
       final logService = await LogService.instance;
       await logService.error('Library refresh failed', error, stackTrace);
+      if (!_isCurrentServerGeneration(serverGeneration)) return;
       _libraryError =
           'Could not refresh ${_activeServer?.name ?? 'server'}: $error';
       // Keep cached content if refresh fails.

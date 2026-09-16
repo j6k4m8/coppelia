@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:coppelia/models/playback_resume_state.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter/services.dart';
@@ -478,6 +480,7 @@ void main() {
       );
       expect(signedIn, isTrue);
 
+      clearInteractions(client);
       await state.removeServer(_savedServer.id);
 
       verify(() => cacheStore.clearScope(_savedServer.id)).called(1);
@@ -873,7 +876,7 @@ void main() {
       when(() => cacheStore.loadCachedAudioEntries()).thenAnswer(
         (_) async => [
           CachedAudioEntry(
-            streamUrl: trackB.streamUrl,
+            cacheKey: trackB.streamUrl,
             title: trackB.title,
             album: trackB.album,
             artists: trackB.artists,
@@ -933,7 +936,7 @@ void main() {
       ).thenAnswer(
         (_) async => [
           CachedAudioEntry(
-            streamUrl: manualTrack.streamUrl,
+            cacheKey: manualTrack.streamUrl,
             title: manualTrack.title,
             album: manualTrack.album,
             artists: manualTrack.artists,
@@ -993,7 +996,7 @@ void main() {
       ).thenAnswer(
         (_) async => [
           CachedAudioEntry(
-            streamUrl: manualTrack.streamUrl,
+            cacheKey: manualTrack.streamUrl,
             title: manualTrack.title,
             album: manualTrack.album,
             artists: manualTrack.artists,
@@ -1289,6 +1292,62 @@ void main() {
     });
   });
 
+  test('whole-library preview counts cached audio using its scoped key',
+      () async {
+    final cacheStore = _MockCacheStore();
+    final client = _MockJellyfinClient();
+    final playback = _MockPlaybackController();
+    final serverStore = _MockServerStore();
+    final settingsStore = _MockSettingsStore();
+    final state = buildState(
+      cacheStore: cacheStore,
+      client: client,
+      playback: playback,
+      serverStore: serverStore,
+      settingsStore: settingsStore,
+    );
+    addTearDown(state.dispose);
+    stubSignedInRefresh(
+      cacheStore: cacheStore,
+      client: client,
+      serverStore: serverStore,
+    );
+    final track = _track('cached');
+    const key = 'server-1:audio:cached';
+    when(() => cacheStore.audioKeyForStreamUrl(track.streamUrl))
+        .thenReturn(key);
+    when(() => client.buildStreamUrl(
+        itemId: track.id,
+        userId: any(named: 'userId'))).thenReturn(track.streamUrl);
+    when(() => client.fetchLibraryTracks(startIndex: 0, limit: 100))
+        .thenAnswer((_) async => [track]);
+    when(() => cacheStore.loadCachedAudioEntries()).thenAnswer((_) async => [
+          CachedAudioEntry(
+            cacheKey: key,
+            title: track.title,
+            album: track.album,
+            artists: track.artists,
+            cachedAt: DateTime(2026),
+            bytes: 123456,
+            mediaItem: track,
+          ),
+        ]);
+    expect(
+        await state.signIn(
+          serverUrl: 'https://example.com',
+          username: 'user',
+          password: 'password',
+        ),
+        isTrue);
+
+    final preview = await state.prepareWholeLibraryOfflinePreview();
+
+    expect(preview, isNotNull);
+    expect(preview!.cachedTrackCount, 1);
+    expect(preview.estimatedTotalBytes, 123456);
+    expect(preview.estimatedRemainingBytes, 0);
+  });
+
   group('AppState smart lists', () {
     test('selectSmartList evaluates tracks beyond the first library page',
         () async {
@@ -1467,5 +1526,445 @@ void main() {
         TrackStatusIconState.none,
       );
     });
+  });
+  Future<
+      ({
+        AppState state,
+        _MockCacheStore cache,
+        _MockJellyfinClient client,
+        _MockServerStore servers,
+        JellyfinClient runtime,
+        _MockPlaybackController playback
+      })> buildServerRaceState() async {
+    final cache = _MockCacheStore();
+    final client = _MockJellyfinClient();
+    final playback = _MockPlaybackController();
+    final servers = _MockServerStore();
+    final settings = _MockSettingsStore();
+    final state = buildState(
+        cacheStore: cache,
+        client: client,
+        playback: playback,
+        serverStore: servers,
+        settingsStore: settings);
+    addTearDown(state.dispose);
+    stubSignedInRefresh(
+        cacheStore: cache, client: client, serverStore: servers);
+    final runtime = JellyfinClient();
+    when(() => client.updateSession(any())).thenAnswer((call) {
+      runtime.updateSession(call.positionalArguments.single as AuthSession);
+    });
+    when(() => client.authorizationHeaders)
+        .thenAnswer((_) => runtime.authorizationHeaders);
+    when(() => client.buildStreamUrl(
+            itemId: any(named: 'itemId'), userId: any(named: 'userId')))
+        .thenAnswer((call) => runtime.buildStreamUrl(
+            itemId: call.namedArguments[#itemId] as String,
+            userId: call.namedArguments[#userId] as String));
+    when(() => servers.loadServers())
+        .thenAnswer((_) async => [_savedServer, _remoteSavedServer]);
+    when(() => servers.activate('server-2', addressId: 'address-2')).thenAnswer(
+        (_) async => const StoredServerSession(
+            server: _remoteSavedServer,
+            session: AuthSession(
+                accessToken: 'remote-token',
+                serverUrl: 'https://remote.example.com',
+                userId: 'remote-user',
+                userName: 'Remote User')));
+    expect(
+        await state.signIn(
+            serverUrl: 'https://example.com',
+            username: 'user',
+            password: 'password'),
+        isTrue);
+    return (
+      state: state,
+      cache: cache,
+      client: client,
+      servers: servers,
+      runtime: runtime,
+      playback: playback
+    );
+  }
+
+  test('old track browse must not populate the new profile', () async {
+    final h = await buildServerRaceState();
+    final response = Completer<List<MediaItem>>();
+    when(() => h.client.fetchLibraryTracks(
+        startIndex: any(named: 'startIndex'),
+        limit: any(named: 'limit'))).thenAnswer((_) => response.future);
+    String? scope;
+    when(() => h.cache.activateScope(any())).thenAnswer(
+        (call) => scope = call.positionalArguments.single as String?);
+    final saved = <String>[];
+    when(() => h.cache.saveLibraryTracks(any())).thenAnswer((call) async {
+      saved.add(
+          '$scope:${(call.positionalArguments.single as List<MediaItem>).map((t) => t.id).join(',')}');
+    });
+    final pending = h.state.loadLibraryTracks();
+    expect(
+        await h.state.switchServer('server-2', addressId: 'address-2'), isTrue);
+    response.complete([_track('old-server-track')]);
+    await pending;
+    expect(h.state.libraryTracks, isEmpty,
+        reason: 'Late A results must not appear in B.');
+    expect(saved, isEmpty);
+  });
+
+  test('pending cache lookup must not send B token to A', () async {
+    final h = await buildServerRaceState();
+    final lookupStarted = Completer<void>();
+    final cacheLookup = Completer<bool>();
+    when(() => h.cache.isAudioCached(any())).thenAnswer((_) {
+      if (!lookupStarted.isCompleted) lookupStarted.complete();
+      return cacheLookup.future;
+    });
+    await h.state.setDownloadsPaused(true);
+    final pin = h.state.makeTrackAvailableOffline(_track('old-server-track'));
+    await lookupStarted.future;
+    expect(
+        await h.state.switchServer('server-2', addressId: 'address-2'), isTrue);
+    cacheLookup.complete(false);
+    await pin;
+    final requests = <({String url, Map<String, String>? headers})>[];
+    when(() => h.cache.downloadAudioWithProgress(any(),
+        headers: any(named: 'headers'))).thenAnswer((call) {
+      requests.add((
+        url: (call.positionalArguments.single as MediaItem).streamUrl,
+        headers: call.namedArguments[#headers] as Map<String, String>?
+      ));
+      return const Stream<FileResponse>.empty();
+    });
+    await h.state.setDownloadsPaused(false);
+    expect(h.state.downloadQueue, isEmpty);
+    await Future<void>.delayed(Duration.zero);
+    expect(requests, isEmpty,
+        reason: 'The A request must be cancelled when B is activated.');
+  });
+
+  test('removing A must not override a later switch to C', () async {
+    final h = await buildServerRaceState();
+    const third = SavedServer(
+        id: 'server-3',
+        name: 'Third',
+        userId: 'third-user',
+        userName: 'Third',
+        addresses: [
+          ServerAddress(
+              id: 'address-3', name: 'Third', url: 'https://third.example.com')
+        ],
+        activeAddressId: 'address-3');
+    const thirdSession = AuthSession(
+        accessToken: 'third-token',
+        serverUrl: 'https://third.example.com',
+        userId: 'third-user',
+        userName: 'Third');
+    when(() => h.servers.activate('server-3', addressId: 'address-3'))
+        .thenAnswer((_) async =>
+            const StoredServerSession(server: third, session: thirdSession));
+    when(() => h.servers.loadServers())
+        .thenAnswer((_) async => [_savedServer, _remoteSavedServer, third]);
+    final removalStarted = Completer<void>();
+    final removed = Completer<StoredServerSession?>();
+    when(() => h.servers.removeServer('server-1')).thenAnswer((_) {
+      removalStarted.complete();
+      return removed.future;
+    });
+    final pending = h.state.removeServer('server-1');
+    await removalStarted.future;
+    expect(
+        await h.state.switchServer('server-3', addressId: 'address-3'), isTrue);
+    removed.complete(const StoredServerSession(
+        server: _remoteSavedServer,
+        session: AuthSession(
+            accessToken: 'remote-token',
+            serverUrl: 'https://remote.example.com',
+            userId: 'remote-user',
+            userName: 'Remote User')));
+    await pending;
+    expect(h.state.activeServer!.id, 'server-3');
+  });
+
+  test('address switching must rebuild the restored playback URL', () async {
+    final h = await buildServerRaceState();
+    final alias = _savedServer.copyWith(addresses: [
+      ..._savedServer.addresses,
+      const ServerAddress(
+          id: 'alias', name: 'Remote alias', url: 'https://alias.example.com'),
+    ], activeAddressId: 'alias');
+    const aliasSession = AuthSession(
+        accessToken: 'token',
+        serverUrl: 'https://alias.example.com',
+        userId: 'user',
+        userName: 'User');
+    when(() => h.servers.activate('server-1', addressId: 'alias')).thenAnswer(
+        (_) async => StoredServerSession(server: alias, session: aliasSession));
+    final oldTrack = MediaItem(
+        id: 'resume',
+        title: 'Resume',
+        album: 'Album',
+        artists: const [],
+        duration: const Duration(minutes: 3),
+        imageUrl: null,
+        streamUrl: h.runtime.buildStreamUrl(itemId: 'resume', userId: 'user'));
+    when(() => h.cache.loadPlaybackResumeState()).thenAnswer((_) async =>
+        PlaybackResumeState(
+            track: oldTrack, position: const Duration(seconds: 15)));
+    List<MediaItem>? restored;
+    when(() => h.playback.setQueue(any(),
+        startIndex: any(named: 'startIndex'),
+        startPosition: any(named: 'startPosition'),
+        cacheStore: any(named: 'cacheStore'),
+        headers: any(named: 'headers'))).thenAnswer((call) async {
+      restored = call.positionalArguments.single as List<MediaItem>;
+    });
+    expect(await h.state.switchServer('server-1', addressId: 'alias'), isTrue);
+    expect(Uri.parse(restored!.single.streamUrl).host, 'alias.example.com');
+  });
+  test(
+      'an old browse completes its own waiters without finishing the new browse',
+      () async {
+    final h = await buildServerRaceState();
+    final oldResponse = Completer<List<MediaItem>>();
+    final newResponse = Completer<List<MediaItem>>();
+    var calls = 0;
+    when(() => h.client.fetchLibraryTracks(
+            startIndex: any(named: 'startIndex'), limit: any(named: 'limit')))
+        .thenAnswer(
+            (_) => calls++ == 0 ? oldResponse.future : newResponse.future);
+    final oldLoad = h.state.loadLibraryTracks();
+    final oldWaiter = h.state.loadLibraryTracks();
+    await h.state.switchServer('server-2', addressId: 'address-2');
+    final newLoad = h.state.loadLibraryTracks();
+    var newWaiterFinished = false;
+    final newWaiter =
+        h.state.loadLibraryTracks().then((_) => newWaiterFinished = true);
+    oldResponse.complete([_track('old')]);
+    await Future.wait([oldLoad, oldWaiter]);
+    expect(h.state.isLoadingTracks, isTrue);
+    expect(newWaiterFinished, isFalse);
+    expect(h.state.libraryTracks, isEmpty);
+    newResponse.complete([_track('new')]);
+    await Future.wait([newLoad, newWaiter]);
+    expect(h.state.libraryTracks.map((t) => t.id), ['new']);
+    expect(h.state.isLoadingTracks, isFalse);
+  });
+
+  test(
+      'cache restoration finishing after another switch cannot replace its library',
+      () async {
+    final h = await buildServerRaceState();
+    final oldSession = h.state.session!;
+    final started = Completer<void>();
+    final cached = Completer<List<Playlist>>();
+    when(() => h.cache.loadPlaylists()).thenAnswer((_) {
+      if (!started.isCompleted) {
+        started.complete();
+        return cached.future;
+      }
+      return Future.value([]);
+    });
+    when(() => h.servers.activate('server-1', addressId: 'address-1'))
+        .thenAnswer((_) async =>
+            StoredServerSession(server: _savedServer, session: oldSession));
+    final pending = h.state.switchServer('server-2', addressId: 'address-2');
+    await started.future;
+    await h.state.switchServer('server-1', addressId: 'address-1');
+    cached.complete([
+      const Playlist(id: 'old', name: 'Old', trackCount: 1, imageUrl: null)
+    ]);
+    await pending;
+    expect(h.state.activeServer!.id, 'server-1');
+    expect(h.state.playlists, isEmpty);
+  });
+
+  test('identical playlist IDs on different servers do not accept stale tracks',
+      () async {
+    final h = await buildServerRaceState();
+    const playlist =
+        Playlist(id: 'shared', name: 'Shared', trackCount: 1, imageUrl: null);
+    final started = Completer<void>();
+    final oldResponse = Completer<List<MediaItem>>();
+    when(() => h.cache.loadPlaylistTracks('shared'))
+        .thenAnswer((_) async => []);
+    when(() => h.client.fetchPlaylistTracks('shared')).thenAnswer((_) {
+      if (!started.isCompleted) {
+        started.complete();
+        return oldResponse.future;
+      }
+      return Future.value([_track('new')]);
+    });
+    final pending = h.state.selectPlaylist(playlist);
+    await started.future;
+    await h.state.switchServer('server-2', addressId: 'address-2');
+    await h.state.selectPlaylist(playlist);
+    oldResponse.complete([_track('old')]);
+    await pending;
+    expect(h.state.playlistTracks.map((t) => t.id), ['new']);
+    verifyNever(() => h.cache.savePlaylistTracks(
+        'shared',
+        any(
+            that: predicate<List<MediaItem>>(
+                (tracks) => tracks.any((t) => t.id == 'old')))));
+  });
+
+  test('offline album loading cannot pin or cache old tracks on the new server',
+      () async {
+    final h = await buildServerRaceState();
+    final started = Completer<void>();
+    final response = Completer<List<MediaItem>>();
+    when(() => h.cache.loadAlbumTracks('album')).thenAnswer((_) async => []);
+    when(() => h.client.fetchAlbumTracks('album')).thenAnswer((_) {
+      started.complete();
+      return response.future;
+    });
+    when(() => h.cache.saveAlbumTracks(any(), any())).thenAnswer((_) async {});
+    final pending = h.state.makeAlbumAvailableOffline(_album('album'));
+    await started.future;
+    await h.state.switchServer('server-2', addressId: 'address-2');
+    response.complete([_track('old')]);
+    await pending;
+    expect(h.state.downloadQueue, isEmpty);
+    verifyNever(() => h.cache.setPinnedAudioItem(any(), true));
+    verifyNever(() => h.cache.saveAlbumTracks(any(), any()));
+  });
+
+  test('playback cache preparation cannot set a queue after switching servers',
+      () async {
+    final h = await buildServerRaceState();
+    final started = Completer<void>();
+    final lookup = Completer<bool>();
+    when(() => h.cache.isAudioCached(any())).thenAnswer((_) {
+      started.complete();
+      return lookup.future;
+    });
+    final track = _track('old');
+    final pending = h.state.playFromList([track], track);
+    await started.future;
+    await h.state.switchServer('server-2', addressId: 'address-2');
+    lookup.complete(false);
+    await pending;
+    expect(h.state.queue, isEmpty);
+    expect(h.state.nowPlaying, isNull);
+    verifyNever(() => h.playback.setQueue(any(),
+        startIndex: any(named: 'startIndex'),
+        cacheStore: any(named: 'cacheStore'),
+        headers: any(named: 'headers')));
+  });
+
+  test('work started during a switch is invalidated when its session changes',
+      () async {
+    final h = await buildServerRaceState();
+    final activated = Completer<StoredServerSession?>();
+    when(() => h.servers.activate('server-2', addressId: 'address-2'))
+        .thenAnswer((_) => activated.future);
+    final switching = h.state.switchServer('server-2', addressId: 'address-2');
+    final response = Completer<List<MediaItem>>();
+    when(() => h.client.fetchLibraryTracks(
+        startIndex: any(named: 'startIndex'),
+        limit: any(named: 'limit'))).thenAnswer((_) => response.future);
+    final loading = h.state.loadLibraryTracks();
+    activated.complete(const StoredServerSession(
+        server: _remoteSavedServer,
+        session: AuthSession(
+            accessToken: 'remote-token',
+            serverUrl: 'https://remote.example.com',
+            userId: 'remote-user',
+            userName: 'Remote User')));
+    await switching;
+    response.complete([_track('old')]);
+    await loading;
+    expect(h.state.libraryTracks, isEmpty);
+    verifyNever(() => h.cache.saveLibraryTracks(any()));
+  });
+  test(
+      'resuming pins cannot enqueue a track after its cache lookup crosses a switch',
+      () async {
+    final h = await buildServerRaceState();
+    final original = h.state.session!;
+    final track = _track('resume-pin');
+    final key =
+        h.runtime.buildStreamUrl(itemId: track.id, userId: original.userId);
+    when(() => h.servers.activate('server-1', addressId: 'address-1'))
+        .thenAnswer((_) async =>
+            StoredServerSession(server: _savedServer, session: original));
+    when(() => h.cache.loadPinnedAudio()).thenAnswer((_) async => {key});
+    when(() => h.cache.loadPinnedAudioItems()).thenAnswer((_) async => [track]);
+    final started = Completer<void>();
+    final lookup = Completer<bool>();
+    when(() => h.cache.isAudioCached(any())).thenAnswer((_) {
+      if (!started.isCompleted) started.complete();
+      return lookup.future;
+    });
+    await h.state.setDownloadsPaused(true);
+    await h.state.switchServer('server-1', addressId: 'address-1');
+    await started.future;
+    when(() => h.cache.loadPinnedAudio()).thenAnswer((_) async => {});
+    when(() => h.cache.loadPinnedAudioItems()).thenAnswer((_) async => []);
+    await h.state.switchServer('server-2', addressId: 'address-2');
+    lookup.complete(false);
+    await Future<void>.delayed(Duration.zero);
+    expect(h.state.downloadQueue, isEmpty);
+  });
+
+  test('a late sign-in response restores the newer active client session',
+      () async {
+    final h = await buildServerRaceState();
+    final response = Completer<AuthSession>();
+    final oldSession = h.state.session!;
+    when(() => h.client.authenticate(
+        serverUrl: 'https://example.com',
+        username: 'user',
+        password: 'password')).thenAnswer((_) async {
+      final session = await response.future;
+      h.runtime.updateSession(
+          session); // Real authenticate updates the client eagerly.
+      return session;
+    });
+    final pending = h.state.signIn(
+        serverUrl: 'https://example.com',
+        username: 'user',
+        password: 'password');
+    await h.state.switchServer('server-2', addressId: 'address-2');
+    response.complete(oldSession);
+    expect(await pending, isFalse);
+    expect(h.state.activeServer!.id, 'server-2');
+    expect(h.runtime.authorizationHeaders!['Authorization'],
+        contains('remote-token'));
+    // Only the harness's original sign-in was stored.
+    verify(() =>
+            h.servers.addAuthenticatedServer(any(), name: any(named: 'name')))
+        .called(1);
+  });
+
+  test('an old favorite failure cannot roll back the new profile', () async {
+    final h = await buildServerRaceState();
+    final response = Completer<void>();
+    when(() => h.client.setFavorite(itemId: 'old', isFavorite: true))
+        .thenAnswer((_) => response.future);
+    final pending = h.state.setTrackFavorite(_track('old'), true);
+    await h.state.switchServer('server-2', addressId: 'address-2');
+    clearInteractions(h.cache);
+    response.completeError(StateError('old server failed'));
+    await pending;
+    expect(h.state.favoriteTracks, isEmpty);
+    verifyNever(() => h.cache.saveFavoriteTracks(any()));
+  });
+
+  test(
+      'a playlist delete does not reach the new server after a cache-write delay',
+      () async {
+    final h = await buildServerRaceState();
+    final saved = Completer<void>();
+    when(() => h.cache.savePlaylists(any())).thenAnswer((_) => saved.future);
+    const playlist =
+        Playlist(id: 'shared', name: 'Shared', trackCount: 0, imageUrl: null);
+    final pending = h.state.deletePlaylist(playlist);
+    // The new server's refresh must not wait on the old cache write.
+    when(() => h.cache.savePlaylists(any())).thenAnswer((_) async {});
+    await h.state.switchServer('server-2', addressId: 'address-2');
+    saved.complete();
+    await pending;
+    verifyNever(() => h.client.deletePlaylist(any()));
   });
 }

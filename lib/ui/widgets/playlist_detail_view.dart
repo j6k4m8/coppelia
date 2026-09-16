@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/formatters.dart';
-import '../../models/download_task.dart';
 import '../../models/playlist.dart';
 import '../../models/media_item.dart';
 import '../../state/app_state.dart';
@@ -13,75 +12,10 @@ import '../../state/track_list_style.dart';
 import '../../core/color_tokens.dart';
 import 'app_snack.dart';
 import 'collection_header.dart';
+import 'collection_offline_action.dart';
 import 'playlist_dialogs.dart';
 import 'track_list_item.dart';
 import 'track_table_header.dart';
-
-class PlaylistOfflineActionState {
-  const PlaylistOfflineActionState({
-    required this.canDownload,
-    required this.isOfflineReady,
-    required this.isOfflinePending,
-    required this.hasFailedDownloads,
-    required this.label,
-    required this.tooltip,
-    required this.icon,
-  });
-
-  final bool canDownload;
-  final bool isOfflineReady;
-  final bool isOfflinePending;
-  final bool hasFailedDownloads;
-  final String label;
-  final String tooltip;
-  final IconData icon;
-}
-
-PlaylistOfflineActionState derivePlaylistOfflineActionState({
-  required List<MediaItem> playlistTracks,
-  required bool Function(MediaItem track) isTrackPinned,
-  required List<DownloadTask> downloadQueue,
-}) {
-  final playlistTrackUrls =
-      playlistTracks.map((track) => track.streamUrl).toSet();
-  final relatedDownloads = downloadQueue
-      .where((task) => playlistTrackUrls.contains(task.track.streamUrl))
-      .toList();
-  final canDownload = playlistTracks.isNotEmpty;
-  final allTracksPinned = canDownload && playlistTracks.every(isTrackPinned);
-  final isOfflineReady = allTracksPinned && relatedDownloads.isEmpty;
-  final isOfflinePending = relatedDownloads.any(
-    (task) => task.status != DownloadStatus.failed,
-  );
-  final hasFailedDownloads = relatedDownloads.any(
-    (task) => task.status == DownloadStatus.failed,
-  );
-  final label = isOfflinePending
-      ? 'Making Available Offline...'
-      : isOfflineReady
-          ? 'Remove from Offline'
-          : hasFailedDownloads
-              ? 'Retry Offline Download'
-              : 'Make Available Offline';
-  final tooltip = isOfflinePending
-      ? 'Cancel Offline Request'
-      : isOfflineReady
-          ? 'Remove from Offline'
-          : hasFailedDownloads
-              ? 'Retry Offline Download'
-              : 'Make Available Offline';
-  final icon =
-      isOfflineReady ? Icons.download_done_rounded : Icons.download_rounded;
-  return PlaylistOfflineActionState(
-    canDownload: canDownload,
-    isOfflineReady: isOfflineReady,
-    isOfflinePending: isOfflinePending,
-    hasFailedDownloads: hasFailedDownloads,
-    label: label,
-    tooltip: tooltip,
-    icon: icon,
-  );
-}
 
 /// Playlist detail view with track listing.
 class PlaylistDetailView extends StatefulWidget {
@@ -123,8 +57,8 @@ class _PlaylistDetailViewState extends State<PlaylistDetailView> {
         fullPlaylistTracks.where(state.isTrackPinnedInMemory).toList();
     final displayTracks =
         state.offlineOnlyFilter ? offlineTracks : fullPlaylistTracks;
-    final offlineState = derivePlaylistOfflineActionState(
-      playlistTracks: fullPlaylistTracks,
+    final offlineState = CollectionOfflineActionState.forTracks(
+      tracks: fullPlaylistTracks,
       isTrackPinned: state.isTrackPinnedInMemory,
       downloadQueue: state.downloadQueue,
     );
