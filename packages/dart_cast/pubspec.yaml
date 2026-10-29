@@ -1,0 +1,22 @@
+name: dart_cast
+description: Coppelia's vendored pure Dart Chromecast CASTV2 implementation with local HTTP media proxy support.
+version: 0.7.4
+repository: https://github.com/abdelaziz-mahdy/dart_cast
+homepage: https://github.com/abdelaziz-mahdy/dart_cast
+issue_tracker: https://github.com/abdelaziz-mahdy/dart_cast/issues
+topics:
+  - cast
+  - chromecast
+  - streaming
+
+environment:
+  sdk: ^3.7.0
+
+dependencies:
+  http: ^1.2.0
+  multicast_dns: ^0.3.2+6
+  protobuf: ^6.0.0
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^5.0.0

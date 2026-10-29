@@ -53,6 +53,9 @@ For more screenshots and info about themes, see [the wiki](https://github.com/j6
 -   Repeat playback (track or queue)
 -   Android lockscreen + notification media controls with artwork
 -   Linux desktop support (GTK)
+-   Chromecast audio casting on Android, iOS, macOS, Linux, and Windows
+    -   Local cached audio is served through a desktop HTTP media proxy
+    -   Playback position, seeking, queue controls, and local handoff are supported
 -   Favorite and unfavorite tracks/albums/artists
 -   Playback resume that restores your last track and position when you reopen the app
 -   Configurable home shelves, sidebar sections, and layout choices
@@ -136,7 +139,7 @@ All shortcuts are configurable in the Settings screen. `^` indicates the Cmd key
 ## Roadmap
 
 -   Windows support (**can you help test**??)
--   AirPlay and Chromecast support
+-   AirPlay support
 -   Your idea here?
 
 ## Smart Lists

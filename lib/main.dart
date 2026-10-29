@@ -9,6 +9,7 @@ import 'package:window_manager/window_manager.dart';
 import 'app.dart';
 import 'core/app_info.dart';
 import 'services/log_service.dart';
+import 'services/chromecast_service.dart';
 
 /// Entry point for the Coppelia music player.
 Future<void> main() async {
@@ -26,6 +27,7 @@ Future<void> main() async {
       androidNotificationChannelName: 'Coppelia Playback',
       androidNotificationOngoing: true,
     );
+    await ChromecastService.instance.initialize();
   }
   if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
     logService.info('Initializing MediaKit for desktop platforms');

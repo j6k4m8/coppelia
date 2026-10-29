@@ -175,6 +175,7 @@ abstract class _PlaybackEngine {
   Future<void> pause();
   Future<void> seek(Duration position);
   Future<void> seekToIndex(int index);
+
   Future<void> skipNext();
   Future<void> skipPrevious();
   Future<void> setLoopMode(LoopMode mode);
@@ -556,6 +557,14 @@ class _MediaKitPlaybackEngine implements _PlaybackEngine {
     await _player.open(playlist, play: false);
     if (revision != _queueRevision) return;
     if (targetPosition > Duration.zero) {
+      try {
+        await _player.stream.duration
+            .firstWhere((duration) => duration > Duration.zero)
+            .timeout(const Duration(seconds: 10));
+      } catch (_) {
+        // Some streams do not report duration before playback starts. The
+        // explicit seek below is still the best available restore attempt.
+      }
       await _player.seek(targetPosition);
       if (revision != _queueRevision) return;
     }

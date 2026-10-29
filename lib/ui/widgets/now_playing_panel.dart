@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,8 @@ import 'package:just_audio/just_audio.dart';
 import '../../core/color_tokens.dart';
 import '../../core/formatters.dart';
 import '../../models/media_item.dart';
+import '../../services/chromecast_service.dart';
+import '../../services/log_service.dart';
 import '../../state/app_state.dart';
 import '../../state/layout_density.dart';
 import '../../state/library_view.dart';
@@ -91,6 +94,128 @@ Future<void> _showNowPlayingTrackMenu(
             state.selectArtistById(track.artistIds.first);
           },
   );
+}
+
+Future<void> _showChromecastPicker(BuildContext context) async {
+  final state = context.read<AppState>();
+  final service = state.chromecast;
+  if (service == null) return;
+  final spinnerDelay = Future<void>.delayed(
+    const Duration(seconds: 1),
+  );
+  await showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) {
+      return SafeArea(
+        child: StreamBuilder<List<ChromecastReceiver>>(
+          stream: service.devicesStream,
+          builder: (context, snapshot) {
+            final devices = snapshot.data ?? const <ChromecastReceiver>[];
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const ListTile(title: Text('Cast audio to')),
+                FutureBuilder<void>(
+                  future: spinnerDelay,
+                  builder: (context, delaySnapshot) {
+                    final showSpinner =
+                        delaySnapshot.connectionState == ConnectionState.done;
+                    if (devices.isEmpty) {
+                      return SizedBox(
+                        height: showSpinner ? 112 : 96,
+                        child: showSpinner
+                            ? const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text('Looking for Chromecast receivers…'),
+                                ],
+                              )
+                            : null,
+                      );
+                    }
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: devices
+                          .map((device) => ListTile(
+                                leading: const Icon(Icons.cast),
+                                title: Text(device.name),
+                                subtitle: Text(device.model ?? 'Chromecast'),
+                                onTap: () async {
+                                  Navigator.of(context).pop();
+                                  try {
+                                    await service.connect(device);
+                                    if (state.nowPlaying == null) {
+                                      if (context.mounted) {
+                                        showAppSnack(
+                                          context,
+                                          'Start a track before casting audio.',
+                                        );
+                                      }
+                                      return;
+                                    }
+                                    await state.castNowPlaying();
+                                  } catch (error, stackTrace) {
+                                    unawaited(
+                                      LogService.instance.then(
+                                        (log) => log.error(
+                                          'Chromecast cast failed',
+                                          error,
+                                          stackTrace,
+                                        ),
+                                      ),
+                                    );
+                                    if (context.mounted) {
+                                      showAppSnack(
+                                        context,
+                                        _chromecastErrorMessage(error),
+                                      );
+                                    }
+                                  }
+                                },
+                              ))
+                          .toList(),
+                    );
+                  },
+                ),
+              ],
+            );
+        },
+      ),
+    );
+  },
+);
+}
+
+Future<void> _toggleChromecast(BuildContext context) async {
+  final state = context.read<AppState>();
+  if (state.isCasting) {
+    await state.disconnectCasting();
+  } else {
+    await _showChromecastPicker(context);
+  }
+}
+
+String _chromecastErrorMessage(Object error) {
+  final message = error.toString().toLowerCase();
+  if (message.contains('loadmedia timed out') ||
+      message.contains('load_failed') ||
+      message.contains('load_cancelled')) {
+    return 'Chromecast playback failed. Check that the receiver can access the Mac and media server.';
+  }
+  if (message.contains('not connected') ||
+      message.contains('connect timed out')) {
+    return 'Could not connect to the Chromecast receiver.';
+  }
+  return 'Unable to cast audio. Check the Chromecast and network connection.';
 }
 
 class _SidePanel extends StatefulWidget {
@@ -198,6 +323,21 @@ class _SidePanelState extends State<_SidePanel> {
                 onPrevious: state.previousTrack,
                 compact: true,
               ),
+              if (state.chromecast != null)
+                IconButton(
+                  icon: Icon(
+                    state.isCasting ? Icons.cast_connected : Icons.cast,
+                  ),
+                  tooltip:
+                      state.isCasting ? 'Disconnect Chromecast' : 'Cast audio',
+                  onPressed: () => _toggleChromecast(context),
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 36,
+                    height: 36,
+                  ),
+                ),
               IconButton(
                 tooltip: _showQueue ? 'Hide queue' : 'Show queue',
                 icon: const Icon(Icons.queue_music),
@@ -349,6 +489,16 @@ class _BottomBar extends StatelessWidget {
                         onPressed: () =>
                             state.selectLibraryView(LibraryView.queue),
                       ),
+                      if (state.chromecast != null)
+                        IconButton(
+                          icon: Icon(
+                            state.isCasting ? Icons.cast_connected : Icons.cast,
+                          ),
+                          tooltip: state.isCasting
+                              ? 'Disconnect Chromecast'
+                              : 'Cast audio',
+                          onPressed: () => _toggleChromecast(context),
+                        ),
                       _Controls(
                         isPlaying: state.isPlaying,
                         isPreparingPlayback: state.isPreparingPlayback,
@@ -433,6 +583,16 @@ class _BottomBar extends StatelessWidget {
                       onPressed: () =>
                           state.selectLibraryView(LibraryView.queue),
                     ),
+                    if (state.chromecast != null)
+                      IconButton(
+                        icon: Icon(
+                          state.isCasting ? Icons.cast_connected : Icons.cast,
+                        ),
+                        tooltip: state.isCasting
+                            ? 'Disconnect Chromecast'
+                            : 'Cast audio',
+                        onPressed: () => _toggleChromecast(context),
+                      ),
                     _Controls(
                       isPlaying: state.isPlaying,
                       isPreparingPlayback: state.isPreparingPlayback,
@@ -1429,6 +1589,16 @@ class _NowPlayingExpandedView extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (state.chromecast != null)
+                    IconButton(
+                      icon: Icon(
+                        state.isCasting ? Icons.cast_connected : Icons.cast,
+                      ),
+                      tooltip: state.isCasting
+                          ? 'Disconnect Chromecast'
+                          : 'Cast audio',
+                      onPressed: () => _toggleChromecast(context),
+                    ),
                   IconButton(
                     icon: const Icon(Icons.queue_music),
                     onPressed: () {

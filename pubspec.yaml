@@ -35,6 +35,9 @@ dependencies:
     file: ^7.0.1
     mime: ^2.1.0
     crypto: ^3.0.7
+    flutter_chrome_cast: ^2.0.0
+    dart_cast:
+        path: packages/dart_cast
 
 dev_dependencies:
     flutter_lints: ^3.0.0

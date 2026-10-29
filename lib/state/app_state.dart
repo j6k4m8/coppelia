@@ -37,6 +37,7 @@ import '../services/playback_controller.dart';
 import '../services/search_service.dart';
 import '../services/server_store.dart';
 import '../services/settings_store.dart';
+import '../services/chromecast_service.dart';
 import 'browse_layout.dart';
 import 'accent_color_source.dart';
 import 'home_section.dart';
@@ -95,14 +96,19 @@ class AppState extends ChangeNotifier {
     required PlaybackController playback,
     required ServerStore serverStore,
     required SettingsStore settingsStore,
+    ChromecastService? chromecast,
   })  : _cacheStore = cacheStore,
         _client = client,
         _playback = playback,
         _serverStore = serverStore,
         _settingsStore = settingsStore {
+    _chromecast = chromecast;
     _client.onAuthenticationRequired = _requireSignIn;
     _bindPlayback();
     _bindNowPlaying();
+    _playbackLifecycle = AppLifecycleListener(
+      onDetach: () => unawaited(_disposePlayback()),
+    );
   }
 
   final CacheStore _cacheStore;
@@ -111,6 +117,150 @@ class AppState extends ChangeNotifier {
   final NowPlayingService _nowPlayingService = NowPlayingService();
   final ServerStore _serverStore;
   final SettingsStore _settingsStore;
+  ChromecastService? _chromecast;
+
+  /// Chromecast integration, available on Android and iOS.
+  ChromecastService? get chromecast => _chromecast;
+
+  /// Whether playback is currently owned by a Chromecast receiver.
+  bool get isCasting => _chromecast?.isConnected ?? false;
+
+  /// Disconnects the receiver and returns playback ownership to the app.
+  Future<void> disconnectCasting() async {
+    final service = _chromecast;
+    if (service == null) return;
+    final position = service.remotePosition;
+    final wasPlaying = service.remotePlaying;
+    final currentIndex =
+        _queue.indexWhere((item) => item.id == _nowPlaying?.id);
+    await service.disconnect();
+    _castPositionSubscription?.cancel();
+    _castDurationSubscription?.cancel();
+    _castPlayingSubscription?.cancel();
+    _castPositionSubscription = null;
+    _castDurationSubscription = null;
+    _castPlayingSubscription = null;
+    if (currentIndex >= 0) {
+      await _playback.setQueue(
+        _queue,
+        startIndex: currentIndex,
+        startPosition: position,
+        cacheStore: _cacheStore,
+        headers: _playbackHeaders(),
+      );
+      if (wasPlaying) await _playback.play();
+    } else {
+      await _playback.seek(position);
+      if (wasPlaying) await _playback.play();
+    }
+    _updatePlaybackProgress(position: position);
+    _castPlaying = false;
+    notifyListeners();
+  }
+
+  /// Sends the current track to a connected Cast receiver.
+  Future<void> castNowPlaying() async {
+    final service = _chromecast;
+    final track = _nowPlaying;
+    final session = _session;
+    if (service == null || track == null || session == null) return;
+    final wasPlaying = _isPlaying;
+    try {
+      await _castTrackToReceiver(
+        track,
+        position: _position,
+        autoPlay: wasPlaying,
+      );
+      await _playback.pause();
+      // From this point on the receiver, not the local player, owns these
+      // values. The local pause event must not make the cast controls stale.
+      _isPreparingPlayback = false;
+      _isPlaying = _castPlaying;
+      notifyListeners();
+    } catch (_) {
+      _castPlaying = false;
+      _isPreparingPlayback = false;
+      // A failed LOAD leaves the Cast connection alive but without a usable
+      // media session. Do not leave the controls routing play/pause commands
+      // to that dead session.
+      try {
+        await service.disconnect();
+      } catch (_) {
+        // The original LOAD error is more useful to the caller.
+      }
+      _isPlayingNotifier.value = _isPlaying;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> _castTrackToReceiver(
+    MediaItem track, {
+    Duration position = Duration.zero,
+    bool autoPlay = true,
+  }) async {
+    final service = _chromecast;
+    final session = _session;
+    if (service == null || session == null) return;
+    final localFile = (!Platform.isAndroid && !Platform.isIOS)
+        ? await _cacheStore.getCachedAudio(track)
+        : null;
+    final uri = Uri.parse(track.streamUrl).replace(
+      queryParameters: {
+        ...Uri.parse(track.streamUrl).queryParameters,
+        // The default Cast receiver cannot add Jellyfin's Authorization
+        // header. Jellyfin accepts the access token as api_key for this
+        // receiver-side request.
+        'api_key': session.accessToken,
+        if (!Platform.isAndroid && !Platform.isIOS) ...{
+          'Container': 'ts',
+          'AudioCodec': 'aac',
+          'TranscodingContainer': 'ts',
+          'TranscodingProtocol': 'hls',
+        },
+      },
+    );
+    await service.cast(
+      track,
+      streamUrl: localFile == null ? uri.toString() : null,
+      localFilePath: localFile?.path,
+      httpHeaders: localFile == null ? _playbackHeaders() : null,
+      startPosition: position,
+      autoPlay: autoPlay,
+    );
+    _castPlaying = autoPlay;
+    _isPlaying = autoPlay;
+    _isPlayingNotifier.value = autoPlay;
+    _bindCastPlaybackStreams();
+  }
+
+  void _bindCastPlaybackStreams() {
+    final service = _chromecast;
+    if (service == null) return;
+    _castPositionSubscription?.cancel();
+    _castDurationSubscription?.cancel();
+    _castPlayingSubscription?.cancel();
+    _castPositionSubscription = service.positionStream?.listen((position) {
+      _updatePlaybackProgress(position: position);
+      _persistPlaybackResumeState();
+      notifyListeners();
+    });
+    _castDurationSubscription = service.durationStream?.listen((duration) {
+      if (duration > Duration.zero) {
+        _updatePlaybackProgress(
+          duration: duration,
+          durationIsAuthoritative: true,
+        );
+        notifyListeners();
+      }
+    });
+    _castPlayingSubscription = service.playingStream?.listen((playing) {
+      _castPlaying = playing;
+      _isPlaying = playing;
+      _isPlayingNotifier.value = playing;
+      notifyListeners();
+    });
+  }
 
   AuthSession? _session;
   AuthSession? _rejectedSession;
@@ -183,6 +333,8 @@ class AppState extends ChangeNotifier {
   Timer? _cacheRefreshTimer;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   AppLifecycleListener? _downloadLifecycle;
+  AppLifecycleListener? _playbackLifecycle;
+  bool _playbackDisposed = false;
   bool _recoveringDownloads = false;
   int _offlineRevision = 0;
   int get offlineRevision => _offlineRevision;
@@ -204,6 +356,10 @@ class AppState extends ChangeNotifier {
   bool _isBuffering = false;
   bool _isNowPlayingCached = false;
   bool _isPreparingPlayback = false;
+  bool _castPlaying = false;
+  StreamSubscription<Duration>? _castPositionSubscription;
+  StreamSubscription<Duration>? _castDurationSubscription;
+  StreamSubscription<bool>? _castPlayingSubscription;
   bool _isApplyingQueueUpdate = false;
   int? _lastHandledCurrentIndex;
   String? _lastHandledCurrentTrackId;
@@ -643,7 +799,7 @@ class AppState extends ChangeNotifier {
   ValueListenable<Duration> get durationListenable => _durationNotifier;
 
   /// True when audio is playing.
-  bool get isPlaying => _isPlaying;
+  bool get isPlaying => isCasting ? _castPlaying : _isPlaying;
 
   /// Listenable play/pause updates.
   ValueListenable<bool> get isPlayingListenable => _isPlayingNotifier;
@@ -1031,6 +1187,20 @@ class AppState extends ChangeNotifier {
 
   /// Toggles between play and pause states.
   Future<void> togglePlayback() async {
+    final cast = _chromecast;
+    if (cast?.isConnected == true) {
+      if (_castPlaying) {
+        await cast!.pause();
+        _castPlaying = false;
+      } else {
+        await cast!.play();
+        _castPlaying = true;
+      }
+      _isPlaying = _castPlaying;
+      _isPlayingNotifier.value = _castPlaying;
+      notifyListeners();
+      return;
+    }
     final logService = await LogService.instance;
     if (_playback.isPlaying) {
       await logService.info('togglePlayback: Pausing');
@@ -1049,6 +1219,17 @@ class AppState extends ChangeNotifier {
 
   /// Skips to the next track.
   Future<void> nextTrack() async {
+    if (isCasting) {
+      final index = _queue.indexWhere((item) => item.id == _nowPlaying?.id);
+      final next =
+          index >= 0 && index + 1 < _queue.length ? _queue[index + 1] : null;
+      if (next != null) {
+        await _castTrackToReceiver(next);
+        _setNowPlaying(next);
+        notifyListeners();
+      }
+      return;
+    }
     await _performPlaybackAction(
       () => _playback.skipNext(),
       'skip next',
@@ -1057,6 +1238,22 @@ class AppState extends ChangeNotifier {
 
   /// Skips to the previous track.
   Future<void> previousTrack() async {
+    if (isCasting) {
+      const restartThreshold = Duration(seconds: 5);
+      if (_position > restartThreshold) {
+        await _chromecast!.seek(Duration.zero);
+        _updatePlaybackProgress(position: Duration.zero);
+        return;
+      }
+      final index = _queue.indexWhere((item) => item.id == _nowPlaying?.id);
+      final previous = index > 0 ? _queue[index - 1] : null;
+      if (previous != null) {
+        await _castTrackToReceiver(previous);
+        _setNowPlaying(previous);
+        notifyListeners();
+      }
+      return;
+    }
     const restartThreshold = Duration(seconds: 5);
     if (_position > restartThreshold) {
       await seek(Duration.zero);
@@ -1071,6 +1268,12 @@ class AppState extends ChangeNotifier {
   /// Jumps to a specific position in the queue.
   Future<void> playQueueIndex(int index) async {
     if (index < 0 || index >= _queue.length) {
+      return;
+    }
+    if (isCasting) {
+      await _castTrackToReceiver(_queue[index]);
+      _setNowPlaying(_queue[index]);
+      notifyListeners();
       return;
     }
     final didSeek = await _performPlaybackAction(
@@ -1185,6 +1388,9 @@ class AppState extends ChangeNotifier {
 
   /// Clears the current playback queue.
   Future<void> clearQueue() async {
+    if (isCasting) {
+      await disconnectCasting();
+    }
     _maybeReportStoppedForSession(
       track: _nowPlaying,
       sessionId: _playSessionId,
@@ -1210,6 +1416,11 @@ class AppState extends ChangeNotifier {
 
   /// Seeks to a specific playback position.
   Future<void> seek(Duration position) async {
+    if (isCasting) {
+      await _chromecast!.seek(position);
+      _updatePlaybackProgress(position: position);
+      return;
+    }
     final didSeek = await _performPlaybackAction(
       () => _playback.seek(position),
       'seek',
@@ -1284,6 +1495,10 @@ class AppState extends ChangeNotifier {
     _cacheRefreshTimer?.cancel();
     _connectivitySubscription?.cancel();
     _downloadLifecycle?.dispose();
+    _playbackLifecycle?.dispose();
+    _castPositionSubscription?.cancel();
+    _castDurationSubscription?.cancel();
+    _castPlayingSubscription?.cancel();
     _durationSubscription?.cancel();
     _playerStateSubscription?.cancel();
     _currentIndexSubscription?.cancel();
@@ -1294,12 +1509,46 @@ class AppState extends ChangeNotifier {
     _isBufferingNotifier.dispose();
     _mediaCacheBytesNotifier.dispose();
     _pinnedCacheBytesNotifier.dispose();
-    unawaited(_playback.dispose());
+    unawaited(_disposePlayback());
     super.dispose();
+  }
+
+  Future<void> _disposePlayback() async {
+    if (_playbackDisposed) return;
+    _playbackDisposed = true;
+    // App shutdown must stop the receiver before the Dart process and Cast
+    // socket disappear. Do this directly instead of disconnectCasting(),
+    // which intentionally restores local playback for an interactive
+    // handoff.
+    try {
+      await _chromecast?.disconnect();
+    } catch (_) {
+      // Shutdown must continue even if the receiver is already unreachable.
+    }
+    try {
+      await _playback.pause();
+    } catch (_) {
+      // The player may already be stopping during application shutdown.
+    }
+    try {
+      await _playback.dispose();
+    } catch (_) {
+      // Shutdown errors must not keep the application alive.
+    }
+  }
+
+  /// Disposes the playback engine and returns when it is fully shut down.
+  ///
+  /// Used by [onExitRequested] to block app termination until the media
+  /// backend (mpv) has cleanly stopped, preventing use-after-free crashes.
+  Future<void> disposePlayback() async {
+    if (_playbackDisposed) return;
+    await _disposePlayback();
   }
 
   void _bindPlayback() {
     _positionPollTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      if (isCasting) return;
       final position = _playback.position;
       _syncPlaybackIndexSnapshot();
       if (_position == position) {
@@ -1311,6 +1560,7 @@ class AppState extends ChangeNotifier {
       _updateNowPlayingInfo();
     });
     _durationSubscription = _playback.durationStream.listen((duration) {
+      if (isCasting) return;
       if (duration != null && duration > Duration.zero) {
         _updatePlaybackProgress(
           duration: duration,
@@ -1320,11 +1570,13 @@ class AppState extends ChangeNotifier {
       }
     });
     _playerStateSubscription = _playback.playerStateStream.listen((state) {
+      if (isCasting) return;
       LogService.instance.then((log) => log.info(
           'Player state: playing=${state.playing}, processingState=${state.processingState}'));
       _applyPlayerStateSnapshot(state);
     });
     _currentIndexSubscription = _playback.currentIndexStream.listen((_) {
+      if (isCasting) return;
       if (_isApplyingQueueUpdate) {
         return;
       }
@@ -1333,7 +1585,7 @@ class AppState extends ChangeNotifier {
   }
 
   void _syncPlaybackIndexSnapshot() {
-    if (_isApplyingQueueUpdate) {
+    if (_isApplyingQueueUpdate || isCasting) {
       return;
     }
     final previousIndex = _lastHandledCurrentIndex;
