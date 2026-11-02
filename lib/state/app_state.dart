@@ -84,6 +84,9 @@ typedef _BrowseHistoryEntry = ({
   List<MediaItem> artistTracks,
   List<MediaItem> genreTracks,
   bool offlineOnly,
+  // Search open over this screen, or null when there was none.
+  String? searchQuery,
+  SearchResults? searchResults,
 });
 
 /// Central application state and Jellyfin coordination.
@@ -133,6 +136,7 @@ class AppState extends ChangeNotifier {
   bool _isSearchLoading = false;
   SearchResults? _searchResults;
   int _searchFocusRequest = 0;
+  bool _searchRestoredFromHistory = false;
   int _searchRequestId = 0;
   LoopMode _repeatMode = LoopMode.off;
   bool _disposed = false;
@@ -624,6 +628,11 @@ class AppState extends ChangeNotifier {
   /// Search focus request token.
   int get searchFocusRequest => _searchFocusRequest;
 
+  /// True when Back restored the open search from history.
+  ///
+  /// The search field does not take focus in this case.
+  bool get searchRestoredFromHistory => _searchRestoredFromHistory;
+
   /// Currently playing track.
   MediaItem? get nowPlaying => _nowPlaying;
 
@@ -879,7 +888,10 @@ class AppState extends ChangeNotifier {
     _scrollOffsets[key] = offset;
   }
 
-  void _recordViewHistory(LibraryView view) {
+  bool get _hasOpenSearch => _isSearching || _searchQuery.isNotEmpty;
+
+  void _recordViewHistory(LibraryView view, {bool includeSearch = false}) {
+    final searchQuery = includeSearch && _hasOpenSearch ? _searchQuery : null;
     if (_viewHistory.isNotEmpty) {
       final last = _viewHistory.last;
       if (last.view == view &&
@@ -888,7 +900,8 @@ class AppState extends ChangeNotifier {
           last.album == _selectedAlbum &&
           last.artist == _selectedArtist &&
           last.genre == _selectedGenre &&
-          last.offlineOnly == _offlineOnlyFilter) {
+          last.offlineOnly == _offlineOnlyFilter &&
+          last.searchQuery == searchQuery) {
         return;
       }
     }
@@ -905,15 +918,18 @@ class AppState extends ChangeNotifier {
       artistTracks: List.of(_artistTracks),
       genreTracks: List.of(_genreTracks),
       offlineOnly: _offlineOnlyFilter,
+      searchQuery: searchQuery,
+      searchResults: searchQuery == null ? null : _searchResults,
     ));
     if (_viewHistory.length > 20) {
       _viewHistory.removeAt(0);
     }
   }
 
-  /// Records the screen that opened a detail, including nested detail pages.
+  /// Records the screen that opened a detail, including nested detail pages
+  /// and any search open over that screen.
   void _recordDetailEntry() {
-    _recordViewHistory(_selectedView);
+    _recordViewHistory(_selectedView, includeSearch: true);
   }
 
   int _comparePlaylists(Playlist a, Playlist b) {

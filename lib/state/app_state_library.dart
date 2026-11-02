@@ -8,7 +8,7 @@ extension AppStateLibraryExtension on AppState {
   }) async {
     final generation = _captureServerGeneration();
     final isSamePlaylist = _selectedPlaylist?.id == playlist.id;
-    if (!isSamePlaylist) _recordDetailEntry();
+    if (!isSamePlaylist || _hasOpenSearch) _recordDetailEntry();
     _selectedPlaylist = playlist;
     _selectedSmartList = null;
     _smartListTracks = [];
@@ -92,7 +92,7 @@ extension AppStateLibraryExtension on AppState {
   /// Selects a Smart List and loads its tracks.
   Future<void> selectSmartList(SmartList list) async {
     final isSameSmartList = _selectedSmartList?.id == list.id;
-    if (!isSameSmartList) _recordDetailEntry();
+    if (!isSameSmartList || _hasOpenSearch) _recordDetailEntry();
     _selectedSmartList = list;
     _selectedView = LibraryView.home;
     _offlineOnlyFilter = false;
@@ -480,6 +480,7 @@ extension AppStateLibraryExtension on AppState {
         previous.artist == null &&
         previous.genre == null) {
       selectLibraryView(previous.view, recordHistory: false);
+      if (_restoreSearchFromHistory(previous)) _notify();
       return;
     }
     _selectedView = previous.view;
@@ -495,7 +496,20 @@ extension AppStateLibraryExtension on AppState {
     _artistTracks = previous.artistTracks;
     _genreTracks = previous.genreTracks;
     _offlineOnlyFilter = previous.offlineOnly;
+    _restoreSearchFromHistory(previous);
     _notify();
+  }
+
+  /// Reopens the search saved in a history entry without a new request.
+  bool _restoreSearchFromHistory(_BrowseHistoryEntry entry) {
+    final query = entry.searchQuery;
+    if (query == null) return false;
+    _searchQuery = query;
+    _searchResults = entry.searchResults;
+    _isSearching = true;
+    _isSearchLoading = false;
+    _searchRestoredFromHistory = true;
+    return true;
   }
 
   /// Navigates to an album by identifier.
@@ -559,6 +573,7 @@ extension AppStateLibraryExtension on AppState {
   Future<void> searchLibrary(String query) async {
     final trimmed = query.trim();
     final requestId = ++_searchRequestId;
+    _searchRestoredFromHistory = false;
 
     if (!_isSearching) {
       _isSearching = true;
@@ -747,6 +762,7 @@ extension AppStateLibraryExtension on AppState {
     _searchResults = null;
     _isSearching = false;
     _isSearchLoading = false;
+    _searchRestoredFromHistory = false;
     if (notify) {
       _notify();
     }
@@ -783,6 +799,7 @@ extension AppStateLibraryExtension on AppState {
     if (_searchQuery.isEmpty && !_isSearching) {
       _isSearching = true;
     }
+    _searchRestoredFromHistory = false;
     _searchFocusRequest += 1;
     _notify();
   }
@@ -1541,7 +1558,7 @@ extension AppStateLibraryExtension on AppState {
   Future<void> selectAlbum(Album album, {bool offlineOnly = false}) async {
     final generation = _captureServerGeneration();
     final isSameAlbum = _selectedAlbum?.id == album.id;
-    if (!isSameAlbum) _recordDetailEntry();
+    if (!isSameAlbum || _hasOpenSearch) _recordDetailEntry();
     _selectedPlaylist = null;
     _playlistTracks = [];
     _selectedSmartList = null;
@@ -1645,7 +1662,7 @@ extension AppStateLibraryExtension on AppState {
   Future<void> selectArtist(Artist artist, {bool offlineOnly = false}) async {
     final generation = _captureServerGeneration();
     final isSameArtist = _selectedArtist?.id == artist.id;
-    if (!isSameArtist) _recordDetailEntry();
+    if (!isSameArtist || _hasOpenSearch) _recordDetailEntry();
     _selectedPlaylist = null;
     _playlistTracks = [];
     _selectedSmartList = null;
@@ -1715,7 +1732,7 @@ extension AppStateLibraryExtension on AppState {
   Future<void> selectGenre(Genre genre) async {
     final generation = _captureServerGeneration();
     final isSameGenre = _selectedGenre?.id == genre.id;
-    if (!isSameGenre) _recordDetailEntry();
+    if (!isSameGenre || _hasOpenSearch) _recordDetailEntry();
     _selectedPlaylist = null;
     _playlistTracks = [];
     _selectedSmartList = null;
