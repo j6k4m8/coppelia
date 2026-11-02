@@ -26,6 +26,7 @@ import 'package:coppelia/models/smart_list.dart';
 import 'package:coppelia/models/cached_audio_entry.dart';
 import 'package:coppelia/models/download_task.dart';
 import 'package:coppelia/models/saved_server.dart';
+import 'package:coppelia/models/search_results.dart';
 import 'package:coppelia/models/track_status_icon_state.dart';
 import 'package:coppelia/services/cache_store.dart';
 import 'package:coppelia/services/jellyfin_client.dart';
@@ -1198,6 +1199,196 @@ void main() {
       (state) => state.selectGenre(_genre('back')),
       (state) => state.selectedGenre != null,
     );
+
+    const searchResults = SearchResults(
+      tracks: [],
+      albums: [],
+    );
+
+    /// Builds a state with empty detail loads and a stubbed server search.
+    ({AppState state, _MockCacheStore cacheStore, _MockJellyfinClient client})
+        buildSearchState() {
+      final cacheStore = _MockCacheStore();
+      final client = _MockJellyfinClient();
+      final state = buildState(
+        cacheStore: cacheStore,
+        client: client,
+        playback: _MockPlaybackController(),
+        serverStore: _MockServerStore(),
+        settingsStore: _MockSettingsStore(),
+      );
+      addTearDown(state.dispose);
+      when(() => cacheStore.loadPlaylistTracks(any()))
+          .thenAnswer((_) async => const <MediaItem>[]);
+      when(() => client.fetchPlaylistTracks(any()))
+          .thenAnswer((_) async => const <MediaItem>[]);
+      when(() => cacheStore.loadAlbumTracks(any()))
+          .thenAnswer((_) async => const <MediaItem>[]);
+      when(() => client.fetchAlbumTracks(any()))
+          .thenAnswer((_) async => const <MediaItem>[]);
+      when(() => cacheStore.loadArtistTracks(any()))
+          .thenAnswer((_) async => const <MediaItem>[]);
+      when(() => client.fetchArtistTracks(any()))
+          .thenAnswer((_) async => const <MediaItem>[]);
+      when(() => cacheStore.saveArtistTracks(any(), any()))
+          .thenAnswer((_) async {});
+      when(() => cacheStore.loadGenreTracks(any()))
+          .thenAnswer((_) async => const <MediaItem>[]);
+      when(() => client.fetchGenreTracks(any()))
+          .thenAnswer((_) async => const <MediaItem>[]);
+      when(() => cacheStore.saveGenreTracks(any(), any()))
+          .thenAnswer((_) async {});
+      when(() => client.searchLibrary(any()))
+          .thenAnswer((_) async => searchResults);
+      return (state: state, cacheStore: cacheStore, client: client);
+    }
+
+    void expectSearchRestored(AppState state, String query) {
+      expect(state.isSearching, isTrue);
+      expect(state.searchQuery, query);
+      expect(state.searchResults, same(searchResults));
+      expect(state.isSearchLoading, isFalse);
+      expect(state.searchRestoredFromHistory, isTrue);
+    }
+
+    void testSearchDetailBackNavigation(
+      String detail,
+      Future<void> Function(AppState state) select,
+      bool Function(AppState state) isSelected,
+    ) {
+      test('$detail opened from search returns to the search results',
+          () async {
+        final (:state, cacheStore: _, :client) = buildSearchState();
+
+        await state.searchLibrary('needle');
+        await select(state);
+
+        expect(isSelected(state), isTrue);
+        expect(state.isSearching, isFalse);
+        expect(state.searchQuery, isEmpty);
+        state.goBack();
+        expectSearchRestored(state, 'needle');
+        expect(isSelected(state), isFalse);
+        expect(state.selectedView, LibraryView.home);
+        // The results come from history, not from a second request.
+        verify(() => client.searchLibrary('needle')).called(1);
+
+        // Back from the restored search leaves search for the screen beneath.
+        state.goBack();
+        expect(state.isSearching, isFalse);
+        expect(state.searchQuery, isEmpty);
+        expect(state.selectedView, LibraryView.home);
+        expect(state.canGoBack, isFalse);
+        verifyNever(() => client.searchLibrary(any()));
+      });
+    }
+
+    testSearchDetailBackNavigation(
+      'playlist',
+      (state) => state.selectPlaylist(
+        const Playlist(
+          id: 'playlist-search',
+          name: 'Playlist',
+          trackCount: 1,
+          imageUrl: null,
+        ),
+      ),
+      (state) => state.selectedPlaylist != null,
+    );
+    testSearchDetailBackNavigation(
+      'Smart List',
+      (state) => state.selectSmartList(_titleContainsSmartList('Needle')),
+      (state) => state.selectedSmartList != null,
+    );
+    testSearchDetailBackNavigation(
+      'album',
+      (state) => state.selectAlbum(_album('search')),
+      (state) => state.selectedAlbum != null,
+    );
+    testSearchDetailBackNavigation(
+      'artist',
+      (state) => state.selectArtist(_artist('search')),
+      (state) => state.selectedArtist != null,
+    );
+    testSearchDetailBackNavigation(
+      'genre',
+      (state) => state.selectGenre(_genre('search')),
+      (state) => state.selectedGenre != null,
+    );
+
+    test('Go to artist from a search result returns to the search results',
+        () async {
+      final (:state, :cacheStore, :client) = buildSearchState();
+      final artist = _artist('by-id');
+      when(() => cacheStore.loadArtists()).thenAnswer((_) async => [artist]);
+      when(() => client.fetchArtists()).thenAnswer((_) async => [artist]);
+      when(() => cacheStore.saveArtists(any())).thenAnswer((_) async {});
+
+      await state.searchLibrary('needle');
+      await state.selectArtistById(artist.id);
+
+      expect(state.selectedArtist?.id, artist.id);
+      expect(state.isSearching, isFalse);
+      state.goBack();
+      expectSearchRestored(state, 'needle');
+      expect(state.selectedArtist, isNull);
+    });
+
+    test('search opened over an artist returns to search, then the artist',
+        () async {
+      final (:state, cacheStore: _, client: _) = buildSearchState();
+      final artist = _artist('under-search');
+      final album = _album('from-search');
+
+      await state.selectArtist(artist);
+      state.requestSearchFocus();
+      await state.searchLibrary('needle');
+      await state.selectAlbum(album);
+      expect(state.selectedAlbum, same(album));
+
+      state.goBack();
+      expectSearchRestored(state, 'needle');
+      expect(state.selectedArtist, same(artist));
+      expect(state.selectedAlbum, isNull);
+
+      state.goBack();
+      expect(state.isSearching, isFalse);
+      expect(state.selectedArtist, same(artist));
+
+      state.goBack();
+      expect(state.selectedArtist, isNull);
+      expect(state.selectedView, LibraryView.home);
+      expect(state.canGoBack, isFalse);
+    });
+
+    test('history keeps entries that differ only by search query', () async {
+      final (:state, cacheStore: _, client: _) = buildSearchState();
+      final artist = _artist('same');
+
+      await state.selectArtist(artist);
+      await state.searchLibrary('first');
+      await state.selectArtist(artist);
+      // The same search again must not add another Back step.
+      await state.searchLibrary('first');
+      await state.selectArtist(artist);
+      await state.searchLibrary('second');
+      await state.selectArtist(artist);
+
+      state.goBack();
+      expectSearchRestored(state, 'second');
+      state.goBack();
+      expect(state.isSearching, isFalse);
+      state.goBack();
+      expectSearchRestored(state, 'first');
+      expect(state.selectedArtist, same(artist));
+      state.goBack();
+      expect(state.isSearching, isFalse);
+      expect(state.selectedArtist, same(artist));
+      state.goBack();
+      expect(state.selectedArtist, isNull);
+      expect(state.selectedView, LibraryView.home);
+      expect(state.canGoBack, isFalse);
+    });
 
     test('playlist opened from a list returns to that list', () async {
       final cacheStore = _MockCacheStore();

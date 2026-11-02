@@ -430,7 +430,9 @@ class _SearchViewState extends State<_SearchView> {
 
     _state.addListener(_handleAppStateChange);
 
-    // When entering the search page, focus inside the field.
+    // When entering the search page, focus inside the field. Skip this when
+    // Back restored the search, so the mobile keyboard stays closed.
+    if (_state.searchRestoredFromHistory) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _focusNode.requestFocus();
